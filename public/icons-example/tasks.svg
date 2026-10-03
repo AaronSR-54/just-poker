@@ -1,0 +1,15 @@
+ <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+   <rect width="512" height="512" rx="128" fill="#22201f"/>
+  <defs>
+    <mask id="cutout">
+      <rect width="512" height="512" fill="white"/>
+      <path d="M207 249 L256 291" fill="none" stroke="black" stroke-width="50" stroke-linecap="square"/>
+      <path d="M256 291 L390 140" fill="none" stroke="black" stroke-width="120" stroke-linecap="square"/>
+    </mask>
+    <clipPath id="check-clip">
+      <circle cx="256" cy="256" r="195"/>
+    </clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#cdc5b7" stroke-width="42" mask="url(#cutout)"/>
+  <path d="M207 249 L256 291 L390 140" stroke="#cdc5b7" stroke-width="48" stroke-linejoin="miter" stroke-linecap="square" clip-path="url(#check-clip)"/>
+</svg>

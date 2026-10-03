@@ -1,0 +1,20 @@
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+ width="1080.000000pt" height="1080.000000pt" viewBox="0 0 1080.000000 1080.000000">
+
+ <style>
+  path{
+    fill: #22201F;
+
+    @media (prefers-color-scheme: dark) {
+        fill: #CDC5B7;
+    }
+  }
+ </style>
+
+<g transform="translate(0.000000,1080.000000) scale(0.100000,-0.100000)"
+fill="currentColor" stroke="none">
+<path d="M2673 7243 l-2673 -3 0 -730 0 -730 5400 0 5400 0 0 730 0 730 -2638
+0 c-1452 0 -2679 1 -2728 3 -49 2 -1292 2 -2761 0z"/>
+<path d="M0 3630 l0 -730 1925 0 1925 0 0 730 0 730 -1925 0 -1925 0 0 -730z"/>
+</g>
+</svg>
