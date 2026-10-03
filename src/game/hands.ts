@@ -75,35 +75,40 @@ function evaluate5Cards(cards: Card[]): HandResult {
   const isThreeOfAKind = freqValues[0] === 3 && freqValues[1] === 1;
   const isTwoPair = freqValues[0] === 2 && freqValues[1] === 2;
   const isOnePair = freqValues[0] === 2 && freqValues[1] === 1;
-  
+
+  // La escalera al As (A-2-3-4-5) es 5 alta. Reordenamos las cartas para que
+  // compareHands no confunda el As (14) con una carta alta y la puntúe de más.
+  const isWheel = ranks[0] === 14 && ranks[1] === 5 && ranks[2] === 4 && ranks[3] === 3 && ranks[4] === 2;
+  const ordered = isWheel ? [sorted[1], sorted[2], sorted[3], sorted[4], sorted[0]] : sorted;
+
   if (isFlush && isStraight) {
     if (ranks[0] === 14 && ranks[1] === 13) {
-      return { rank: HAND_RANKS.ROYAL_FLUSH, cards: sorted, name: 'Escalera Real' };
+      return { rank: HAND_RANKS.ROYAL_FLUSH, cards: ordered, name: 'Escalera Real' };
     }
-    return { rank: HAND_RANKS.STRAIGHT_FLUSH, cards: sorted, name: 'Escalera de Color' };
+    return { rank: HAND_RANKS.STRAIGHT_FLUSH, cards: ordered, name: 'Escalera de Color' };
   }
   if (isFourOfAKind) {
-    return { rank: HAND_RANKS.FOUR_OF_A_KIND, cards: sorted, name: 'Póker' };
+    return { rank: HAND_RANKS.FOUR_OF_A_KIND, cards: ordered, name: 'Póker' };
   }
   if (isFullHouse) {
-    return { rank: HAND_RANKS.FULL_HOUSE, cards: sorted, name: 'Full House' };
+    return { rank: HAND_RANKS.FULL_HOUSE, cards: ordered, name: 'Full House' };
   }
   if (isFlush) {
-    return { rank: HAND_RANKS.FLUSH, cards: sorted, name: 'Color' };
+    return { rank: HAND_RANKS.FLUSH, cards: ordered, name: 'Color' };
   }
   if (isStraight) {
-    return { rank: HAND_RANKS.STRAIGHT, cards: sorted, name: 'Escalera' };
+    return { rank: HAND_RANKS.STRAIGHT, cards: ordered, name: 'Escalera' };
   }
   if (isThreeOfAKind) {
-    return { rank: HAND_RANKS.THREE_OF_A_KIND, cards: sorted, name: 'Trío' };
+    return { rank: HAND_RANKS.THREE_OF_A_KIND, cards: ordered, name: 'Trío' };
   }
   if (isTwoPair) {
-    return { rank: HAND_RANKS.TWO_PAIR, cards: sorted, name: 'Doble Pareja' };
+    return { rank: HAND_RANKS.TWO_PAIR, cards: ordered, name: 'Doble Pareja' };
   }
   if (isOnePair) {
-    return { rank: HAND_RANKS.ONE_PAIR, cards: sorted, name: 'Pareja' };
+    return { rank: HAND_RANKS.ONE_PAIR, cards: ordered, name: 'Pareja' };
   }
-  return { rank: HAND_RANKS.HIGH_CARD, cards: sorted, name: 'Carta Alta' };
+  return { rank: HAND_RANKS.HIGH_CARD, cards: ordered, name: 'Carta Alta' };
 }
 
 export function compareHands(h1: HandResult, h2: HandResult): number {

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import RankBadge from '../components/RankBadge';
 import Button from '../components/Button';
+import Badge from '../components/Badge';
 import PokerCard from '../components/PokerCard';
 import type { GamePhase, CardRank, Suit } from '../types';
 import { PokerGame, type PokerState } from '../game/poker';
@@ -12,8 +12,8 @@ import { calculateEquity } from '../game/equity';
 import { PERSONALITIES } from '../ai/personalities';
 import { createAIPlayer, getAIAction, type AIPlayer } from '../ai/aiPlayer';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useUserStore, POINTS_BY_PLACE } from '../store/userStore';
-import { useOnlineGame } from '../net/useOnlineGame';
+import { useUserStore } from '../store/userStore';
+import { saveGame, loadSavedGame, clearSavedGame } from '../game/saveGame';
 
 const TURN_DURATION = 30;
 
@@ -42,10 +42,22 @@ const FloatingMenu: React.FC<{ onLeave: () => void }> = ({ onLeave }) => {
 
   return (
     <div ref={ref}>
-      <button className="jp-menu-btn" onClick={() => setOpen(!open)}>⋮</button>
+      <button
+        className="fixed right-4 top-4 z-100 flex size-9 cursor-pointer items-center justify-center rounded-full border border-bone/[0.18] bg-bone/[0.06] text-fs-400 text-bone transition-[transform,background-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone"
+        aria-label="Menú de partida"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        ⋮
+      </button>
       {open && (
-        <div className="jp-menu-popover">
-          <button onClick={onLeave}>Salir de la partida</button>
+        <div className="fixed right-4 top-14 z-101 min-w-40 rounded-xl border border-bone/[0.18] bg-ink p-2 shadow-[0_0.5rem_2rem_rgba(0,0,0,0.4)]">
+          <button
+            className="block w-full cursor-pointer rounded-lg px-[0.875rem] py-[0.625rem] text-left font-display font-bold text-fs-100 tracking-[0.1em] uppercase text-bone transition-colors duration-[160ms] ease-brand hover:bg-bone/[0.08]"
+            onClick={onLeave}
+          >
+            Salir de la partida
+          </button>
         </div>
       )}
     </div>
@@ -55,14 +67,27 @@ const FloatingMenu: React.FC<{ onLeave: () => void }> = ({ onLeave }) => {
 const TimerBar: React.FC<{ seconds: number; max: number }> = ({ seconds, max }) => {
   const pct = (seconds / max) * 100;
   return (
-    <div className="jp-timer-bar">
-      <div className="fill" style={{ width: `${pct}%` }} />
+    <div className="absolute -bottom-2 left-0 right-0 h-[3px] overflow-hidden rounded-sm bg-bone/10">
+      <div
+        className="h-full rounded-sm bg-bone transition-[width] duration-1000 ease-linear"
+        style={{ width: `${pct}%` }}
+      />
     </div>
   );
 };
 
 const BlindDot: React.FC<{ role: 'dealer' | 'sb' | 'bb' }> = ({ role }) => (
-  <span className={`jp-blind-dot ${role}`}>{role === 'dealer' ? 'D' : role.toUpperCase()}</span>
+  <span
+    className={`inline-flex size-[1.125rem] shrink-0 items-center justify-center rounded-full font-display font-bold text-fs-100 tracking-[0.04em] max-md:size-3.5 ${
+      role === 'dealer'
+        ? 'bg-bone text-ink'
+        : role === 'sb'
+          ? 'bg-info/20 text-info'
+          : 'bg-danger/20 text-danger'
+    }`}
+  >
+    {role === 'dealer' ? 'D' : role.toUpperCase()}
+  </span>
 );
 
 const StatusBadge: React.FC<{
@@ -74,11 +99,11 @@ const StatusBadge: React.FC<{
   bet?: number;
 }> = ({ isActive, isWinner, lastAction, folded, handOver, bet = 0 }) => {
   if (folded) return null;
-  if (isWinner) return <span className="jp-badge neutral">Ganador</span>;
-  if (isActive && !handOver) return <span className="jp-badge turn">Turno</span>;
-  if (bet > 0) return <span className="jp-badge info">Apuesta: <strong>{bet}</strong></span>;
+  if (isWinner) return <Badge variant="neutral">Ganador</Badge>;
+  if (isActive && !handOver) return <Badge variant="turn">Turno</Badge>;
+  if (bet > 0) return <Badge variant="info">Apuesta: <strong>{bet}</strong></Badge>;
   if (lastAction && lastAction !== '—' && lastAction !== 'Se retiró' && lastAction !== 'Eliminado') {
-    return <span className="jp-badge neutral" style={{ opacity: 0.7 }}>{lastAction}</span>;
+    return <Badge variant="neutral" className="opacity-70">{lastAction}</Badge>;
   }
   return null;
 };
@@ -87,7 +112,6 @@ const StatusBadge: React.FC<{
 
 interface RivalSlotProps {
   name: string;
-  rankPoints: number;
   cards?: { rank: CardRank; suit: Suit }[];
   folded?: boolean;
   eliminated?: boolean;
@@ -109,7 +133,6 @@ interface RivalSlotProps {
 
 const RivalSlot: React.FC<RivalSlotProps> = ({
   name,
-  rankPoints,
   cards,
   folded = false,
   eliminated = false,
@@ -129,9 +152,13 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
 }) => {
   if (eliminated) {
     return (
-      <div className="jp-slot" style={{ minWidth: compact ? 90 : 130, opacity: 0.25 }}>
-        <span className="jp-label" style={{ fontSize: compact ? 10 : 11 }}>{name}</span>
-        <span className="jp-caption">Eliminado</span>
+      <div
+        className={`relative flex flex-col items-center gap-2.5 rounded-slot border border-bone/[0.18] bg-transparent px-5 py-[1.125rem] opacity-25 ${
+          compact ? 'min-w-[90px]' : 'min-w-[130px]'
+        }`}
+      >
+        <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{name}</span>
+        <span className="font-body tracking-[0.04em] opacity-70 text-fs-100">Eliminado</span>
       </div>
     );
   }
@@ -139,24 +166,28 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
   const cardSize = compact ? 'xs' : 'sm';
   return (
     <div
-      className={`jp-slot${isActive ? ' active' : ''}${folded ? ' folded' : ''}${isWinner ? ' winner' : ''}`}
-      style={compact ? { minWidth: 90, padding: '8px 10px', gap: 4, borderRadius: 10 } : { minWidth: 130 }}
+      className={[
+        'relative flex flex-col items-center rounded-slot border bg-transparent',
+        compact ? 'min-w-[90px] gap-1 rounded-[10px] px-2.5 py-2' : 'min-w-[130px] gap-2.5 px-5 py-[1.125rem]',
+        isActive ? 'border-bone shadow-[0_0_0_0.375rem_rgba(205,197,183,0.1)]' : 'border-bone/[0.18]',
+        folded ? 'opacity-[0.32]' : '',
+        isWinner ? 'border-bone bg-bone/[0.06]' : '',
+      ].join(' ')}
     >
       {isActive && !handOver && thinking && (
-        <div className="jp-timer-bar ai" key={`think-${name}-${bet}-${lastAction}`}>
-          <div className="fill" />
+        <div className="absolute -bottom-2 left-0 right-0 h-[3px] overflow-hidden rounded-sm bg-bone/10" key={`think-${name}-${bet}-${lastAction}`}>
+          <div className="h-full w-full bg-bone animate-timer-drain" />
         </div>
       )}
 
-      <div className="row gap-1" style={{ alignItems: 'center' }}>
+      <div className="flex items-center gap-1">
         {blindRole && <BlindDot role={blindRole} />}
-        <span className={compact ? 'jp-label' : 'jp-h3'} style={compact ? { fontSize: 10, letterSpacing: 0, textTransform: 'none' } : { fontSize: 13 }}>{name}</span>
-        <RankBadge points={rankPoints} compact />
+        <span className={compact ? 'font-display font-bold text-fs-100 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-200'}>{name}</span>
       </div>
 
-      <div className={`jp-chip-stack${chips < 100 ? ' low' : ''}`}>
-        <span className="icon">🪙</span>
-        <span className="amt">{chips}</span>
+      <div className="flex items-center gap-0.5">
+        <span className="text-fs-200 opacity-50 max-md:text-fs-100">🪙</span>
+        <span className={`font-display font-bold text-fs-300 max-md:text-fs-100 ${chips < 100 ? 'text-danger' : ''}`}>{chips}</span>
         <AnimatePresence>
           {winAmount > 0 && (
             <motion.span
@@ -164,7 +195,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="jp-win-chips"
+              className="ml-1 font-display font-bold text-fs-200 text-success"
             >
               +{winAmount}
             </motion.span>
@@ -172,9 +203,9 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
         </AnimatePresence>
       </div>
 
-      {isAllIn && <span className="jp-badge warning">ALL-IN</span>}
+      {isAllIn && <Badge variant="warning">ALL-IN</Badge>}
 
-      <div className={`row ${compact ? 'gap-0' : 'gap-1'}`}>
+      <div className={`flex ${compact ? 'gap-0' : 'gap-1'}`}>
         {folded || !cards || cards.length === 0 ? (
           <>
             <PokerCard size={cardSize} back />
@@ -213,13 +244,15 @@ const CommunityRow: React.FC<{
   const slotH = cardSize === 'xxl' ? 182 : 90;
 
   return (
-    <div className="jp-table-felt">
-      <div className="row gap-2" style={{ alignItems: 'center' }}>
-        <span className="jp-phase-label">{PHASE_LABELS[phase] || phase}</span>
-        <span className="jp-caption">Mano #{handNumber}</span>
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex rounded-pill border border-bone/[0.18] px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5">
+          {PHASE_LABELS[phase] || phase}
+        </span>
+        <span className="font-body tracking-[0.04em] opacity-70 text-fs-100">Mano #{handNumber}</span>
       </div>
 
-      <div className={`row ${cardSize === 'xxl' ? 'gap-3' : 'gap-2'}`} style={{ justifyContent: 'center' }}>
+      <div className={`flex justify-center ${cardSize === 'xxl' ? 'gap-3' : 'gap-2'}`}>
         {Array.from({ length: 5 }).map((_, i) => {
           if (i < visibleCount && community[i]) {
             const card = community[i];
@@ -239,18 +272,18 @@ const CommunityRow: React.FC<{
               </motion.div>
             );
           }
-          return <div key={i} className="jp-card-slot-empty" style={{ width: slotW, height: slotH }} />;
+          return <div key={i} className="rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14]" style={{ width: slotW, height: slotH }} />;
         })}
       </div>
 
       <motion.div
-        className="jp-pot"
+        className="flex items-center gap-2 rounded-pill bg-bone/[0.06] px-4 py-1.5 font-display font-bold text-fs-200 tracking-[0.06em]"
         key={pot}
         initial={{ scale: 1.1 }}
         animate={{ scale: 1 }}
         transition={{ duration: 0.25 }}
       >
-        <span className="label">Bote</span>
+        <span className="opacity-50">Bote</span>
         <span>{pot}</span>
       </motion.div>
     </div>
@@ -271,13 +304,13 @@ const ActionLog: React.FC<{ state: PokerState }> = ({ state }) => {
   const recent = state.actions.slice(-4);
   if (recent.length === 0) return null;
   return (
-    <div className="jp-action-log">
+    <div className="flex min-h-5 flex-col items-center gap-0.5">
       {recent.map((a, i) => {
         const p = state.players[a.playerIndex];
         return (
           <div
             key={`${a.timestamp}-${i}`}
-            className="entry"
+            className="font-body text-fs-100 text-bone"
             style={{ opacity: 0.35 + (0.65 * (i + 1)) / recent.length }}
           >
             <strong>{p?.name ?? '?'}</strong> {ACTION_VERBS[a.type] ?? a.type}
@@ -315,15 +348,17 @@ const RaisePanel: React.FC<RaisePanelProps> = ({
   ];
 
   return (
-    <div className="jp-raise-panel">
-      <div className="row gap-1" style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
+    <div className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 flex min-w-[12.5rem] flex-col gap-2.5 rounded-xl border border-bone/[0.18] bg-ink p-4 shadow-[0_0.5rem_2rem_rgba(0,0,0,0.4)]">
+      <div className="flex flex-wrap justify-center gap-1">
         {quickAmounts.map((qa) => {
           const val = Math.min(qa.value, maxRaise);
           return (
             <button
               key={qa.label}
               onClick={() => onRaiseChange(val)}
-              className={`jp-quick-raise${raiseAmount === val ? ' active' : ''}`}
+              className={`cursor-pointer rounded-lg border bg-transparent px-2.5 py-1 font-display font-bold text-fs-200 text-bone transition-[transform,border-color,background-color] duration-[160ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+                raiseAmount === val ? 'border-bone bg-bone/12' : 'border-bone/[0.18]'
+              }`}
             >
               {qa.label}
             </button>
@@ -331,16 +366,17 @@ const RaisePanel: React.FC<RaisePanelProps> = ({
         })}
       </div>
 
-      <div className="jp-raise-slider" style={{ width: '100%' }}>
-        <span className="jp-caption" style={{ minWidth: 24 }}>{minRaise}</span>
+      <div className="flex w-full max-w-60 items-center gap-2">
+        <span className="font-body tracking-[0.04em] opacity-70 min-w-6 text-fs-100">{minRaise}</span>
         <input
           type="range"
           min={minRaise}
           max={maxRaise}
           value={raiseAmount}
           onChange={(e) => onRaiseChange(Number(e.target.value))}
+          className="flex-1 cursor-pointer"
         />
-        <span className="value">{raiseAmount}</span>
+        <span className="min-w-[1.875rem] text-center font-display font-bold text-fs-300">{raiseAmount}</span>
       </div>
 
       <Button variant="primary" size="sm" onClick={onRaise}>
@@ -352,9 +388,12 @@ const RaisePanel: React.FC<RaisePanelProps> = ({
 
 const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = (props) => {
   return (
-    <div className="jp-raise-overlay" onClick={props.onClose}>
-      <div className="jp-raise-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="jp-raise-handle" />
+    <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/60" onClick={props.onClose}>
+      <div
+        className="flex w-full max-w-[25rem] flex-col gap-4 rounded-t-[1.25rem] border border-b-[0] border-bone/[0.18] bg-ink px-5 pb-8 pt-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-1 w-9 self-center rounded-sm bg-bone/20" />
         <RaisePanel {...props} />
       </div>
     </div>
@@ -377,39 +416,40 @@ const GameOverOverlay: React.FC<{
 
   return (
     <motion.div
-      className="jp-gameover-overlay"
+      className="fixed inset-0 z-300 flex items-center justify-center bg-ink-900/85 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
       <motion.div
-        className="jp-gameover-card"
+        className="flex w-[calc(100%-3rem)] max-w-[26.25rem] flex-col items-center gap-5 rounded-md border border-bone/[0.18] bg-ink px-10 py-9 text-center"
         initial={{ scale: 0.92, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.15 }}
       >
-        <div className="jp-eyebrow">Fin de la partida · {state.handNumber} manos</div>
-        <div className="jp-h2" style={{ fontSize: 32 }}>
+        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Fin de la partida · {state.handNumber} manos</div>
+        <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">
           {humanWon ? '¡Has ganado la mesa!' : `${standings[0].name} gana la mesa`}
         </div>
 
-        <div className="col gap-2" style={{ width: '100%' }}>
+        <div className="flex w-full flex-col gap-2">
           {standings.map((p, i) => (
             <div
               key={p.id}
-              className="row between jp-standing-row"
-              style={i === 0 ? { background: 'var(--bone)', color: 'var(--ink)' } : undefined}
+              className={`flex w-full items-center justify-between rounded-[0.625rem] border border-bone/[0.18] px-[0.875rem] py-[0.625rem] ${
+                i === 0 ? 'border-bone bg-bone text-ink' : ''
+              }`}
             >
-              <div className="row gap-2">
-                <span className="jp-label">{i + 1}.º</span>
-                <span className="jp-body">{p.name}{p.id === 0 ? ' (tú)' : ''}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{i + 1}.º</span>
+                <span className="font-body leading-[1.45] text-fs-300">{p.name}{p.id === 0 ? ' (tú)' : ''}</span>
               </div>
-              <span className="jp-label">🪙 {p.chips}</span>
+              <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">🪙 {p.chips}</span>
             </div>
           ))}
         </div>
 
-        <div className="row gap-3">
+        <div className="flex gap-3">
           <Button variant="outline" onClick={onLeave}>Salir</Button>
           <Button variant="primary" glow onClick={onRestart}>Jugar otra vez</Button>
         </div>
@@ -423,10 +463,9 @@ const GameOverOverlay: React.FC<{
 const LocalGame: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const user = useUserStore(s => s.user);
-  const recordHand = useUserStore(s => s.recordHand);
-  const recordGame = useUserStore(s => s.recordGame);
 
   const gameRef = useRef<PokerGame | null>(null);
   const [gameState, setGameState] = useState<PokerState | null>(null);
@@ -436,14 +475,31 @@ const LocalGame: React.FC = () => {
   const [showEquity, setShowEquity] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(TURN_DURATION);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recordedHandRef = useRef(0);
-  const recordedGameRef = useRef(false);
 
   const isLocal = !!gameId && gameId.startsWith('local-');
 
-  // ---- Inicialización ----
+  // ---- Inicialización (nueva partida o reanudar) ----
   useEffect(() => {
     if (!isLocal || !gameId) return;
+
+    const shouldResume = searchParams.get('continue') === '1';
+    const saved = shouldResume ? loadSavedGame() : null;
+
+    if (saved && saved.gameId === gameId) {
+      try {
+        const g = PokerGame.deserialize(saved.state);
+        const personalities = PERSONALITIES[saved.difficulty] ?? PERSONALITIES[getDifficulty(gameId)];
+        const ais = personalities.map((p, i) => createAIPlayer(i + 1, p));
+        gameRef.current = g;
+        setAiPlayers(ais);
+        const resumed = g.getState();
+        setRaiseAmount(resumed.minRaise);
+        setGameState(resumed);
+        return;
+      } catch {
+        clearSavedGame();
+      }
+    }
 
     const diff = getDifficulty(gameId);
     const personalities = PERSONALITIES[diff];
@@ -453,51 +509,42 @@ const LocalGame: React.FC = () => {
 
     gameRef.current = g;
     setAiPlayers(ais);
-    recordedHandRef.current = 0;
-    recordedGameRef.current = false;
 
     g.startHand();
+    clearSavedGame();
     const initial = g.getState();
     setRaiseAmount(initial.minRaise);
     setGameState(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, isLocal]);
 
-  // Clamp de la cantidad de subida cuando cambia el mínimo
+  // ---- Persistir la partida en curso ----
   useEffect(() => {
-    if (!gameState) return;
-    if (raiseAmount < gameState.minRaise) setRaiseAmount(gameState.minRaise);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.minRaise]);
-
-  // ---- Registrar mano terminada en stats ----
-  useEffect(() => {
-    if (!gameState || !gameState.handOver || gameState.gameOver) return;
-    if (recordedHandRef.current === gameState.handNumber) return;
-    recordedHandRef.current = gameState.handNumber;
-    recordHand(gameState.winner?.includes(0) ?? false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.handOver, gameState?.handNumber]);
-
-  // ---- Registrar partida terminada ----
-  useEffect(() => {
-    if (!gameState?.gameOver || recordedGameRef.current) return;
-    recordedGameRef.current = true;
-    recordHand(gameState.gameWinner === 0);
-    const standings = [...gameState.players].sort((a, b) => {
-      if (a.id === gameState.gameWinner) return -1;
-      if (b.id === gameState.gameWinner) return 1;
-      return b.chips - a.chips;
+    if (!isLocal || !gameId || !gameState || !gameRef.current) return;
+    if (gameState.gameOver) {
+      clearSavedGame();
+      return;
+    }
+    saveGame({
+      gameId,
+      difficulty: getDifficulty(gameId),
+      state: gameRef.current.serialize(),
     });
-    const place = (standings.findIndex(p => p.id === 0) + 1) as 1 | 2 | 3 | 4;
-    recordGame({
-      place,
-      pts: POINTS_BY_PLACE[place] ?? 0,
-      rivals: standings.filter(p => p.id !== 0).map(p => p.name),
-      mode: 'local',
+  }, [gameState, isLocal, gameId]);
+
+  // Mantén la cantidad de subida dentro de [minRaise, maxRaise]
+  useEffect(() => {
+    if (!gameState || gameState.handOver) return;
+    const humanPlayer = gameState.players[0];
+    const tableMaxBet = Math.max(0, ...gameState.players.map(p => p.bet));
+    const toCall = Math.max(0, tableMaxBet - humanPlayer.bet);
+    const maxR = Math.max(0, humanPlayer.chips - toCall);
+    setRaiseAmount(prev => {
+      const lower = Math.max(prev, gameState.minRaise);
+      return maxR >= gameState.minRaise ? Math.min(lower, maxR) : gameState.minRaise;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.gameOver]);
+  }, [gameState]);
 
   // ---- Temporizador de turno ----
   const stopTimer = useCallback(() => {
@@ -604,15 +651,13 @@ const LocalGame: React.FC = () => {
   const restartGame = () => {
     const g = gameRef.current;
     if (!g) return;
-    recordedGameRef.current = false;
-    recordedHandRef.current = 0;
     g.reset();
     g.startHand();
     updateState();
   };
 
   // ---- Equity del jugador humano (opcional) ----
-  const humanEquity = (() => {
+  const humanEquity = useMemo(() => {
     if (!showEquity || !gameState || gameState.handOver) return null;
     const human = gameState.players[0];
     if (human.cards.length < 2 || human.folded) return null;
@@ -620,16 +665,16 @@ const LocalGame: React.FC = () => {
     if (opponents === 0) return null;
     const sims = gameState.community.length >= 4 ? 300 : 400;
     return calculateEquity(human.cards, gameState.community, Math.max(1, opponents), sims);
-  })();
+  }, [showEquity, gameState]);
 
   // ---- Guards de render ----
 
   if (!isLocal) {
     return (
-      <div className="jp-screen">
-        <div className="col center grow gap-4">
-          <div className="jp-h2">Juego no disponible</div>
-          <div className="jp-body faint">
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Juego no disponible</div>
+          <div className="font-body leading-[1.45] text-fs-300 opacity-40">
             Esta sala aún no está lista. Vuelve al lobby.
           </div>
           <Button variant="outline" onClick={() => navigate('/')}>
@@ -642,9 +687,9 @@ const LocalGame: React.FC = () => {
 
   if (!gameState) {
     return (
-      <div className="jp-screen">
-        <div className="col center grow">
-          <div className="jp-h2">Cargando partida...</div>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Cargando partida...</div>
         </div>
       </div>
     );
@@ -722,13 +767,12 @@ const LocalGame: React.FC = () => {
     if (!winnerData) return null;
     return (
       <motion.div
-        className="row gap-2"
-        style={{ alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}
+        className="flex flex-wrap items-center justify-center gap-2"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <span className="jp-h3" style={{ color: 'var(--bone)', fontSize: 16 }}>
+        <span className="font-display font-bold leading-none text-fs-400 text-bone">
           <strong>{winnerData.label}</strong>
         </span>
       </motion.div>
@@ -736,15 +780,14 @@ const LocalGame: React.FC = () => {
   };
 
   const humanInfo = (
-    <div className="col gap-1" style={{ alignItems: 'center', minWidth: isMobile ? undefined : 140 }}>
-      <div className="row gap-1" style={{ alignItems: 'center' }}>
+    <div className={`flex flex-col items-center gap-1 ${isMobile ? '' : 'min-w-[140px]'}`}>
+      <div className="flex items-center gap-1">
         {blindRoleFor(0) && <BlindDot role={blindRoleFor(0)!} />}
-        <span className={isMobile ? 'jp-label' : 'jp-h3'} style={{ fontSize: isMobile ? 11 : 16, letterSpacing: isMobile ? 0 : undefined, textTransform: isMobile ? 'none' : undefined }}>{human.name}</span>
-        <RankBadge points={user.points} compact />
+        <span className={isMobile ? 'font-display font-bold text-fs-100 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{human.name}</span>
       </div>
-      <div className={`jp-chip-stack${human.chips < 100 ? ' low' : ''}`}>
-        <span className="icon">🪙</span>
-        <span className="amt">{human.chips}</span>
+      <div className="flex items-center gap-0.5">
+        <span className="text-fs-200 opacity-50 max-md:text-fs-100">🪙</span>
+        <span className={`font-display font-bold text-fs-300 max-md:text-fs-100 ${human.chips < 100 ? 'text-danger' : ''}`}>{human.chips}</span>
         <AnimatePresence>
           {!handOver && human.bet > 0 && (
             <motion.span
@@ -752,7 +795,7 @@ const LocalGame: React.FC = () => {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="jp-round-spent"
+              className="ml-1 font-display font-bold text-fs-200 text-danger opacity-90"
             >
               −{human.bet}
             </motion.span>
@@ -763,23 +806,23 @@ const LocalGame: React.FC = () => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="jp-win-chips"
+              className="ml-1 font-display font-bold text-fs-200 text-success"
             >
               +{state.winAmounts[0]}
             </motion.span>
           )}
         </AnimatePresence>
       </div>
-      {human.isAllIn && <span className="jp-badge warning">ALL-IN</span>}
+      {human.isAllIn && <Badge variant="warning">ALL-IN</Badge>}
     </div>
   );
 
   const humanCards = (
-    <div className="col gap-1" style={{ alignItems: 'center' }}>
+    <div className="flex flex-col items-center gap-1">
       {humanHandName && !handOver && (
-        <span className="jp-badge neutral">{humanHandName}</span>
+        <Badge variant="neutral">{humanHandName}</Badge>
       )}
-      <div className="row gap-2">
+      <div className="flex gap-2">
         {human.cards.length > 0 ? (
           human.cards.map((c, i) => (
             <PokerCard key={i} size="lg" rank={c.rank} suit={c.suit} dimmed={isDimmed({ rank: c.rank, suit: c.suit })} />
@@ -792,21 +835,21 @@ const LocalGame: React.FC = () => {
         )}
       </div>
       {showEquity && humanEquity && (
-        <div className="jp-hand-info">
-          <div className="equity">
-            <span className="equity-pct">{humanEquity.winPct}%</span>
-            <div className="jp-equity-bar">
-              <div className="fill" style={{ width: `${humanEquity.winPct}%` }} />
+        <div className="flex flex-col gap-1 rounded-[0.625rem] border border-bone/[0.18] bg-bone/[0.04] px-3 py-2">
+          <div className="flex items-center gap-1.5">
+            <span className="font-display font-bold text-fs-100 text-bone opacity-80">{humanEquity.winPct}%</span>
+            <div className="h-1 flex-1 overflow-hidden rounded-sm bg-bone/10">
+              <div className="h-full rounded-sm bg-bone transition-[width] duration-300 ease-brand" style={{ width: `${humanEquity.winPct}%` }} />
             </div>
           </div>
-          <span className="jp-caption" style={{ fontSize: 10 }}>prob. de ganar{humanEquity.tiePct > 0 ? ` · empate ${humanEquity.tiePct}%` : ''}</span>
+          <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">prob. de ganar{humanEquity.tiePct > 0 ? ` · empate ${humanEquity.tiePct}%` : ''}</span>
         </div>
       )}
     </div>
   );
 
   const actionButtons = handOver ? (
-    <div className="col gap-2" style={{ alignItems: 'center' }}>
+    <div className="flex flex-col items-center gap-2">
       <WinnerMessage />
       {!state.gameOver && (
         <Button variant="primary" size="sm" onClick={startNewHand}>
@@ -815,7 +858,7 @@ const LocalGame: React.FC = () => {
       )}
     </div>
   ) : (
-    <div className="row gap-2" style={{ justifyContent: 'center' }}>
+    <div className="flex justify-center gap-2">
       <Button
         variant="outline"
         size="sm"
@@ -849,9 +892,13 @@ const LocalGame: React.FC = () => {
 
   const equityToggle = (
     <button
-      className={`jp-equity-toggle${showEquity ? ' on' : ''}`}
+      className={`fixed right-[3.875rem] top-4 z-100 flex size-9 cursor-pointer items-center justify-center rounded-full border font-display font-bold text-fs-200 text-bone transition-[transform,background-color,border-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+        showEquity ? 'border-bone bg-bone/16' : 'border-bone/[0.18] bg-bone/[0.06]'
+      }`}
       onClick={() => setShowEquity(v => !v)}
       title="Mostrar probabilidad de ganar"
+      aria-label="Mostrar probabilidad de ganar"
+      aria-pressed={showEquity}
     >
       %
     </button>
@@ -861,18 +908,17 @@ const LocalGame: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="jp-screen">
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
         <FloatingMenu onLeave={() => navigate('/')} />
         {equityToggle}
 
-        <div className="col" style={{ flex: 1, padding: '12px 14px' }}>
-          <div className="row gap-2" style={{ justifyContent: 'center' }}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[0.875rem] py-3">
+          <div className="flex flex-wrap justify-center gap-2">
             {rivals.map((r) => (
               <RivalSlot
                 key={r.id}
                 compact
                 name={r.name}
-                rankPoints={aiPlayers.find(a => a.playerIndex === r.id)?.personality.points ?? 100}
                 cards={r.cards.length > 0 ? r.cards : undefined}
                 folded={r.folded}
                 eliminated={r.eliminated}
@@ -891,7 +937,7 @@ const LocalGame: React.FC = () => {
             ))}
           </div>
 
-          <div className="jp-table" style={{ padding: '12px 0' }}>
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-3">
             <CommunityRow
               phase={phase}
               community={state.community}
@@ -903,12 +949,12 @@ const LocalGame: React.FC = () => {
             <ActionLog state={state} />
           </div>
 
-          <div className="col gap-3" style={{ alignItems: 'center' }}>
+          <div className="flex flex-col items-center gap-3">
             {humanCards}
             {humanInfo}
 
             {activePlayer === 0 && !handOver && (
-              <div style={{ width: '80%' }}>
+              <div className="w-4/5">
                 <TimerBar seconds={timerSeconds} max={TURN_DURATION} />
               </div>
             )}
@@ -943,17 +989,16 @@ const LocalGame: React.FC = () => {
   // ---------- DESKTOP ----------
 
   return (
-    <div className="jp-screen">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
       <FloatingMenu onLeave={() => navigate('/')} />
       {equityToggle}
 
-      <div className="col" style={{ flex: 1, padding: '16px 48px 24px' }}>
-        <div className="row gap-4" style={{ justifyContent: 'center' }}>
+      <div className="flex flex-1 flex-col px-12 pb-6 pt-4">
+        <div className="flex justify-center gap-4">
           {rivals.map((r) => (
             <RivalSlot
               key={r.id}
               name={r.name}
-              rankPoints={aiPlayers.find(a => a.playerIndex === r.id)?.personality.points ?? 100}
               cards={r.cards.length > 0 ? r.cards : undefined}
               folded={r.folded}
               eliminated={r.eliminated}
@@ -972,7 +1017,7 @@ const LocalGame: React.FC = () => {
           ))}
         </div>
 
-        <div className="jp-table">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-6">
           <CommunityRow
             phase={phase}
             community={state.community}
@@ -983,20 +1028,20 @@ const LocalGame: React.FC = () => {
           <ActionLog state={state} />
         </div>
 
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', paddingBottom: 20 }}>
+        <div className="relative flex items-end justify-between pb-5">
           {activePlayer === 0 && !handOver && <TimerBar seconds={timerSeconds} max={TURN_DURATION} />}
 
           {humanInfo}
 
-          <div className="col gap-1" style={{ alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0 }}>
+          <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
             {humanCards}
           </div>
 
-          <div className="col gap-2" style={{ alignItems: 'center', minWidth: 200 }}>
+          <div className="flex min-w-[200px] flex-col items-center gap-2">
             {handOver ? (
               actionButtons
             ) : (
-              <div className="row gap-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1017,7 +1062,7 @@ const LocalGame: React.FC = () => {
                       : `Igualar ${callAmount}`
                     : 'Igualar'}
                 </Button>
-                <div className="jp-raise-dropdown">
+                <div className="relative">
                   <Button
                     variant="primary"
                     size="sm"
@@ -1054,359 +1099,9 @@ const LocalGame: React.FC = () => {
   );
 };
 
-// ---------- Pantalla online ----------
-
-const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
-  const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 767px)');
-  const user = useUserStore(s => s.user);
-  const online = useOnlineGame(roomId);
-
-  const [raiseAmount, setRaiseAmount] = useState(20);
-  const [showRaise, setShowRaise] = useState(false);
-  const [showEquity, setShowEquity] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(TURN_DURATION);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const gameState = online.state;
-
-  useEffect(() => {
-    if (gameState && raiseAmount < gameState.minRaise) setRaiseAmount(gameState.minRaise);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.minRaise]);
-
-  const stopTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const startTimer = useCallback(() => {
-    stopTimer();
-    setTimerSeconds(TURN_DURATION);
-    timerRef.current = setInterval(() => {
-      setTimerSeconds(prev => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
-
-  const currentPlayerIdx = gameState?.currentPlayer;
-  const isHandOver = gameState?.handOver;
-  useEffect(() => {
-    if (currentPlayerIdx === undefined || isHandOver === undefined) return;
-    if (currentPlayerIdx === 0 && !isHandOver) startTimer();
-    else stopTimer();
-    return stopTimer;
-  }, [currentPlayerIdx, isHandOver, startTimer, stopTimer]);
-
-  useEffect(() => {
-    if (timerSeconds > 0 || !gameState) return;
-    if (gameState.currentPlayer !== 0 || gameState.handOver) return;
-    if (gameState.players[0].bet >= Math.max(...gameState.players.map(p => p.bet))) {
-      online.handleAction('check');
-    } else {
-      online.handleAction('fold');
-    }
-    setShowRaise(false);
-  }, [timerSeconds, gameState, online]);
-
-  const leave = () => {
-    online.leave();
-    navigate('/online');
-  };
-
-  if (online.loading) {
-    return (
-      <div className="jp-screen">
-        <div className="col center grow">
-          <div className="jp-h2">Conectando a la mesa…</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (online.error || !gameState) {
-    return (
-      <div className="jp-screen">
-        <div className="col center grow gap-4">
-          <div className="jp-h2">No se pudo cargar la partida</div>
-          <div className="jp-body faint">{online.error ?? 'Estado no disponible'}</div>
-          <Button variant="outline" onClick={leave}>← Volver</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const state = gameState;
-  const phase = state.phase;
-  const pot = state.pot;
-  const activePlayer = state.currentPlayer;
-  const winner = state.winner;
-  const showdown = state.showdown;
-  const handOver = state.handOver;
-  const human = state.players[0];
-  const rivals = state.players.slice(1);
-  const maxBet = Math.max(0, ...state.players.map(p => p.bet));
-  const canCheck = human.bet >= maxBet;
-  const callAmount = Math.max(0, maxBet - human.bet);
-  const canRaise = human.chips > callAmount;
-  const maxRaise = Math.max(0, human.chips - callAmount);
-
-  const blindRoleFor = (playerId: number): 'dealer' | 'sb' | 'bb' | null => {
-    if (playerId === state.dealer) return 'dealer';
-    const alive = state.players.filter(p => !p.eliminated).map(p => p.id);
-    if (alive.length < 2) return null;
-    const pos = alive.indexOf(state.dealer);
-    const sb = alive.length === 2 ? alive[pos] : alive[(pos + 1) % alive.length];
-    const bb = alive.length === 2 ? alive[(pos + 1) % alive.length] : alive[(pos + 2) % alive.length];
-    if (playerId === sb) return 'sb';
-    if (playerId === bb) return 'bb';
-    return null;
-  };
-
-  const humanHandName = (() => {
-    if (human.cards.length < 2) return '';
-    if (state.community.length >= 3) return evaluateHand(human.cards, state.community).name;
-    const [a, b] = human.cards;
-    if (a.rank === b.rank) return `Pareja de ${a.rank}`;
-    return a.suit === b.suit ? `${a.rank} ${b.rank} del mismo palo` : '';
-  })();
-
-  const winningHandName = winner && winner.length > 0 && state.players[winner[0]].cards.length >= 2 && state.community.length >= 3
-    ? evaluateHand(state.players[winner[0]].cards, state.community).name
-    : '';
-
-  const winnerData = (() => {
-    if (!winner || winner.length === 0) return null;
-    const names = winner.map(w => state.players[w].name).join(' y ');
-    const totalWon = winner.reduce((acc, w) => acc + (state.winAmounts[w] || 0), 0);
-    const handName = winner.includes(0) ? humanHandName : winningHandName;
-    const handSuffix = handName ? ` con ${handName}` : '';
-    if (winner.includes(0)) {
-      return winner.length > 1
-        ? { label: `Empate — ganaste ${state.winAmounts[0] ?? 0}${handSuffix}` }
-        : { label: `Ganaste ${totalWon}${handSuffix}` };
-    }
-    return winner.length > 1
-      ? { label: `${names} ganaron ${totalWon}${handSuffix}` }
-      : { label: `${names} ganó ${totalWon}${handSuffix}` };
-  })();
-
-  const winningCards = (() => {
-    if (!winner || winner.length === 0 || state.phase !== 'showdown' || state.community.length < 3) return new Set<string>();
-    const winnerHand = evaluateHand(state.players[winner[0]].cards, state.community);
-    return new Set(getRelevantCards(winnerHand).map(c => `${c.rank}${c.suit}`));
-  })();
-
-  const isDimmed = (card: { rank: string; suit: string }) =>
-    winningCards.size > 0 && !winningCards.has(`${card.rank}${card.suit}`);
-
-  const handleAction = (action: 'fold' | 'check' | 'call' | 'raise') => {
-    if (action === 'raise') online.handleAction('raise', raiseAmount);
-    else online.handleAction(action);
-    setShowRaise(false);
-  };
-
-  const WinnerMessage = () => {
-    if (!winnerData) return null;
-    return (
-      <motion.div
-        className="row gap-2"
-        style={{ alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <span className="jp-h3" style={{ color: 'var(--bone)', fontSize: 16 }}>
-          <strong>{winnerData.label}</strong>
-        </span>
-      </motion.div>
-    );
-  };
-
-  const actionButtons = handOver ? (
-    <div className="col gap-2" style={{ alignItems: 'center' }}>
-      <WinnerMessage />
-      {!state.gameOver && online.session?.isHost && (
-        <Button variant="primary" size="sm" onClick={online.startNewHand}>Nueva Mano</Button>
-      )}
-      {!state.gameOver && !online.session?.isHost && (
-        <span className="jp-caption">Esperando al anfitrión…</span>
-      )}
-    </div>
-  ) : (
-    <div className="row gap-2" style={{ justifyContent: 'center' }}>
-      <Button variant="outline" size="sm" onClick={() => handleAction(canCheck ? 'check' : 'fold')} disabled={activePlayer !== 0}>
-        {canCheck ? 'Pasar' : 'Retirarse'}
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => handleAction('call')} disabled={activePlayer !== 0 || callAmount === 0}>
-        {callAmount > 0 ? (callAmount >= human.chips ? `All-in ${human.chips}` : `Igualar ${callAmount}`) : 'Igualar'}
-      </Button>
-      <Button variant="primary" size="sm" onClick={() => setShowRaise(!showRaise)} disabled={activePlayer !== 0 || !canRaise}>
-        Subir
-      </Button>
-    </div>
-  );
-
-  const humanCards = (
-    <div className="col gap-1" style={{ alignItems: 'center' }}>
-      {humanHandName && !handOver && <span className="jp-badge neutral">{humanHandName}</span>}
-      <div className="row gap-2">
-        {human.cards.length > 0
-          ? human.cards.map((c, i) => (
-              <PokerCard key={i} size="lg" rank={c.rank} suit={c.suit} dimmed={isDimmed(c)} />
-            ))
-          : <><PokerCard size="lg" back /><PokerCard size="lg" back /></>}
-      </div>
-    </div>
-  );
-
-  const humanInfo = (
-    <div className="col gap-1" style={{ alignItems: 'center', minWidth: isMobile ? undefined : 140 }}>
-      <div className="row gap-1" style={{ alignItems: 'center' }}>
-        {blindRoleFor(0) && <BlindDot role={blindRoleFor(0)!} />}
-        <span className={isMobile ? 'jp-label' : 'jp-h3'} style={{ fontSize: isMobile ? 11 : 16 }}>{human.name}</span>
-        <RankBadge points={user.points} compact />
-      </div>
-      <div className={`jp-chip-stack${human.chips < 100 ? ' low' : ''}`}>
-        <span className="icon">🪙</span>
-        <span className="amt">{human.chips}</span>
-        <AnimatePresence>
-          {!handOver && human.bet > 0 && (
-            <motion.span
-              key={`spent-${human.bet}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="jp-round-spent"
-            >
-              −{human.bet}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
-      {human.isAllIn && <span className="jp-badge warning">ALL-IN</span>}
-    </div>
-  );
-
-  const rivalsRow = (
-    <div className="row gap-2" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
-      {rivals.map(r => (
-        <RivalSlot
-          key={r.id}
-          compact={isMobile}
-          name={r.name}
-          rankPoints={online.rivalPoints(r.id)}
-          cards={r.cards.length > 0 ? r.cards : undefined}
-          folded={r.folded}
-          eliminated={r.eliminated}
-          isActive={activePlayer === r.id}
-          isWinner={winner !== null && winner.includes(r.id)}
-          lastAction={r.lastAction !== '—' ? r.lastAction : undefined}
-          showdown={showdown}
-          chips={r.chips}
-          bet={r.bet}
-          isAllIn={r.isAllIn}
-          handOver={handOver}
-          winAmount={handOver ? state.winAmounts[r.id] : 0}
-          blindRole={blindRoleFor(r.id)}
-          isDimmed={isDimmed}
-        />
-      ))}
-    </div>
-  );
-
-  return (
-    <div className="jp-screen">
-      <FloatingMenu onLeave={leave} />
-      <button
-        className={`jp-equity-toggle${showEquity ? ' on' : ''}`}
-        onClick={() => setShowEquity(v => !v)}
-      >%</button>
-
-      <div className="col" style={{ flex: 1, padding: isMobile ? '12px 14px' : '16px 48px 24px' }}>
-        {rivalsRow}
-        <div className="jp-table" style={isMobile ? { padding: '12px 0' } : undefined}>
-          <CommunityRow
-            phase={phase}
-            community={state.community}
-            pot={pot}
-            handNumber={state.handNumber}
-            cardSize={isMobile ? 'md' : 'xxl'}
-            isDimmed={isDimmed}
-          />
-          <ActionLog state={state} />
-        </div>
-
-        <div className={isMobile ? 'col gap-3' : 'row'} style={isMobile ? { alignItems: 'center' } : { justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', paddingBottom: 20 }}>
-          {activePlayer === 0 && !handOver && !isMobile && <TimerBar seconds={timerSeconds} max={TURN_DURATION} />}
-          {!isMobile && humanInfo}
-          <div className="col gap-1" style={isMobile ? { alignItems: 'center' } : { alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0 }}>
-            {humanCards}
-          </div>
-          {isMobile && humanInfo}
-          {isMobile && activePlayer === 0 && !handOver && (
-            <div style={{ width: '80%' }}><TimerBar seconds={timerSeconds} max={TURN_DURATION} /></div>
-          )}
-          <div className="col gap-2" style={{ alignItems: 'center', minWidth: isMobile ? undefined : 200 }}>
-            {actionButtons}
-            {!isMobile && showRaise && activePlayer === 0 && !handOver && (
-              <div className="jp-raise-dropdown">
-                <RaisePanel
-                  raiseAmount={raiseAmount}
-                  onRaiseChange={setRaiseAmount}
-                  onRaise={() => handleAction('raise')}
-                  minRaise={state.minRaise}
-                  maxRaise={Math.max(state.minRaise, maxRaise)}
-                  potSize={pot}
-                  playerChips={human.chips}
-                  callAmount={callAmount}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {isMobile && showRaise && activePlayer === 0 && !handOver && (
-        <RaiseSheet
-          raiseAmount={raiseAmount}
-          onRaiseChange={setRaiseAmount}
-          onRaise={() => handleAction('raise')}
-          onClose={() => setShowRaise(false)}
-          minRaise={state.minRaise}
-          maxRaise={Math.max(state.minRaise, maxRaise)}
-          potSize={pot}
-          playerChips={human.chips}
-          callAmount={callAmount}
-        />
-      )}
-
-      <AnimatePresence>
-        {state.gameOver && (
-          <GameOverOverlay
-            state={state}
-            onRestart={() => online.session?.isHost && online.restartGame()}
-            onLeave={leave}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
 // ---------- Router ----------
 
 const Game: React.FC = () => {
-  const { gameId } = useParams<{ gameId: string }>();
-  if (gameId?.startsWith('online-')) {
-    return <OnlineGame roomId={gameId.slice('online-'.length)} />;
-  }
   return <LocalGame />;
 };
 

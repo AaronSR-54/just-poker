@@ -4,6 +4,7 @@ import TopBar from '../components/TopBar';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
 import RankBadge from '../components/RankBadge';
+import Badge from '../components/Badge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore } from '../store/userStore';
 import { connectSocket, getSocket } from '../net/socket';
@@ -14,7 +15,9 @@ import {
 } from '../net/onlineSession';
 
 const PulseDot: React.FC = () => (
-  <span className="jp-pulse-dot" />
+  <span className="relative inline-block size-2 rounded-full bg-bone">
+    <span className="absolute inset-0 animate-lobby-pulse rounded-full bg-bone" />
+  </span>
 );
 
 interface LobbySlotProps {
@@ -31,41 +34,24 @@ const LobbySlot: React.FC<LobbySlotProps> = ({
   if (occupied && name) {
     return (
       <div
-        className="col gap-2"
-        style={{
-          alignItems: 'center',
-          padding: '24px 28px',
-          borderRadius: 14,
-          border: isYou ? '1.5px solid var(--bone)' : 'var(--jp-stroke-hair)',
-          background: 'rgba(205,197,183,0.04)',
-          minWidth: 160,
-        }}
+        className={`flex min-w-40 flex-col items-center gap-2 rounded-[14px] border-[1.5px] bg-bone/[0.04] px-7 py-6 ${
+          isYou ? 'border-bone' : 'border-bone/[0.18]'
+        }`}
       >
         <Avatar name={name} size={64} />
-        <div className="jp-h3" style={{ fontSize: 16, marginTop: 4 }}>
+        <div className="mt-1 font-display font-bold leading-none text-fs-400">
           {name}{isYou ? ' (tú)' : ''}
         </div>
         <RankBadge points={points} />
-        {isHost && <span className="jp-badge neutral">Anfitrión</span>}
+        {isHost && <Badge variant="neutral">Anfitrión</Badge>}
       </div>
     );
   }
 
   return (
-    <div
-      className="col gap-3"
-      style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px 28px',
-        borderRadius: 14,
-        border: '2px dashed rgba(205,197,183,0.18)',
-        minWidth: 160,
-        minHeight: 160,
-      }}
-    >
+    <div className="flex min-h-40 min-w-40 flex-col items-center justify-center gap-3 rounded-[14px] border-2 border-dashed border-bone/[0.18] px-7 py-6">
       <PulseDot />
-      <div className="jp-caption" style={{ fontSize: 12 }}>Esperando…</div>
+      <div className="font-body tracking-[0.04em] opacity-70 text-fs-200">Esperando…</div>
     </div>
   );
 };
@@ -207,8 +193,8 @@ const Lobby: React.FC = () => {
   });
 
   const footer = (
-    <div className={isMobile ? 'col gap-3' : 'row'} style={isMobile ? { marginTop: 24 } : { justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-      <Button variant="ghost" size={isMobile ? 'sm' : undefined} onClick={leave} style={isMobile ? { alignSelf: 'flex-start' } : undefined}>
+    <div className={isMobile ? 'mt-6 flex flex-col gap-3' : 'mt-4 flex items-center justify-between'}>
+      <Button variant="ghost" size={isMobile ? 'sm' : undefined} onClick={leave} className={isMobile ? 'self-start' : undefined}>
         ← Abandonar sala
       </Button>
       {isHost ? (
@@ -230,11 +216,11 @@ const Lobby: React.FC = () => {
   );
 
   const codeBlock = isPrivate && room?.code && (
-    <div className="col gap-2" style={{ alignItems: 'center', marginTop: 4 }}>
-      <div className="jp-caption">Código de sala</div>
-      <div className="row gap-2" style={{ alignItems: 'baseline' }}>
+    <div className="mt-1 flex flex-col items-center gap-2">
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">Código de sala</div>
+      <div className="flex items-baseline gap-2">
         {room.code.split('').map((c, i) => (
-          <span key={i} style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: isMobile ? 24 : 28 }}>{c}</span>
+          <span key={i} className={`font-display font-bold ${isMobile ? 'text-[24px]' : 'text-[28px]'}`}>{c}</span>
         ))}
       </div>
       <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(room.code || '')}>
@@ -245,10 +231,10 @@ const Lobby: React.FC = () => {
 
   if (error && !room) {
     return (
-      <div className="jp-screen">
-        <div className="col center grow gap-4">
-          <div className="jp-h2">No se pudo entrar</div>
-          <div className="jp-body faint">{error}</div>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">No se pudo entrar</div>
+          <div className="font-body leading-[1.45] text-fs-300 opacity-40">{error}</div>
           <Button variant="outline" onClick={() => navigate('/online')}>← Volver</Button>
         </div>
       </div>
@@ -257,20 +243,20 @@ const Lobby: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="jp-screen">
-        <div className="jp-bar">
-          <div className="brand" style={{ fontSize: 14 }}>Just <em>Poker</em></div>
-          <div className="row gap-3" style={{ alignItems: 'center' }}>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex shrink-0 items-center justify-between border-b border-bone/10 px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
+          <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
+          <div className="flex items-center gap-3">
             <Avatar name={user.username} size={32} />
             <RankBadge points={user.points} compact />
           </div>
         </div>
 
-        <div className="col" style={{ flex: 1, padding: '24px 18px', justifyContent: 'space-between' }}>
-          <div className="col gap-4" style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <div className="jp-h3" style={{ textAlign: 'center', fontSize: 18 }}>{titleText}</div>
-            {error && <div className="jp-caption" style={{ color: '#e8734a' }}>{error}</div>}
-            <div className="col gap-3" style={{ width: '100%', maxWidth: 260 }}>
+        <div className="flex flex-1 flex-col justify-between px-[1.125rem] py-6">
+          <div className="flex flex-1 flex-col items-center justify-center gap-4">
+            <div className="text-center font-display font-bold leading-none text-[18px]">{titleText}</div>
+            {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
+            <div className="flex w-full max-w-[260px] flex-col gap-3">
               {slotsData.map((s, i) => (
                 <LobbySlot key={i} {...s} />
               ))}
@@ -284,21 +270,21 @@ const Lobby: React.FC = () => {
   }
 
   return (
-    <div className="jp-screen">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
-          <div className="row gap-3" style={{ alignItems: 'center' }}>
+          <div className="flex items-center gap-3">
             <Avatar name={user.username} size={40} />
             <RankBadge points={user.points} />
           </div>
         }
       />
 
-      <div className="col" style={{ flex: 1, padding: '40px 60px', justifyContent: 'space-between' }}>
-        <div className="col gap-6" style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <div className="jp-h2" style={{ textAlign: 'center' }}>{titleText}</div>
-          {error && <div className="jp-caption" style={{ color: '#e8734a' }}>{error}</div>}
-          <div className="row gap-4" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div className="flex flex-1 flex-col justify-between px-[3.75rem] py-10">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6">
+          <div className="font-display font-bold leading-none tracking-[-0.01em] text-center text-fs-700">{titleText}</div>
+          {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
+          <div className="flex flex-wrap justify-center gap-4">
             {slotsData.map((s, i) => (
               <LobbySlot key={i} {...s} />
             ))}

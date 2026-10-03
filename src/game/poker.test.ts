@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { PokerGame } from './poker';
-import { evaluateHand, determineWinner, compareHands } from './hands';
+import { PokerGame, distributePots } from './poker';
+import { evaluateHand, determineWinner, compareHands, HAND_RANKS, type HandResult } from './hands';
 import type { Card } from '../types';
 
 const c = (rank: Card['rank'], suit: Card['suit']): Card => ({ rank, suit });
@@ -331,5 +331,192 @@ describe('PokerGame — integración (manos completas aleatorias)', () => {
     expect(s.gameOver).toBe(true);
     expect(s.gameWinner).not.toBeNull();
     expect(s.players[s.gameWinner!].chips).toBe(4000);
+  });
+});
+
+// ---------- Robustez: escalera al As (rueda) ----------
+
+describe('evaluateHand — escalera al As (rueda)', () => {
+  it('la rueda es 5 alta y pierde contra una escalera 6 alta', () => {
+    const board = [c('3', 'd'), c('4', 'c'), c('5', 'h'), c('K', 's'), c('9', 'd')];
+    const wheel = evaluateHand([c('A', 's'), c('2', 'h')], board);
+    const sixHigh = evaluateHand([c('6', 's'), c('2', 'h')], board);
+    expect(wheel.name).toBe('Escalera');
+    expect(sixHigh.name).toBe('Escalera');
+    expect(compareHands(sixHigh, wheel)).toBeGreaterThan(0);
+  });
+
+  it('la rueda de color pierde contra una escalera de color mayor', () => {
+    const board = [c('3', 's'), c('4', 's'), c('5', 's'), c('K', 'd'), c('9', 'h')];
+    const wheelSf = evaluateHand([c('A', 's'), c('2', 's')], board);
+    const sixSf = evaluateHand([c('6', 's'), c('2', 's')], board);
+    expect(wheelSf.name).toBe('Escalera de Color');
+    expect(sixSf.name).toBe('Escalera de Color');
+    expect(compareHands(sixSf, wheelSf)).toBeGreaterThan(0);
+  });
+
+  it('una escalera al As (A-K-Q-J-10) gana a la rueda', () => {
+    const broadway = evaluateHand(
+      [c('A', 's'), c('K', 'h')],
+      [c('Q', 'd'), c('J', 'c'), c('10', 'h'), c('2', 's'), c('3', 'd')]
+    );
+    const wheel = evaluateHand(
+      [c('A', 'h'), c('2', 'd')],
+      [c('3', 'd'), c('4', 'c'), c('5', 'h'), c('7', 's'), c('8', 'd')]
+    );
+    expect(compareHands(broadway, wheel)).toBeGreaterThan(0);
+  });
+});
+
+// ---------- Robustez: reparto de botes ----------
+
+describe('distributePots (reparto puro)', () => {
+  const hand = (rank: number): HandResult => ({ rank, cards: [], name: '' });
+  const results = (entries: [number, number][]) =>
+    new Map<number, HandResult>(entries.map(([i, r]) => [i, hand(r)]));
+
+  it('victoria por retirada: el único superviviente se lleva todo', () => {
+    const { payouts, winners } = distributePots([30, 20, 10], [2], false, undefined, 0);
+    expect(payouts).toEqual([0, 0, 60]);
+    expect(winners).toEqual([2]);
+  });
+
+  it('side pots de varios niveles con un all-in corto', () => {
+    const rs = results([
+      [0, HAND_RANKS.ONE_PAIR],
+      [1, HAND_RANKS.FLUSH],
+      [2, HAND_RANKS.FULL_HOUSE],
+    ]);
+    const { payouts, winners } = distributePots([100, 300, 1000], [0, 1, 2], true, rs, 0);
+    // main 300 → p2; side 400 (p1,p2) → p2; side 700 (p2) → p2
+    expect(payouts).toEqual([0, 0, 1400]);
+    expect(winners).toEqual([2]);
+  });
+
+  it('el all-in corto solo puede ganar el bote principal', () => {
+    const rs = results([
+      [0, HAND_RANKS.STRAIGHT_FLUSH],
+      [1, HAND_RANKS.FLUSH],
+      [2, HAND_RANKS.FULL_HOUSE],
+    ]);
+    const { payouts } = distributePots([100, 300, 1000], [0, 1, 2], true, rs, 0);
+    // main 300 → p0 (escalera de color); side 400 (p1,p2) → p2 (full house); side 700 → p2
+    expect(payouts).toEqual([300, 0, 1100]);
+  });
+
+  it('devuelve el exceso no igualado al apostador', () => {
+    const rs = results([
+      [0, HAND_RANKS.ONE_PAIR],
+      [1, HAND_RANKS.TWO_PAIR],
+    ]);
+    const { payouts } = distributePots([1000, 100], [0, 1], true, rs, 0);
+    // main 200 → p1; exceso 900 sin igualar → p0
+    expect(payouts).toEqual([900, 200]);
+    expect(payouts.reduce((a, b) => a + b, 0)).toBe(1100);
+  });
+
+  it('devuelve una apuesta no igualada al jugador retirado que la puso', () => {
+    const rs = results([
+      [2, HAND_RANKS.ONE_PAIR],
+      [4, HAND_RANKS.HIGH_CARD],
+    ]);
+    // p0 (retirado) puso 10; los contendientes solo igualaron hasta 7.
+    const { payouts } = distributePots([10, 0, 6, 0, 7], [2, 4], true, rs, 0);
+    // tramo 6 → p2 (18); tramo 7 → p4 (2); tramo 10 sin contendientes → devuelto a p0 (3)
+    expect(payouts).toEqual([3, 0, 18, 0, 2]);
+    expect(payouts.reduce((a, b) => a + b, 0)).toBe(23);
+  });
+
+  it('reparte empate con bote impar: el resto va al primero tras el dealer', () => {
+    const rs = results([
+      [0, HAND_RANKS.STRAIGHT],
+      [1, HAND_RANKS.STRAIGHT],
+    ]);
+    // 3 jugadores contribuyen 5; el 2 se retiró. dealer = 2.
+    const { payouts, winners } = distributePots([5, 5, 5], [0, 1], true, rs, 2);
+    // bote 15, 2 ganadores: 7+1 y 7. Orden tras dealer(2): p0 (dist 1), p1 (dist 2)
+    expect(payouts).toEqual([8, 7, 0]);
+    expect([...winners].sort()).toEqual([0, 1]);
+  });
+});
+
+// ---------- Robustez: rotación, ciegas parciales y all-in corto ----------
+
+describe('PokerGame — robustez de ciegas y turnos', () => {
+  it('las ciegas rotan en la segunda mano heads-up', () => {
+    const g = new PokerGame(2, 10, 20);
+    g.startHand();
+    g.fold(0); // el dealer/SB se retira
+    g.startHand();
+    const s = g.getState();
+    expect(s.dealer).toBe(1);
+    expect(s.players[1].bet).toBe(10); // SB = dealer
+    expect(s.players[0].bet).toBe(20); // BB
+    expect(s.currentPlayer).toBe(1); // el dealer actúa primero preflop
+  });
+
+  it('una subida all-in incompleta no reabre la ronda ni sube el mínimo', () => {
+    const g = new PokerGame(4, 10, 20, undefined, [1000, 1000, 1000, 30]);
+    g.startHand();
+    // dealer=0, SB=1 (10), BB=2 (20), UTG=3 con 30 fichas
+    expect(g.getMinRaise()).toBe(20);
+    g.raise(3, 30); // all-in a 30, por debajo del mínimo de subida
+    const s = g.getState();
+    expect(s.players[3].isAllIn).toBe(true);
+    expect(s.players[3].bet).toBe(30);
+    expect(g.getMinRaise()).toBe(20); // no se reabre
+    expect(s.currentPlayer).toBe(0);
+    expect(g.getCallAmount(0)).toBe(30);
+    expect(g.getCallAmount(2)).toBe(10);
+  });
+
+  it('la ciega grande parcial deja al jugador all-in y corre el board', () => {
+    const g = new PokerGame(2, 10, 20, undefined, [1000, 5]);
+    g.startHand();
+    let s = g.getState();
+    expect(s.players[1].isAllIn).toBe(true);
+    expect(s.players[1].bet).toBe(5);
+    g.check(0);
+    s = g.getState();
+    expect(s.handOver).toBe(true);
+    expect(s.community).toHaveLength(5);
+    expect(s.players.reduce((a, p) => a + p.chips, 0)).toBe(1005);
+  });
+});
+
+// ---------- Robustez: guardar y reanudar ----------
+
+describe('PokerGame — serialización', () => {
+  it('serialize/deserialize conserva el estado íntegro', () => {
+    const g = new PokerGame(4, 10, 20, undefined, [1000, 800, 1200, 500]);
+    g.startHand();
+    g.call(3);
+    g.raise(0, 60);
+    g.call(1);
+    const before = g.serialize();
+    const restored = PokerGame.deserialize(before);
+    expect(restored.serialize()).toEqual(before);
+    expect(restored.getState()).toEqual(g.getState());
+  });
+
+  it('una partida reanudada termina y conserva las fichas', () => {
+    const g = new PokerGame(4, 10, 20);
+    g.startHand();
+    g.fold(3);
+    g.call(0);
+    g.call(1);
+    g.check(2); // flop
+
+    const g2 = PokerGame.deserialize(g.serialize());
+    let guard = 0;
+    while (!g2.getState().handOver && guard < 100) {
+      const s = g2.getState();
+      if (g2.getCallAmount(s.currentPlayer) === 0) g2.check(s.currentPlayer);
+      else g2.call(s.currentPlayer);
+      guard++;
+    }
+    const s = g2.getState();
+    expect(s.handOver).toBe(true);
+    expect(s.players.reduce((a, p) => a + p.chips, 0)).toBe(4000);
   });
 });

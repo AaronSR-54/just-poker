@@ -74,14 +74,20 @@ const HAND_RANKINGS: { name: string; example: string }[] = [
 
 function ModesIllustration() {
   return (
-    <div className="row gap-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ width: 148, height: 200, borderRadius: 14, border: '1.5px solid var(--bone)', padding: '22px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div className="jp-eyebrow" style={{ opacity: 0.6 }}>Local</div>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, lineHeight: 0.95 }}>vs.<br /><em className="italic" style={{ opacity: 0.8 }}>IA</em></div>
+    <div className="flex items-center justify-center gap-4">
+      <div className="flex h-[200px] w-[148px] flex-col justify-between rounded-[14px] border-[1.5px] border-bone px-[1.125rem] py-[1.375rem]">
+        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Local</div>
+        <div className="flex flex-col font-display font-bold text-[30px] leading-[0.95]">
+          <div>vs.</div>
+          <div><em className="font-light italic tracking-normal opacity-80">IA</em></div>
+        </div>
       </div>
-      <div style={{ width: 148, height: 200, borderRadius: 14, background: 'var(--bone)', color: 'var(--ink)', padding: '22px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div className="jp-eyebrow" style={{ opacity: 0.7 }}>Online</div>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, lineHeight: 0.95 }}>vs.<br /><em className="italic" style={{ opacity: 0.8 }}>humanos</em></div>
+      <div className="flex h-[200px] w-[148px] flex-col justify-between rounded-[14px] bg-bone px-[1.125rem] py-[1.375rem] text-ink">
+        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Online</div>
+        <div className="flex flex-col font-display font-bold text-[30px] leading-[0.95]">
+          <div>vs.</div>
+          <div><em className="font-light italic tracking-normal opacity-80">humanos</em></div>
+        </div>
       </div>
     </div>
   );
@@ -90,41 +96,36 @@ function ModesIllustration() {
 function RulesIllustration() {
   const board: [CardRank, Suit][] = [['K', 'd'], ['7', 'c'], ['A', 'd'], ['3', 's'], ['9', 'h']];
   return (
-    <div className="col gap-4" style={{ alignItems: 'center' }}>
-      <div className="row gap-2" style={{ alignItems: 'center' }}>
+    <div className="flex flex-col items-center gap-4">
+      <div className="flex items-center gap-2">
         <PokerCard rank="A" suit="s" size="md" />
         <PokerCard rank="A" suit="h" size="md" />
       </div>
-      <div className="jp-caption" style={{ opacity: 0.6 }}>tus cartas</div>
-      <div className="row gap-1">
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-60">tus cartas</div>
+      <div className="flex gap-1">
         {board.map(([r, su], i) => <PokerCard key={i} rank={r} suit={su} size="xs" />)}
       </div>
-      <div className="jp-caption" style={{ opacity: 0.6 }}>la mesa</div>
-      <div className="jp-label" style={{ color: 'var(--bone)' }}>→ Trío de ases</div>
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-60">la mesa</div>
+      <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-bone">→ Trío de ases</div>
     </div>
   );
 }
 
 function HandsIllustration() {
   return (
-    <div className="col gap-1" style={{ alignItems: 'stretch', minWidth: 300 }}>
+    <div className="flex min-w-[300px] flex-col gap-1">
       {HAND_RANKINGS.map((h, i) => (
         <div
           key={h.name}
-          className="row gap-3"
-          style={{
-            alignItems: 'center',
-            padding: '5px 12px',
-            borderRadius: 8,
-            background: i === 0 ? 'var(--bone)' : 'rgba(205,197,183,0.04)',
-            color: i === 0 ? 'var(--ink)' : 'var(--bone)',
-          }}
+          className={`flex items-center gap-3 rounded-lg px-3 py-[0.3125rem] ${
+            i === 0 ? 'bg-bone text-ink' : 'bg-bone/[0.04] text-bone'
+          }`}
         >
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, width: 18, opacity: 0.7 }}>
+          <span className="w-[18px] font-display font-bold text-[12px] opacity-70">
             {10 - i}
           </span>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, flex: 1 }}>{h.name}</span>
-          <span className="jp-caption" style={{ fontSize: 10, opacity: 0.65 }}>{h.example}</span>
+          <span className="flex-1 font-display font-bold text-[13px]">{h.name}</span>
+          <span className="font-body text-[10px] tracking-[0.04em] opacity-65">{h.example}</span>
         </div>
       ))}
     </div>
@@ -133,45 +134,47 @@ function HandsIllustration() {
 
 function RoundsIllustration() {
   return (
-    <div className="col gap-3" style={{ alignItems: 'center' }}>
-      <div className="row gap-5" style={{ alignItems: 'flex-end' }}>
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-end gap-5">
         {[
           { ph: 'Pre-flop', cards: [] as [CardRank, Suit][] },
           { ph: 'Flop', cards: [['A', 's'], ['K', 's'], ['10', 's']] as [CardRank, Suit][] },
           { ph: 'Turn', cards: [['A', 's'], ['K', 's'], ['10', 's'], ['Q', 'h']] as [CardRank, Suit][] },
           { ph: 'River', cards: [['A', 's'], ['K', 's'], ['10', 's'], ['Q', 'h'], ['J', 's']] as [CardRank, Suit][] },
         ].map(s => (
-          <div key={s.ph} className="col gap-2" style={{ alignItems: 'center' }}>
-            <div className="row gap-1" style={{ minHeight: 48 }}>
+          <div key={s.ph} className="flex flex-col items-center gap-2">
+            <div className="flex min-h-12 gap-1">
               {s.cards.length === 0 && (
-                <div style={{ width: 34, height: 48, border: '1px dashed rgba(205,197,183,0.4)', borderRadius: 4 }} />
+                <div className="h-12 w-[34px] rounded-sm border border-dashed border-bone/40" />
               )}
               {s.cards.map(([r, su], i) => <PokerCard key={i} rank={r} suit={su} size="xs" />)}
             </div>
-            <div className="jp-caption" style={{ fontSize: 10 }}>{s.ph}</div>
+            <div className="font-body text-[10px] tracking-[0.04em] opacity-70">{s.ph}</div>
           </div>
         ))}
       </div>
-      <div className="jp-caption" style={{ opacity: 0.6 }}>ronda de apuestas tras cada paso</div>
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-60">ronda de apuestas tras cada paso</div>
     </div>
   );
 }
 
 function BettingIllustration() {
+  const chip = 'inline-flex items-center rounded-pill px-4 py-2 font-display font-bold text-[11px] tracking-[0.08em] uppercase leading-none';
+  const dot = 'inline-flex size-[22px] items-center justify-center rounded-full font-display font-bold text-[9px] tracking-[0.04em]';
   return (
-    <div className="col gap-4" style={{ alignItems: 'center' }}>
-      <div className="row gap-2" style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
-        <span className="jp-badge neutral" style={{ padding: '8px 16px', fontSize: 11 }}>Pasar</span>
-        <span className="jp-badge info" style={{ padding: '8px 16px', fontSize: 11 }}>Igualar 20</span>
-        <span className="jp-badge neutral" style={{ padding: '8px 16px', fontSize: 11, background: 'var(--bone)', color: 'var(--ink)' }}>Subir</span>
-        <span className="jp-badge warning" style={{ padding: '8px 16px', fontSize: 11 }}>Retirarse</span>
+    <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-wrap justify-center gap-2">
+        <span className={`${chip} bg-bone/10 text-bone`}>Pasar</span>
+        <span className={`${chip} bg-info/15 text-info`}>Igualar 20</span>
+        <span className={`${chip} bg-bone text-ink`}>Subir</span>
+        <span className={`${chip} bg-danger/20 text-danger`}>Retirarse</span>
       </div>
-      <div className="row gap-3" style={{ alignItems: 'center' }}>
-        <span className="jp-blind-dot sb" style={{ width: 22, height: 22, fontSize: 9 }}>SB</span>
-        <span className="jp-blind-dot bb" style={{ width: 22, height: 22, fontSize: 9 }}>BB</span>
-        <span className="jp-caption">las ciegas apuestan siempre, antes de repartir</span>
+      <div className="flex items-center gap-3">
+        <span className={`${dot} bg-info/20 text-info`}>SB</span>
+        <span className={`${dot} bg-danger/20 text-danger`}>BB</span>
+        <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">las ciegas apuestan siempre, antes de repartir</span>
       </div>
-      <div className="jp-caption" style={{ maxWidth: 300, textAlign: 'center', opacity: 0.7 }}>
+      <div className="font-body text-fs-100 tracking-[0.04em] max-w-[300px] text-center opacity-70">
         Subir obliga a los demás a pagar la diferencia o retirarse.
       </div>
     </div>
@@ -186,43 +189,43 @@ function MatchIllustration() {
     { n: 'Sam', chips: 600, out: false },
   ];
   return (
-    <div className="col gap-3" style={{ alignItems: 'center' }}>
-      <div className="row gap-4" style={{ alignItems: 'flex-end' }}>
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-end gap-4">
         {players.map(p => (
-          <div key={p.n} className="col gap-2" style={{ alignItems: 'center', width: 72, opacity: p.out ? 0.35 : 1 }}>
+          <div key={p.n} className={`flex w-[72px] flex-col items-center gap-2 ${p.out ? 'opacity-35' : ''}`}>
             <Avatar name={p.n} size={56} muted={p.out} />
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{p.n}</div>
-            <div className="jp-caption" style={{ fontSize: 10 }}>
+            <div className="font-display font-bold text-[11px] tracking-[0.12em] uppercase">{p.n}</div>
+            <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">
               {p.out ? 'Eliminado' : `🪙 ${p.chips}`}
             </div>
           </div>
         ))}
       </div>
-      <div className="jp-caption" style={{ opacity: 0.7 }}>quédate sin fichas y la partida sigue sin ti</div>
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">quédate sin fichas y la partida sigue sin ti</div>
     </div>
   );
 }
 
 function LocalIllustration() {
   return (
-    <div className="col gap-5" style={{ alignItems: 'center' }}>
-      <div className="row gap-4" style={{ alignItems: 'flex-end' }}>
+    <div className="flex flex-col items-center gap-5">
+      <div className="flex items-end gap-4">
         {[
           { n: 'Mia', t: 'Demasiado abierta' },
           { n: 'Dan', t: 'Farolea al azar' },
           { n: 'Sam', t: 'Imita a los demás' },
         ].map(p => (
-          <div key={p.n} className="col gap-2" style={{ alignItems: 'center', width: 88 }}>
+          <div key={p.n} className="flex w-[88px] flex-col items-center gap-2">
             <Avatar name={p.n} size={64} />
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{p.n}</div>
-            <div className="jp-caption" style={{ textAlign: 'center', fontSize: 10 }}>{p.t}</div>
+            <div className="font-display font-bold text-[11px] tracking-[0.12em] uppercase">{p.n}</div>
+            <div className="font-body tracking-[0.04em] opacity-70 text-center text-[10px]">{p.t}</div>
           </div>
         ))}
       </div>
-      <div className="row gap-2" style={{ alignItems: 'center' }}>
-        <span className="jp-caption">Fácil</span>
+      <div className="flex items-center gap-2">
+        <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">Fácil</span>
         <ProgressDots total={3} index={0} />
-        <span className="jp-caption">Difícil</span>
+        <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">Difícil</span>
       </div>
     </div>
   );
@@ -230,22 +233,25 @@ function LocalIllustration() {
 
 function OnlineIllustration() {
   return (
-    <div className="col gap-4" style={{ alignItems: 'center' }}>
-      <div className="row gap-4">
-        <div style={{ width: 172, height: 130, borderRadius: 14, border: '1.5px solid var(--bone)', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div className="jp-eyebrow" style={{ opacity: 0.6 }}>Sala pública</div>
-          <div className="jp-h3">Cuenta para<br />el ranking</div>
+    <div className="flex flex-col items-center gap-4">
+      <div className="flex gap-4">
+        <div className="flex h-[130px] w-[172px] flex-col justify-between rounded-[14px] border-[1.5px] border-bone px-[1.125rem] py-[1.125rem]">
+          <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Sala pública</div>
+          <div className="flex flex-col font-display font-bold leading-none text-fs-600">
+            <div>Cuenta para</div>
+            <div>el ranking</div>
+          </div>
         </div>
-        <div style={{ width: 172, height: 130, borderRadius: 14, border: '1.5px dashed var(--bone)', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div className="jp-eyebrow" style={{ opacity: 0.6 }}>Sala privada</div>
-          <div className="row gap-2" style={{ alignItems: 'baseline' }}>
+        <div className="flex h-[130px] w-[172px] flex-col justify-between rounded-[14px] border-[1.5px] border-dashed border-bone px-[1.125rem] py-[1.125rem]">
+          <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Sala privada</div>
+          <div className="flex items-baseline gap-2">
             {['7', '3', 'K', '9'].map((c, i) => (
-              <span key={i} style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, lineHeight: 1 }}>{c}</span>
+              <span key={i} className="font-display font-bold text-[28px] leading-none">{c}</span>
             ))}
           </div>
         </div>
       </div>
-      <div className="jp-caption" style={{ textAlign: 'center', maxWidth: 320 }}>Las privadas no cuentan para el ranking.</div>
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 max-w-[320px] text-center">Las privadas no cuentan para el ranking.</div>
     </div>
   );
 }
@@ -290,12 +296,11 @@ const Onboarding: React.FC = () => {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -24 }}
         transition={{ duration: 0.25 }}
-        className="col gap-2"
-        style={{ textAlign: 'left' }}
+        className="flex flex-col gap-2 text-left"
       >
-        <div className="jp-eyebrow">{s.eyebrow}</div>
-        <div className={isMobile ? 'jp-h2' : 'jp-h1'} style={isMobile ? { fontSize: 28, lineHeight: 1.05 } : { fontSize: 48, lineHeight: 0.96 }}>{s.title}</div>
-        <div className="jp-body" style={isMobile ? { opacity: 0.78, marginTop: 4 } : { fontSize: 16, opacity: 0.8, lineHeight: 1.55, maxWidth: 400, marginTop: 8 }}>{s.body}</div>
+        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">{s.eyebrow}</div>
+        <div className={`font-display font-bold tracking-[-0.01em] ${isMobile ? 'text-[28px] leading-[1.05]' : 'text-[48px] leading-[0.96]'}`}>{s.title}</div>
+        <div className={`font-body leading-[1.45] ${isMobile ? 'mt-1 opacity-78' : 'mt-2 max-w-[400px] text-fs-400 leading-[1.55] opacity-80'}`}>{s.body}</div>
       </motion.div>
     </AnimatePresence>
   );
@@ -308,7 +313,7 @@ const Onboarding: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.25 }}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        className="flex items-center justify-center"
       >
         <OnboardingIllustration step={stepIndex} />
       </motion.div>
@@ -317,20 +322,20 @@ const Onboarding: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="jp-screen">
-        <div className="jp-bar">
-          <div className="brand">Just <em>Poker</em></div>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex shrink-0 items-center justify-between border-b border-bone/10 px-[1.125rem] py-[0.875rem]">
+          <div className="font-display font-bold text-fs-400 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
           <Button size="sm" variant="ghost" onClick={finish}>Omitir</Button>
         </div>
-        <div className="col" style={{ flex: 1, padding: '24px 22px', justifyContent: 'space-between', overflowY: 'auto' }}>
-          <div className="col gap-4" style={{ flex: 1, justifyContent: 'center' }}>
-            <div style={{ minHeight: 190, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="flex flex-1 flex-col justify-between overflow-y-auto px-[1.375rem] py-6">
+          <div className="flex flex-1 flex-col justify-center gap-4">
+            <div className="flex min-h-[190px] items-center justify-center">
               {illustration}
             </div>
             {stepContent}
           </div>
-          <div className="col gap-4" style={{ marginTop: 16 }}>
-            <div className="row" style={{ justifyContent: 'center' }}>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex justify-center">
               <ProgressDots total={STEPS.length} index={stepIndex} />
             </div>
             <Button variant="primary" block glow onClick={next}>
@@ -343,19 +348,19 @@ const Onboarding: React.FC = () => {
   }
 
   return (
-    <div className="jp-screen">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar right={<Button size="sm" variant="ghost" onClick={finish}>Omitir</Button>} />
-      <div className="row" style={{ flex: 1, padding: '40px 60px', gap: 60, alignItems: 'center' }}>
-        <div className="col gap-5" style={{ flex: 1, maxWidth: 440 }}>
+      <div className="flex flex-1 items-center gap-[60px] px-[3.75rem] py-10">
+        <div className="flex max-w-[440px] flex-1 flex-col gap-5">
           {stepContent}
-          <div className="row gap-4" style={{ alignItems: 'center', marginTop: 16 }}>
+          <div className="mt-4 flex items-center gap-4">
             <Button variant="primary" glow onClick={next}>
               {stepIndex < last ? 'Siguiente' : 'Empezar'}
             </Button>
             <ProgressDots total={STEPS.length} index={stepIndex} />
           </div>
         </div>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowY: 'auto' }}>
+        <div className="flex flex-1 items-center justify-center overflow-y-auto">
           {illustration}
         </div>
       </div>

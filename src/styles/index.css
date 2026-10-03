@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Design tokens (Tailwind v4 theme)
+ * ------------------------------------------------------------------ */
+@theme {
+  /* Brand palette */
+  /* Bone scale (warm light) */
+  --color-bone-50: rgb(244 240 233);
+  --color-bone-100: rgb(232 226 215);
+  --color-bone-200: rgb(218 211 198);
+  --color-bone-300: rgb(213 206 192);
+  --color-bone: rgb(205 197 183);
+  --color-bone-400: rgb(196 188 173);
+  --color-bone-500: rgb(188 179 164);
+  --color-bone-600: rgb(179 170 154);
+  --color-bone-700: rgb(170 161 145);
+  --color-bone-800: rgb(140 132 118);
+  --color-bone-900: rgb(96 90 80);
+  /* Ink scale (warm dark) */
+  --color-ink-50: rgb(130 127 125);
+  --color-ink-100: rgb(104 101 99);
+  --color-ink-200: rgb(84 81 79);
+  --color-ink-300: rgb(68 66 64);
+  --color-ink-400: rgb(56 54 52);
+  --color-ink-500: rgb(48 46 44);
+  --color-ink-600: rgb(44 42 41);
+  --color-ink-700: rgb(39 37 36);
+  --color-ink-800: rgb(34 32 31);
+  --color-ink: rgb(34 32 31);
+  --color-ink-900: rgb(20 19 18);
+  --color-ink-950: rgb(13 12 12);
+  --color-ink-alt: rgb(33 33 33);
+  --color-ash: rgb(217 217 217);
+  --color-mute: rgb(143 143 143);
+  --color-white: rgb(255 255 255);
+  --color-black: rgb(0 0 0);
+
+  /* Semantic surfaces */
+  --color-bg: rgb(34 32 31);
+  --color-bg-alt: rgb(205 197 183);
+  --color-surface: rgb(33 33 33);
+  --color-surface-alt: rgb(205 197 183);
+  --color-fg: rgb(205 197 183);
+  --color-fg-on-light: rgb(34 32 31);
+  --color-border: rgb(255 255 255 / 0.10);
+  --color-border-strong: rgb(34 32 31);
+
+  /* Accents */
+  --color-danger: rgb(232 115 74);
+  --color-info: rgb(91 138 240);
+  --color-success: rgb(143 206 143);
+  --color-suit-accent: rgb(150 56 44);
+
+  /* Typography */
+  --font-display: "Satoshi Variable", "Satoshi", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: "Urbanist", "Inter", system-ui, sans-serif;
+
+  --text-fs-100: 0.625rem;
+  --text-fs-200: 0.75rem;
+  --text-fs-300: 0.875rem;
+  --text-fs-400: 1rem;
+  --text-fs-500: 1.25rem;
+  --text-fs-600: 1.5rem;
+  --text-fs-700: 2rem;
+  --text-fs-800: 3rem;
+  --text-fs-900: 6rem;
+
+  --leading-tight: 1;
+  --leading-snug: 1.1;
+  --leading-body: 1.4;
+
+  /* Radii */
+  --radius-xs: 2px;
+  --radius-sm: 0.25rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.875rem;
+  --radius-xl: 2rem;
+  --radius-screen: 0.75rem;
+  --radius-card: 0.5rem;
+  --radius-tile: 0.25rem;
+  --radius-slot: 0.875rem;
+  --radius-pill: 62.4375rem;
+
+  /* Motion */
+  --ease-brand: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-brand: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 160ms;
+  --dur: 240ms;
+  --dur-slow: 480ms;
+
+  /* Animations */
+  --animate-jp-pulse: jp-pulse 1.4s ease-in-out infinite;
+  --animate-lobby-pulse: lobby-pulse 1.6s ease-out infinite;
+  --animate-timer-drain: jp-timer-drain 2.2s linear forwards;
+
+  @keyframes jp-pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.4);
+    }
+  }
+
+  @keyframes lobby-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(2.2);
+      opacity: 0;
+    }
+  }
+
+  @keyframes jp-timer-drain {
+    from {
+      width: 100%;
+    }
+    to {
+      width: 0%;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+@layer base {
+  html {
+    font-family: var(--font-body);
+    color: var(--color-fg);
+    background: var(--color-bg);
+  }
+
+  body {
+    margin: 0;
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input[type="range"] {
+    accent-color: var(--color-bone);
+  }
+}

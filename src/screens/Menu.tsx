@@ -1,57 +1,106 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TopBar from '../components/TopBar';
-import Avatar from '../components/Avatar';
-import RankBadge from '../components/RankBadge';
-import Button from '../components/Button';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useUserStore } from '../store/userStore';
+import { loadSavedGame } from '../game/saveGame';
+import Watermark from '../components/Watermark';
+import type { TableDifficulty } from '../types';
+
+const DIFFICULTY_LABELS: Record<TableDifficulty, string> = {
+  easy: 'Fácil',
+  medium: 'Media',
+  hard: 'Difícil',
+};
+
+interface CtaCardProps {
+  solid?: boolean;
+  stacked?: boolean;
+  fill?: boolean;
+  half?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+const CtaCard: React.FC<CtaCardProps> = ({ solid = false, stacked = false, fill = false, half = false, onClick, children }) => {
+  const cls = [
+    'flex w-full flex-col justify-between text-left cursor-pointer',
+    'border-[1.5px] transition-[translate,border-color,background-color,color,filter] duration-[240ms] ease-brand',
+    'hover:border-bone hover:translate-x-2 active:translate-x-0',
+    'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone',
+    stacked
+      ? 'h-32 rounded-[0.875rem] px-7 py-6'
+      : 'h-full rounded-[clamp(0.75rem,3cqw,1rem)] px-[7.6cqw] py-[6.8cqw]',
+    solid
+      ? 'bg-bone text-ink border-bone hover:brightness-[1.06]'
+      : 'border-bone/40 bg-transparent text-bone',
+  ].join(' ');
+
+  const wrapper = [
+    '@container w-full',
+    fill ? 'flex-1 min-h-0' : '',
+    half ? 'h-[calc((100%-0.75rem)/2)]' : '',
+  ].join(' ');
+
+  return (
+    <div className={wrapper}>
+      <button className={cls} onClick={onClick}>
+        {children}
+      </button>
+    </div>
+  );
+};
+
+const CtaTitle: React.FC<{ fixed?: boolean; children: React.ReactNode }> = ({ fixed = false, children }) => (
+  <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${fixed ? 'text-[2rem]' : 'text-[clamp(1.75rem,10.5cqw,3.75rem)]'}`}>
+    {children}
+  </div>
+);
+
+const CtaFoot: React.FC<{ fixed?: boolean; children: React.ReactNode }> = ({ fixed = false, children }) => (
+  <div className="flex items-end justify-between">
+    {children}
+    <span className={`font-display font-bold leading-none ${fixed ? 'text-[2rem]' : 'text-[clamp(1.75rem,7.2cqw,2.5rem)]'}`}>→</span>
+  </div>
+);
 
 const Menu: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const user = useUserStore(s => s.user);
-  const stats = useUserStore(s => s.stats);
+  const [saved] = useState(() => loadSavedGame());
+
+  const paragraph = '¿Quieres jugar al póker, pero todos los juegos están llenos de anuncios y botones que solo sirven para marearte y acaben haciéndote gastar dinero?';
 
   if (isMobile) {
     return (
-      <div className="jp-screen">
-        <div className="jp-bar">
-          <div className="brand">Just <em>Poker</em></div>
-          <div className="row gap-3" style={{ alignItems: 'center' }}>
-            <Avatar name={user.username} size={32} />
-            <RankBadge points={user.points} compact />
-          </div>
-        </div>
-        <div className="col" style={{ flex: 1, padding: '32px 22px 28px', justifyContent: 'space-between' }}>
-          <div className="col gap-3" style={{ marginTop: 10 }}>
-            <div className="jp-eyebrow">Bienvenido{user.username !== 'Tú' ? `, ${user.username}` : ''}</div>
-            <div className="jp-h1" style={{ fontSize: 48, lineHeight: 0.95 }}>
-              ¿Cómo<br />quieres<br /><em>jugar?</em>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <Watermark />
+        <div className="flex flex-1 flex-col justify-between gap-5 px-[1.375rem] pb-7 pt-8">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col font-display font-bold uppercase text-[clamp(3rem,30vw,12rem)] leading-[0.86] tracking-[-0.015em]">
+              <div className="pl-[0.4rem] text-[0.85em]">Just</div>
+              <div className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></div>
             </div>
+            <p className="font-body leading-[1.45] mb-0 mt-1.5 text-left opacity-70">{paragraph}</p>
+            <div className="font-body leading-[1.45]">Relájate y juega.</div>
           </div>
-          <div className="col gap-3">
-            <button
-              className="jp-card"
-              style={{ background: 'transparent', border: '1.5px solid var(--bone)', color: 'var(--bone)', textAlign: 'left', padding: '22px 20px', borderRadius: 14, cursor: 'pointer' }}
-              onClick={() => navigate('/local')}
-            >
-              <div className="jp-eyebrow" style={{ opacity: 0.6, marginBottom: 8 }}>01</div>
-              <div className="jp-h3" style={{ marginBottom: 6 }}>Jugar en local</div>
-              <div className="jp-caption" style={{ opacity: 0.7 }}>Contra una mesa de IA.</div>
-            </button>
-            <button
-              className="jp-card"
-              style={{ background: 'var(--bone)', color: 'var(--ink)', border: '1.5px solid var(--bone)', textAlign: 'left', padding: '22px 20px', borderRadius: 14, cursor: 'pointer' }}
-              onClick={() => navigate('/online')}
-            >
-              <div className="jp-eyebrow" style={{ opacity: 0.6, marginBottom: 8 }}>02</div>
-              <div className="jp-h3" style={{ marginBottom: 6 }}>Jugar online</div>
-              <div className="jp-caption" style={{ opacity: 0.65 }}>Hasta 4 jugadores. Cuenta para el ranking.</div>
-            </button>
-            <Button variant="ghost" style={{ justifyContent: 'flex-start', padding: '14px 4px', color: 'var(--bone)', border: 'none' }} onClick={() => navigate('/profile')}>
-              <span style={{ opacity: 0.7 }}>Mi perfil →</span>
-            </Button>
+          <div className="flex flex-col gap-3">
+            {saved && (
+              <CtaCard solid stacked onClick={() => navigate(`/game/${saved.gameId}?continue=1`)}>
+                <CtaTitle fixed>Continuar <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+                <CtaFoot fixed>
+                  <div className="font-body leading-[1.45] text-fs-300 opacity-75">
+                    Dificultad {DIFFICULTY_LABELS[saved.difficulty]} - {saved.state.handNumber}ª mano
+                  </div>
+                </CtaFoot>
+              </CtaCard>
+            )}
+            <CtaCard solid={!saved} stacked onClick={() => navigate('/local')}>
+              <CtaTitle fixed>Nueva <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+              <CtaFoot fixed>
+                <div className="font-body leading-[1.45] text-fs-300 opacity-75">
+                  Elige dificultad y siéntate a una mesa contra la IA.
+                </div>
+              </CtaFoot>
+            </CtaCard>
           </div>
         </div>
       </div>
@@ -59,77 +108,37 @@ const Menu: React.FC = () => {
   }
 
   return (
-    <div className="jp-screen">
-      <TopBar
-        right={
-          <div className="row gap-3" style={{ alignItems: 'center' }}>
-            <Avatar name={user.username} size={40} />
-            <div className="col" style={{ gap: 2 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{user.username}</div>
-              <RankBadge points={user.points} />
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <Watermark />
+      <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[4.375rem] pt-15 lg:px-20">
+        <div className="flex w-full items-stretch justify-center gap-12 lg:gap-32">
+          <div className="flex flex-[55] flex-col justify-center gap-3">
+            <div className="flex flex-col font-display font-bold uppercase text-[clamp(6rem,18vw,15rem)] leading-[0.825] tracking-[-0.015em]">
+              <div className="pl-[0.4rem] text-[0.85em]">Just</div>
+              <div className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></div>
             </div>
+            <p className="font-body leading-[1.45] mb-0 mt-1.5 w-0 min-w-full text-left opacity-70">{paragraph}</p>
+            <div className="font-body leading-[1.45]">Relájate y juega.</div>
           </div>
-        }
-      />
-      <div className="col" style={{ flex: 1, padding: '60px 80px 70px', justifyContent: 'space-between' }}>
-        <div className="col gap-3" style={{ maxWidth: 780 }}>
-          <div className="jp-eyebrow">Bienvenido{user.username !== 'Tú' ? ` de vuelta, ${user.username}` : ' de vuelta'}</div>
-          <div className="jp-h1" style={{ fontSize: 112, lineHeight: 0.94 }}>
-            ¿Cómo quieres<br /><em>jugar hoy?</em>
-          </div>
-        </div>
-        <div className="row gap-5" style={{ alignItems: 'stretch' }}>
-          <button
-            style={{
-              flex: 1, minHeight: 240,
-              background: 'transparent', color: 'var(--bone)',
-              border: '1.5px solid var(--bone)', borderRadius: 14,
-              padding: '32px 36px', textAlign: 'left',
-              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-              cursor: 'pointer',
-            }}
-            onClick={() => navigate('/local')}
-          >
-            <div className="col gap-2">
-              <div className="jp-eyebrow" style={{ opacity: 0.55 }}>01 / Modo</div>
-              <div className="jp-h1" style={{ fontSize: 64, lineHeight: 0.96 }}>Jugar en <em>local</em></div>
-            </div>
-            <div className="row between" style={{ alignItems: 'flex-end' }}>
-              <div className="jp-body" style={{ opacity: 0.75, maxWidth: 280 }}>
-                Una mesa de IA con dificultad elegida. Para practicar o desconectar.
-              </div>
-              <span style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>→</span>
-            </div>
-          </button>
-          <button
-            style={{
-              flex: 1, minHeight: 240,
-              background: 'var(--bone)', color: 'var(--ink)',
-              border: '1.5px solid var(--bone)', borderRadius: 14,
-              padding: '32px 36px', textAlign: 'left',
-              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-              cursor: 'pointer',
-            }}
-            onClick={() => navigate('/online')}
-          >
-            <div className="col gap-2">
-              <div className="jp-eyebrow" style={{ opacity: 0.55 }}>02 / Modo</div>
-              <div className="jp-h1" style={{ fontSize: 64, lineHeight: 0.96 }}>Jugar <em>online</em></div>
-            </div>
-            <div className="row between" style={{ alignItems: 'flex-end' }}>
-              <div className="jp-body" style={{ opacity: 0.75, maxWidth: 300, color: 'var(--ink)' }}>
-                Hasta 4 jugadores. Las partidas públicas suman al ranking.
-              </div>
-              <span style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>→</span>
-            </div>
-          </button>
-        </div>
-        <div className="row between" style={{ alignItems: 'center' }}>
-          <Button variant="ghost" style={{ paddingLeft: 0 }} onClick={() => navigate('/profile')}>Mi perfil →</Button>
-          <div className="jp-caption" style={{ opacity: 0.5 }}>
-            {stats.handsPlayed > 0
-              ? `${stats.handsPlayed} manos jugadas · ${Math.round((stats.handsWon / stats.handsPlayed) * 100)}% ganadas`
-              : 'Gratis para siempre · Sin dinero real · Sin pagos'}
+          <div className="flex flex-[45] flex-col justify-center gap-3 [contain:size]">
+            {saved && (
+              <CtaCard solid fill onClick={() => navigate(`/game/${saved.gameId}?continue=1`)}>
+                <CtaTitle>Continuar <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+                <CtaFoot>
+                  <div className="font-body leading-[1.45] max-w-[65cqw] text-[clamp(0.8125rem,3.3cqw,1rem)] opacity-75">
+                    Dificultad {DIFFICULTY_LABELS[saved.difficulty]} - {saved.state.handNumber}ª mano
+                  </div>
+                </CtaFoot>
+              </CtaCard>
+            )}
+            <CtaCard solid={!saved} fill={!!saved} half={!saved} onClick={() => navigate('/local')}>
+              <CtaTitle>Nueva <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+              <CtaFoot>
+                <div className="font-body leading-[1.45] max-w-[65cqw] text-[clamp(0.8125rem,3.3cqw,1rem)] opacity-75">
+                  Elige dificultad y siéntate a una mesa contra la IA.
+                </div>
+              </CtaFoot>
+            </CtaCard>
           </div>
         </div>
       </div>

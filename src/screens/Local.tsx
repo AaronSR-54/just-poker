@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TopBar from '../components/TopBar';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
+
+const rivalAvatars = import.meta.glob<{ default: string }>(
+  '../assets/rivals/*.webp',
+  { eager: true, query: 'url' },
+);
+
+function rivalAvatar(name: string): string | undefined {
+  const slug = name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return rivalAvatars[`../assets/rivals/${slug}.webp`]?.default;
+}
+import Watermark from '../components/Watermark';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { loadSavedGame } from '../game/saveGame';
 
 interface Rival {
   n: string;
+  alias: string;
   t: string;
 }
 
@@ -16,86 +28,142 @@ interface Table {
   roman: string;
   title: string;
   blurb: string;
+  tone: string;
+  imgClassName: string;
   rivals: Rival[];
 }
 
 const TABLES: Table[] = [
   {
     id: 'easy', diff: 'Fácil', roman: 'I',
-    title: 'La mesa de los Novatos',
-    blurb: 'Para ir cómodo. Los rivales cometen errores predecibles.',
+    title: 'El Remanso',
+    blurb: 'Sin prisa ni presión.',
+    tone: 'bg-success brightness-[0.55]',
+    imgClassName: 'contrast-[0.85] saturate-75',
     rivals: [
-      { n: 'Mia', t: 'Juega demasiadas manos, se retira bajo presión.' },
-      { n: 'Dan', t: 'Farolea al azar, sin lógica.' },
-      { n: 'Sam', t: 'Imita a los demás, sin estrategia.' },
+      { n: 'Mia', alias: 'la Impulsiva', t: 'Juega demasiadas manos, se retira bajo presión.' },
+      { n: 'Dan', alias: 'Papel de Fumar', t: 'Farolea al azar, sin lógica.' },
+      { n: 'Sam', alias: 'Perfil Bajo', t: 'Imita a los demás, sin estrategia.' },
     ],
   },
   {
     id: 'medium', diff: 'Media', roman: 'II',
-    title: 'La mesa de los Regulares',
-    blurb: 'Juego sólido. Hay que medir cada apuesta.',
+    title: 'La Guarida',
+    blurb: 'El equilibrio justo.',
+    tone: 'bg-bone brightness-[0.7]',
+    imgClassName: 'contrast-100 saturate-100',
     rivals: [
-      { n: 'Leo', t: 'Agresivo-prudente, juega por el libro.' },
-      { n: 'Nora', t: 'Lee patrones de apuesta, muy paciente.' },
-      { n: 'Kai', t: 'Semi-farolea, difícil de leer.' },
+      { n: 'Leo', alias: 'El Libro', t: 'Agresivo-prudente, juega por el libro.' },
+      { n: 'Nora', alias: 'la Lectora', t: 'Lee patrones de apuesta, muy paciente.' },
+      { n: 'Kai', alias: 'Dos Caras', t: 'Semi-farolea, difícil de leer.' },
     ],
   },
   {
     id: 'hard', diff: 'Difícil', roman: 'III',
-    title: 'La mesa de los Tiburones',
-    blurb: 'Sin perdón. Calculan probabilidades en cada calle.',
+    title: 'La Fosa',
+    blurb: 'Solo para quien sabe lo que hace.',
+    tone: 'bg-danger brightness-[0.5]',
+    imgClassName: 'contrast-125 saturate-150',
     rivals: [
-      { n: 'Víctor', t: 'Frío, calcula probabilidades constantemente.' },
-      { n: 'Elena', t: 'Tiende trampas con manos fuertes, casi nunca se retira.' },
-      { n: 'Rex', t: 'Hiperagresivo, sube en cada ronda.' },
+      { n: 'Víctor', alias: 'La Calculadora', t: 'Frío, calcula probabilidades constantemente.' },
+      { n: 'Elena', alias: 'La Trampa', t: 'Tiende trampas con manos fuertes, casi nunca se retira.' },
+      { n: 'Rex', alias: 'Todo o Nada', t: 'Hiperagresivo, sube en cada ronda.' },
     ],
   },
 ];
 
-function TableCard({ table, selected, dense = false, onClick }: { table: Table; selected: boolean; dense?: boolean; onClick: () => void }) {
+const difficultyCardSizes = {
+  sm: { root: 'gap-4 rounded-[14px] px-[1.125rem] py-4', label: 'text-fs-500', rivals: 'text-fs-200' },
+  lg: { root: 'gap-6 rounded-[clamp(0.75rem,2.4cqw,1rem)] px-[4.5cqw] py-[4cqw]', label: 'text-[clamp(1.5rem,5.5cqw,2.75rem)]', rivals: 'text-fs-300 leading-[1.35]' },
+} as const;
+
+// Tarjeta de dificultad seleccionable. Mismo componente en móvil y escritorio; solo varía el size.
+const DifficultyCard: React.FC<{
+  table: Table;
+  selected: boolean;
+  size?: keyof typeof difficultyCardSizes;
+  onClick: () => void;
+}> = ({ table, selected, size = 'sm', onClick }) => {
+  const s = difficultyCardSizes[size];
   return (
-    <div
-      onClick={onClick}
-      style={{
-        flex: 1, borderRadius: 14, padding: dense ? '20px 18px' : '26px 24px',
-        background: selected ? 'var(--bone)' : 'transparent',
-        color: selected ? 'var(--ink)' : 'var(--bone)',
-        border: selected ? '1.5px solid var(--bone)' : '1.5px solid rgba(205,197,183,0.22)',
-        boxShadow: selected ? '0 0 0 8px rgba(205,197,183,0.18)' : 'none',
-        display: 'flex', flexDirection: 'column', gap: dense ? 14 : 18,
-        cursor: 'pointer',
-        transition: 'background 240ms, border-color 240ms, box-shadow 240ms',
-      }}
-    >
-      <div className="row between" style={{ alignItems: 'flex-start' }}>
-        <div className="col gap-1">
-          <div className="jp-eyebrow" style={{ opacity: selected ? 0.7 : 0.55 }}>Dificultad · {table.roman}</div>
-          <div className="jp-h3" style={{ fontSize: dense ? 18 : 22 }}>{table.diff}</div>
+    <div className={['w-full', size === 'lg' ? 'flex-1 min-h-0 @container' : ''].join(' ')}>
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={onClick}
+        className={[
+          'flex h-full w-full items-center justify-between text-left cursor-pointer border-[1.5px]',
+          s.root,
+          'transition-[background-color,border-color,transform] duration-[240ms] ease-brand',
+          'enabled:hover:-translate-y-0.5 enabled:hover:border-bone enabled:active:translate-y-px',
+          'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone',
+          selected ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone',
+        ].join(' ')}
+      >
+        <div className={`font-display font-bold leading-none ${s.label}`}>{table.diff}</div>
+        <div className={`shrink-0 text-right font-body tracking-[0.04em] opacity-70 ${s.rivals}`}>
+          {table.rivals.map(r => r.n).join(' · ')}
         </div>
-        <div style={{ width: 30, height: 30, borderRadius: '50%', border: '1.5px solid currentColor', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {selected && <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'currentColor' }} />}
-        </div>
-      </div>
-      <div className="col gap-1">
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: dense ? 17 : 19, lineHeight: 1.1 }}>
-          "{table.title}"
-        </div>
-        <div className="jp-caption" style={{ opacity: 0.75, maxWidth: 280 }}>{table.blurb}</div>
-      </div>
-      <div className="col gap-3" style={{ marginTop: 4 }}>
-        {table.rivals.map(r => (
-          <div key={r.n} className="row gap-3" style={{ alignItems: 'center' }}>
-            <Avatar name={r.n} size={dense ? 40 : 48} />
-            <div className="col" style={{ gap: 2, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{r.n}</div>
-              <div className="jp-caption" style={{ opacity: 0.75, fontSize: 11, lineHeight: 1.35 }}>{r.t}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      </button>
     </div>
   );
-}
+};
+
+const RivalCard: React.FC<{ rival: Rival; tone: string; imgClassName: string }> = ({ rival, tone, imgClassName }) => (
+  <div className="flex items-center gap-4">
+    <Avatar name={rival.n} src={rivalAvatar(rival.n)} size={56} tone={tone} imgClassName={imgClassName} />
+    <div className="flex flex-col gap-1">
+      <div className="font-display font-bold leading-none text-fs-300">
+        {rival.n} <em className="font-light italic opacity-80">"{rival.alias}"</em>
+      </div>
+      <div className="font-body text-fs-100 leading-[1.35] tracking-[0.04em] opacity-70">{rival.t}</div>
+    </div>
+  </div>
+);
+
+// Detalle de la mesa seleccionada + CTA. Mismo componente en ambos layouts.
+const TableDetail: React.FC<{ table: Table; onStart: () => void }> = ({ table, onStart }) => (
+  <div className="flex flex-col gap-8 rounded-[14px] bg-ink-900 p-9">
+    <div className="flex flex-col gap-1">
+      <div className="font-display font-bold leading-none text-fs-700">{table.title}</div>
+      <div className="font-body leading-[1.45] mt-1 opacity-70">
+        <strong className="font-bold">Dificultad {table.diff}.</strong> {table.blurb}
+      </div>
+    </div>
+    <div className="flex flex-col gap-5">
+      {table.rivals.map(r => <RivalCard key={r.n} rival={r} tone={table.tone} imgClassName={table.imgClassName} />)}
+    </div>
+    <Button variant="primary" onClick={onStart} className="justify-between! rounded-[14px]! min-h-14!">
+      <span>Jugar</span>
+      <span className="font-display font-bold leading-none text-fs-500">→</span>
+    </Button>
+  </div>
+);
+
+const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <Button
+    size="sm"
+    variant="ghost"
+    className="min-h-0! p-0! text-fs-500! leading-none! text-bone!"
+    aria-label="Volver al menú"
+    onClick={onClick}
+  >
+    ←
+  </Button>
+);
+
+const Wordmark: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`flex flex-col items-end font-display font-bold uppercase leading-[0.86] tracking-[-0.015em] ${className ?? 'text-fs-800'}`}>
+    <span className="text-[0.85em]">Just</span>
+    <span className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></span>
+  </div>
+);
+
+const Title: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`font-display font-bold leading-[0.94] tracking-[-0.015em] ${className ?? ''}`}>
+    <span className="whitespace-nowrap"><em className="font-light italic tracking-normal">Elige la</em> dificultad</span>
+  </div>
+);
 
 const Local: React.FC = () => {
   const [selectedId, setSelectedId] = useState('medium');
@@ -103,78 +171,62 @@ const Local: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const selected = TABLES.find(t => t.id === selectedId)!;
 
+  const startGame = () => {
+    if (loadSavedGame() && !window.confirm('Tienes una partida en curso. Si empiezas una nueva, se descartará. ¿Continuar?')) {
+      return;
+    }
+    navigate(`/game/local-${selectedId}`);
+  };
+
+  const renderCards = (size: 'sm' | 'lg') =>
+    TABLES.map(t => (
+      <DifficultyCard key={t.id} table={t} selected={t.id === selectedId} size={size} onClick={() => setSelectedId(t.id)} />
+    ));
+
+  const shell = (children: React.ReactNode) => (
+    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="absolute inset-0 -z-20 bg-ink" aria-hidden="true" />
+      <Watermark />
+      <div className="relative z-10 flex flex-1 flex-col">{children}</div>
+    </div>
+  );
+
   if (isMobile) {
-    return (
-      <div className="jp-screen">
-        <div className="jp-bar">
-          <Button size="sm" variant="ghost" style={{ paddingLeft: 0, border: 'none' }} onClick={() => navigate('/')}>← Atrás</Button>
-          <div className="brand" style={{ fontSize: 13 }}>Local</div>
-          <span style={{ width: 60 }} />
-        </div>
-        <div className="col" style={{ flex: 1, padding: '22px 18px 22px', justifyContent: 'space-between' }}>
-          <div className="col gap-4">
-            <div className="col gap-2">
-              <div className="jp-eyebrow">Elige una mesa</div>
-              <div className="jp-h2" style={{ fontSize: 30, lineHeight: 1.02 }}>Tres niveles.<br /><em>Tres mesas.</em></div>
-            </div>
-            <div className="row gap-2">
-              {TABLES.map(t => (
-                <div key={t.id} onClick={() => setSelectedId(t.id)} style={{
-                  flex: 1, padding: '10px 6px', textAlign: 'center', borderRadius: 999,
-                  background: selectedId === t.id ? 'var(--bone)' : 'transparent',
-                  color: selectedId === t.id ? 'var(--ink)' : 'var(--bone)',
-                  border: selectedId === t.id ? 'none' : '1px solid rgba(205,197,183,0.3)',
-                  fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
-                }}>{t.diff}</div>
-              ))}
-            </div>
-            <TableCard table={selected} selected dense onClick={() => {}} />
-          </div>
-          <div className="col gap-2">
-            <Button variant="primary" block glow onClick={() => navigate(`/game/local-${selectedId}`)}>Sentarse</Button>
-            <div className="jp-caption" style={{ textAlign: 'center', opacity: 0.55 }}>
-              Te enfrentarás a {selected.rivals.map(r => r.n).join(', ')}.
-            </div>
+    return shell(
+      <div className="flex flex-1 flex-col px-[1.375rem] pb-7 pt-8">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-4">
+            <BackButton onClick={() => navigate('/')} />
+            <Wordmark className="text-fs-600" />
           </div>
         </div>
-      </div>
+        <div className="mt-auto flex flex-col gap-4 pt-5">
+          <Title className="text-[clamp(2rem,8.5vw,2.75rem)]" />
+          <div className="flex flex-col gap-2">{renderCards('sm')}</div>
+          <TableDetail table={selected} onStart={startGame} />
+        </div>
+      </div>,
     );
   }
 
-  return (
-    <div className="jp-screen">
-      <TopBar
-        right={
-          <div className="row gap-3" style={{ alignItems: 'center' }}>
-            <div className="jp-caption" style={{ opacity: 0.5 }}>Modo · Local</div>
-            <Avatar name="Tú" size={32} />
+  return shell(
+    <>
+      <header className="mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-10 pt-7 lg:px-20">
+        <BackButton onClick={() => navigate('/')} />
+        <Wordmark />
+      </header>
+      <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[3.5rem] pt-4 lg:px-20">
+        <div className="flex w-full items-stretch justify-center gap-8 lg:gap-12">
+          <div className="flex flex-[48] min-h-0 flex-col gap-6">
+            <Title className="text-[clamp(2rem,4.5vw,3.25rem)]" />
+            <div className="flex min-h-0 flex-1 flex-col gap-3">{renderCards('lg')}</div>
           </div>
-        }
-      />
-      <div className="col" style={{ flex: 1, padding: '48px 70px 50px', justifyContent: 'space-between' }}>
-        <div className="col gap-3" style={{ maxWidth: 780 }}>
-          <div className="jp-eyebrow">Elige tu mesa</div>
-          <div className="jp-h1" style={{ fontSize: 64, lineHeight: 0.96 }}>Tres niveles. <em>Tres mesas.</em></div>
-          <div className="jp-body" style={{ opacity: 0.7, maxWidth: 520, marginTop: 6 }}>
-            Cada mesa tiene tres rivales con personalidades distintas. Elegir la dificultad es elegir contra quién juegas.
-          </div>
-        </div>
-        <div className="row gap-4" style={{ alignItems: 'stretch' }}>
-          {TABLES.map(t => (
-            <TableCard key={t.id} table={t} selected={t.id === selectedId} onClick={() => setSelectedId(t.id)} />
-          ))}
-        </div>
-        <div className="row between" style={{ alignItems: 'center' }}>
-          <Button variant="ghost" style={{ paddingLeft: 0 }} onClick={() => navigate('/')}>← Volver al menú</Button>
-          <div className="row gap-4" style={{ alignItems: 'center' }}>
-            <div className="jp-caption" style={{ opacity: 0.6 }}>
-              {selected.diff} · {selected.rivals.map(r => r.n).join(' · ')}
-            </div>
-            <Button variant="primary" glow onClick={() => navigate(`/game/local-${selectedId}`)}>Sentarse</Button>
+          <div className="flex flex-[52] flex-col justify-center">
+            <TableDetail table={selected} onStart={startGame} />
           </div>
         </div>
       </div>
-    </div>
+    </>,
   );
 };
 

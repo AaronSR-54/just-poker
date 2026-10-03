@@ -28,23 +28,10 @@ function formatDate(ts: number): string {
 const ProgressBar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <div
-      style={{
-        width: '100%',
-        height: 6,
-        borderRadius: 999,
-        background: 'rgba(205,197,183,0.12)',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="h-1.5 w-full overflow-hidden rounded-pill bg-bone/12">
       <div
-        style={{
-          width: `${pct}%`,
-          height: '100%',
-          borderRadius: 999,
-          background: 'var(--bone)',
-          transition: 'width 480ms cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
+        className="h-full rounded-pill bg-bone transition-[width] duration-[480ms] ease-out-brand"
+        style={{ width: `${pct}%` }}
       />
     </div>
   );
@@ -55,52 +42,26 @@ const HistoryRow: React.FC<{ rec: GameRecord }> = ({ rec }) => {
   const placeLabel = place === 1 ? '1.º' : place === 2 ? '2.º' : place === 3 ? '3.º' : '4.º';
   return (
     <div
-      className="row gap-4"
-      style={{
-        padding: '14px 18px',
-        borderRadius: 10,
-        background: place === 1 ? 'var(--bone)' : 'rgba(205,197,183,0.04)',
-        color: place === 1 ? 'var(--ink)' : 'var(--bone)',
-        alignItems: 'center',
-        border: place === 1 ? 'none' : '1px solid rgba(205,197,183,0.10)',
-      }}
+      className={`flex items-center gap-4 rounded-[10px] px-[1.125rem] py-[0.875rem] ${
+        place === 1 ? 'bg-bone text-ink' : 'border border-bone/10 bg-bone/[0.04] text-bone'
+      }`}
     >
       <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: '50%',
-          background: place === 1 ? 'var(--ink)' : 'rgba(205,197,183,0.12)',
-          color: 'var(--bone)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'var(--font-display)',
-          fontWeight: 700,
-          fontSize: 14,
-          flexShrink: 0,
-        }}
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full font-display font-bold text-fs-300 ${
+          place === 1 ? 'bg-ink text-bone' : 'bg-bone/12 text-bone'
+        }`}
       >
         {placeLabel}
       </div>
 
-      <div className="col gap-0" style={{ flex: 1, minWidth: 0 }}>
-        <div className="jp-caption" style={{ opacity: place === 1 ? 0.7 : 0.6 }}>
-          {rivals.join(' · ')}
-        </div>
-        <div className="jp-caption" style={{ opacity: place === 1 ? 0.5 : 0.4, fontSize: 10 }}>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">{rivals.join(' · ')}</div>
+        <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">
           {mode === 'local' ? 'Local' : 'Online'} · {timeAgo(playedAt)}
         </div>
       </div>
 
-      <div
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 700,
-          fontSize: 14,
-          opacity: place === 1 ? 0.9 : 0.7,
-        }}
-      >
+      <div className={`font-display font-bold text-fs-300 ${place === 1 ? 'opacity-90' : 'opacity-70'}`}>
         {pts > 0 ? `+${pts} pts` : '0 pts'}
       </div>
     </div>
@@ -112,53 +73,29 @@ const MilestoneDot: React.FC<{
   reached: boolean;
   when: string | null;
 }> = ({ rank, reached, when }) => (
-  <div className="col gap-1" style={{ alignItems: 'center' }}>
+  <div className="flex flex-col items-center gap-1">
     <div
-      style={{
-        width: 44,
-        height: 44,
-        borderRadius: '50%',
-        border: reached ? '2px solid var(--bone)' : '2px solid rgba(205,197,183,0.18)',
-        background: reached ? 'rgba(205,197,183,0.12)' : 'transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'all 300ms',
-      }}
+      className={`flex size-11 items-center justify-center rounded-full transition-all duration-300 ${
+        reached ? 'border-2 border-bone bg-bone/12' : 'border-2 border-bone/[0.18] bg-transparent'
+      }`}
     >
-      <span
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 700,
-          fontSize: 18,
-          opacity: reached ? 1 : 0.3,
-        }}
-      >
+      <span className={`font-display font-bold text-[18px] ${reached ? 'opacity-100' : 'opacity-30'}`}>
         {rank.roman}
       </span>
     </div>
-    <div className="jp-caption" style={{ fontSize: 9, textAlign: 'center', opacity: reached ? 0.8 : 0.4 }}>
+    <div className={`text-center font-body text-[9px] tracking-[0.04em] ${reached ? 'opacity-80' : 'opacity-40'}`}>
       {rank.name}
     </div>
-    <div className="jp-caption" style={{ fontSize: 9, textAlign: 'center', opacity: reached ? 0.6 : 0.4 }}>
+    <div className={`text-center font-body text-[9px] tracking-[0.04em] ${reached ? 'opacity-60' : 'opacity-40'}`}>
       {reached ? (when ?? '—') : `${rank.min} pts`}
     </div>
   </div>
 );
 
 const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div
-    className="col gap-1"
-    style={{
-      padding: '14px 16px',
-      borderRadius: 10,
-      border: 'var(--jp-stroke-hair)',
-      flex: 1,
-      minWidth: 100,
-    }}
-  >
-    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22 }}>{value}</div>
-    <div className="jp-caption" style={{ fontSize: 10 }}>{label}</div>
+  <div className="flex min-w-[100px] flex-1 flex-col gap-1 rounded-[10px] border border-bone/[0.18] px-4 py-[0.875rem]">
+    <div className="font-display font-bold text-[22px]">{value}</div>
+    <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">{label}</div>
   </div>
 );
 // ---- Componente principal ----
@@ -199,24 +136,23 @@ const Profile: React.FC = () => {
   };
 
   const editSection = editing && (
-    <div className="col gap-3" style={{ width: '100%' }}>
+    <div className="flex w-full flex-col gap-3">
       <input
-        className="jp-input"
+        className="block w-full rounded-md border-[1.5px] border-current bg-transparent px-4 py-[0.875rem] font-body text-fs-300 text-inherit outline-none focus:shadow-[0_0_0_0.1875rem_rgba(205,197,183,0.18)]"
         value={nameDraft}
         onChange={e => setNameDraft(e.target.value)}
         placeholder="Tu nombre"
         maxLength={16}
-        style={{ fontSize: 14 }}
         onKeyDown={e => { if (e.key === 'Enter') saveProfile(); }}
       />
-      <div className="jp-caption" style={{ fontSize: 10, opacity: 0.6 }}>
+      <div className="font-body tracking-[0.04em] text-[10px] opacity-60">
         El avatar se genera con las iniciales de tu nombre.
       </div>
     </div>
   );
 
   const statsRow = (
-    <div className="row gap-2" style={{ flexWrap: 'wrap' }}>
+    <div className="flex flex-wrap gap-2">
       <StatCard label="Manos jugadas" value={String(stats.handsPlayed)} />
       <StatCard label="Manos ganadas" value={`${winRate}%`} />
       <StatCard label="Partidas" value={String(stats.localGames + stats.onlineGames)} />
@@ -225,9 +161,9 @@ const Profile: React.FC = () => {
   );
 
   const milestonesSection = (
-    <div className="col gap-2" style={{ marginTop: 4 }}>
-      <div className="jp-eyebrow">Rangos</div>
-      <div className="row gap-2" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+    <div className="mt-1 flex flex-col gap-2">
+      <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Rangos</div>
+      <div className="flex flex-wrap justify-between gap-2">
         {milestones.map(m => (
           <MilestoneDot key={m.r.roman} rank={m.r} reached={m.reached} when={m.when} />
         ))}
@@ -236,11 +172,11 @@ const Profile: React.FC = () => {
   );
 
   const historySection = (
-    <div className="col gap-3" style={{ marginTop: 4 }}>
-      <div className="jp-eyebrow">Historial de partidas</div>
-      <div className="col gap-2">
+    <div className="mt-1 flex flex-col gap-3">
+      <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Historial de partidas</div>
+      <div className="flex flex-col gap-2">
         {history.length === 0 ? (
-          <div className="jp-caption" style={{ opacity: 0.6, padding: '12px 0' }}>
+          <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 py-3">
             Aún no has jugado ninguna partida. Siéntate a una mesa para empezar.
           </div>
         ) : (
@@ -254,27 +190,27 @@ const Profile: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="jp-screen">
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(205,197,183,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="row gap-2" style={{ alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14 }}>←</span>
-            <div className="brand" style={{ fontSize: 14 }}>Menú</div>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex items-center justify-between border-b border-bone/[0.18] px-[1.125rem] py-[0.875rem]">
+          <div className="flex cursor-pointer items-center gap-2" onClick={() => navigate('/')}>
+            <span className="font-display font-bold text-fs-300">←</span>
+            <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Menú</div>
           </div>
         </div>
 
-        <div className="col gap-4" style={{ flex: 1, padding: '24px 18px', overflowY: 'auto' }}>
-          <div className="col gap-3" style={{ alignItems: 'center' }}>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-[1.125rem] py-6">
+          <div className="flex flex-col items-center gap-3">
             <Avatar name={user.username} size={80} />
-            <div className="jp-h3" style={{ fontSize: 20 }}>{user.username}</div>
+            <div className="font-display font-bold leading-none text-[20px]">{user.username}</div>
             <RankBlock rank={currentRank} />
-            <div className="row gap-2" style={{ alignItems: 'baseline' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28 }}>{points}</span>
-              <span className="jp-caption" style={{ fontSize: 11 }}>puntos</span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display font-bold text-[28px]">{points}</span>
+              <span className="font-body tracking-[0.04em] opacity-70 text-fs-100">puntos</span>
             </div>
-            <div style={{ width: '100%' }}>
+            <div className="w-full">
               <ProgressBar value={progressInRank} max={100} />
             </div>
-            <div className="jp-caption" style={{ fontSize: 10 }}>
+            <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">
               {nextRank ? `${nextRank.min - points} pts para ${nextRank.name}` : 'Has alcanzado el rango máximo'}
             </div>
             <Button size="sm" variant="outline" onClick={() => (editing ? saveProfile() : setEditing(true))}>
@@ -294,38 +230,32 @@ const Profile: React.FC = () => {
   // ---- DESKTOP ----
 
   return (
-    <div className="jp-screen">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
-          <div style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em' }}>← Menú</span>
+          <div className="cursor-pointer" onClick={() => navigate('/')}>
+            <span className="font-display font-bold text-fs-300 tracking-[0.08em]">← Menú</span>
           </div>
         }
       />
 
       <div
-        className="row gap-8"
-        style={{
-          flex: 1,
-          padding: '40px 60px',
-          alignItems: 'flex-start',
-          overflowY: 'auto',
-        }}
+        className="flex flex-1 items-start gap-12 overflow-y-auto px-[3.75rem] py-10"
       >
         {/* Columna izquierda */}
-        <div className="col gap-5" style={{ flex: '0 0 320px' }}>
-          <div className="col gap-4" style={{ alignItems: 'flex-start' }}>
+        <div className="flex flex-[0_0_20rem] flex-col gap-5">
+          <div className="flex flex-col items-start gap-4">
             <Avatar name={user.username} size={120} />
-            <div className="jp-h2" style={{ fontSize: 32 }}>{user.username}</div>
+            <div className="font-display font-bold leading-none text-[32px]">{user.username}</div>
             <RankBlock rank={currentRank} />
-            <div className="row gap-2" style={{ alignItems: 'baseline' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 42 }}>{points}</span>
-              <span className="jp-caption" style={{ fontSize: 13 }}>puntos</span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display font-bold text-[42px]">{points}</span>
+              <span className="font-body tracking-[0.04em] opacity-70 text-fs-300">puntos</span>
             </div>
-            <div style={{ width: '100%' }}>
+            <div className="w-full">
               <ProgressBar value={progressInRank} max={100} />
             </div>
-            <div className="jp-caption">
+            <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">
               {nextRank ? `${nextRank.min - points} pts para ${nextRank.name}` : 'Has alcanzado el rango máximo'}
             </div>
           </div>
@@ -337,9 +267,9 @@ const Profile: React.FC = () => {
         </div>
 
         {/* Columna derecha */}
-        <div className="col gap-6" style={{ flex: 1, maxWidth: 560 }}>
-          <div className="col gap-3">
-            <div className="jp-eyebrow">Estadísticas</div>
+        <div className="flex max-w-[560px] flex-1 flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Estadísticas</div>
             {statsRow}
           </div>
           {milestonesSection}

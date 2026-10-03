@@ -35,6 +35,28 @@ export interface PokerState {
   actions: ActionType[];
 }
 
+/** Estado privado completo para persistir/reanudar una partida. */
+export interface PokerSaveData {
+  players: PokerPlayer[];
+  community: Card[];
+  currentPlayer: number;
+  dealer: number;
+  smallBlind: number;
+  bigBlind: number;
+  phase: GamePhase;
+  minRaise: number;
+  winner: number[] | null;
+  winAmounts: number[];
+  actions: ActionType[];
+  handOver: boolean;
+  gameOver: boolean;
+  gameWinner: number | null;
+  handNumber: number;
+  committed: number[];
+  acted: boolean[];
+  deck: Card[];
+}
+
 const STARTING_CHIPS = 1000;
 const DEFAULT_NAMES = ['Tú', 'Mia', 'Dan', 'Sam', 'Leo', 'Nora'];
 
@@ -218,6 +240,7 @@ export class PokerGame {
 
   check(playerIndex: number): void {
     if (!this.canAct(playerIndex)) return;
+    if (!this.canCheck(playerIndex)) return;
     this.players[playerIndex].lastAction = 'Pasó';
     this.acted[playerIndex] = true;
     this.actions.push({ playerIndex, type: 'check', timestamp: Date.now() });
@@ -408,59 +431,18 @@ export class PokerGame {
     this.phase = 'showdown';
     this.handOver = true;
 
-    const payouts = this.players.map(() => 0);
-    const winSet = new Set<number>();
-
-    if (!byShowdown) {
-      // Victoria por retirada: se lo lleva todo el único superviviente
-      const total = this.committed.reduce((a, b) => a + b, 0);
-      payouts[contenders[0]] = total;
-      winSet.add(contenders[0]);
-    } else {
-      // Side pots por niveles de contribución
-      const levels = [...new Set(this.committed.filter(c => c > 0))].sort((a, b) => a - b);
-      let prev = 0;
-      for (const level of levels) {
-        let sidePot = 0;
-        const contributors: number[] = [];
-        for (let i = 0; i < this.players.length; i++) {
-          const contrib = Math.min(this.committed[i], level) - Math.min(this.committed[i], prev);
-          if (contrib > 0) {
-            sidePot += contrib;
-            contributors.push(i);
-          }
-        }
-        const eligible = contributors.filter(i => contenders.includes(i));
-        if (sidePot > 0 && eligible.length > 0) {
-          // Mejor mano entre los elegibles
-          let best: HandResult | null = null;
-          for (const i of eligible) {
-            const r = results!.get(i)!;
-            if (!best || compareHands(r, best) > 0) best = r;
-          }
-          const winnersHere = eligible.filter(i => compareHands(results!.get(i)!, best!) === 0);
-          const share = Math.floor(sidePot / winnersHere.length);
-          let remainder = sidePot - share * winnersHere.length;
-          // El resto va al primer ganador tras el dealer
-          const ordered = [...winnersHere].sort((a, b) => {
-            const da = (a - this.dealer + this.players.length) % this.players.length;
-            const db = (b - this.dealer + this.players.length) % this.players.length;
-            return da - db;
-          });
-          for (const w of ordered) {
-            payouts[w] += share + (remainder > 0 ? 1 : 0);
-            if (remainder > 0) remainder--;
-            winSet.add(w);
-          }
-        }
-        prev = level;
-      }
-    }
+    const { payouts, winners } = distributePots(
+      this.committed,
+      contenders,
+      byShowdown,
+      results,
+      this.dealer
+    );
 
     for (let i = 0; i < this.players.length; i++) {
       this.players[i].chips += payouts[i];
     }
-    this.winner = [...winSet];
+    this.winner = winners;
     this.winAmounts = payouts;
 
     // ¿Fin de la partida?
@@ -529,4 +511,137 @@ export class PokerGame {
       actions: [...this.actions],
     };
   }
+
+  /** Estado privado completo, listo para persistir. */
+  serialize(): PokerSaveData {
+    return {
+      players: this.players.map(p => ({ ...p, cards: [...p.cards] })),
+      community: [...this.community],
+      currentPlayer: this.currentPlayer,
+      dealer: this.dealer,
+      smallBlind: this.smallBlind,
+      bigBlind: this.bigBlind,
+      phase: this.phase,
+      minRaise: this.minRaise,
+      winner: this.winner ? [...this.winner] : null,
+      winAmounts: [...this.winAmounts],
+      actions: [...this.actions],
+      handOver: this.handOver,
+      gameOver: this.gameOver,
+      gameWinner: this.gameWinner,
+      handNumber: this.handNumber,
+      committed: [...this.committed],
+      acted: [...this.acted],
+      deck: [...this.deck],
+    };
+  }
+
+  /** Reconstruye una partida a partir de un estado persistido. */
+  static deserialize(data: PokerSaveData): PokerGame {
+    const game = new PokerGame(
+      data.players.length,
+      data.smallBlind,
+      data.bigBlind,
+      data.players.map(p => p.name),
+      data.players.map(p => p.chips)
+    );
+    game.players = data.players.map(p => ({ ...p, cards: [...p.cards] }));
+    game.community = [...data.community];
+    game.currentPlayer = data.currentPlayer;
+    game.dealer = data.dealer;
+    game.phase = data.phase;
+    game.minRaise = data.minRaise;
+    game.winner = data.winner ? [...data.winner] : null;
+    game.winAmounts = [...data.winAmounts];
+    game.actions = [...data.actions];
+    game.handOver = data.handOver;
+    game.gameOver = data.gameOver;
+    game.gameWinner = data.gameWinner;
+    game.handNumber = data.handNumber;
+    game.committed = [...data.committed];
+    game.acted = [...data.acted];
+    game.deck = [...data.deck];
+    return game;
+  }
+}
+
+/**
+ * Reparte el bote entre los ganadores aplicando side pots por niveles de
+ * contribución. Función pura (sin estado) para poder testear el reparto.
+ *
+ * @param committed contribución total de cada jugador en la mano
+ * @param contenders índices que llegan al reparto (no retirados)
+ * @param byShowdown si es showdown (se comparan manos) o victoria por retirada
+ * @param results manos evaluadas por jugador (obligatorio en showdown)
+ * @param dealer índice del dealer, para repartir el resto (odd chip) por orden
+ * @returns pagos por jugador y conjunto de ganadores
+ */
+export function distributePots(
+  committed: number[],
+  contenders: number[],
+  byShowdown: boolean,
+  results: Map<number, HandResult> | undefined,
+  dealer: number
+): { payouts: number[]; winners: number[] } {
+  const n = committed.length;
+  const payouts = committed.map(() => 0);
+  const winSet = new Set<number>();
+
+  if (!byShowdown) {
+    // Victoria por retirada: se lo lleva todo el único superviviente
+    const total = committed.reduce((a, b) => a + b, 0);
+    if (contenders.length > 0) {
+      payouts[contenders[0]] = total;
+      winSet.add(contenders[0]);
+    }
+    return { payouts, winners: [...winSet] };
+  }
+
+  // Side pots por niveles de contribución
+  const levels = [...new Set(committed.filter(c => c > 0))].sort((a, b) => a - b);
+  let prev = 0;
+  for (const level of levels) {
+    let sidePot = 0;
+    const contributions: Array<{ index: number; amount: number }> = [];
+    for (let i = 0; i < n; i++) {
+      const contrib = Math.min(committed[i], level) - Math.min(committed[i], prev);
+      if (contrib > 0) {
+        sidePot += contrib;
+        contributions.push({ index: i, amount: contrib });
+      }
+    }
+    const eligible = contributions
+      .map(c => c.index)
+      .filter(i => contenders.includes(i));
+    if (sidePot > 0 && eligible.length > 0) {
+      // Mejor mano entre los elegibles
+      let best: HandResult | null = null;
+      for (const i of eligible) {
+        const r = results!.get(i)!;
+        if (!best || compareHands(r, best) > 0) best = r;
+      }
+      const winnersHere = eligible.filter(i => compareHands(results!.get(i)!, best!) === 0);
+      const share = Math.floor(sidePot / winnersHere.length);
+      let remainder = sidePot - share * winnersHere.length;
+      // El resto va al primer ganador tras el dealer
+      const ordered = [...winnersHere].sort((a, b) => {
+        const da = (a - dealer + n) % n;
+        const db = (b - dealer + n) % n;
+        return da - db;
+      });
+      for (const w of ordered) {
+        payouts[w] += share + (remainder > 0 ? 1 : 0);
+        if (remainder > 0) remainder--;
+        winSet.add(w);
+      }
+    } else if (sidePot > 0) {
+      // Apuesta no igualada por ningún contendiente: se devuelve a quien la puso
+      for (const c of contributions) {
+        payouts[c.index] += c.amount;
+      }
+    }
+    prev = level;
+  }
+
+  return { payouts, winners: [...winSet] };
 }

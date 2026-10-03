@@ -15,7 +15,7 @@ const RankBadge: React.FC<RankBadgeProps> = ({
 }) => {
   const r = rank ?? rankFor(points);
   return (
-    <span className="jp-rank">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-[0.3125rem] border border-current rounded-pill font-display font-bold text-fs-100 tracking-[0.14em] uppercase leading-none">
       <span className="rank-roman">{r.roman}</span>
       {!compact && <span>{r.name}</span>}
     </span>

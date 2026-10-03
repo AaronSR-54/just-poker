@@ -95,8 +95,11 @@ function sizeRaise(
   // Respetar mínimos y máximos
   amount = Math.max(amount, state.minRaise);
   const callAmount = Math.max(0, ...state.players.map(p => p.bet)) - player.bet;
-  const maxRaise = player.chips - callAmount;
-  amount = Math.min(amount, Math.max(0, maxRaise));
+  const maxRaise = Math.max(0, player.chips - callAmount);
+  if (maxRaise <= 0) return 0;
+  // Si el stack no llega para una subida mínima, ir all-in con lo disponible
+  if (maxRaise <= state.minRaise) return maxRaise;
+  amount = Math.min(Math.max(amount, state.minRaise), maxRaise);
   return amount;
 }
 

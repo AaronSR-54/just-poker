@@ -8,6 +8,15 @@ const SUIT_DIR: Record<Suit, string> = {
   c: 'clubs',
 };
 
+const sizes: Record<CardSize, string> = {
+  xs: 'w-[2.125rem] h-12',
+  sm: 'w-12 h-[4.25rem]',
+  md: 'w-16 h-[5.625rem]',
+  lg: 'w-[5.5rem] h-[7.75rem]',
+  xl: 'w-[6.875rem] h-[9.625rem]',
+  xxl: 'w-[8.125rem] h-[11.375rem]',
+};
+
 interface PokerCardProps {
   rank?: CardRank;
   suit?: Suit;
@@ -29,11 +38,13 @@ function cardSrc(rank: string, suit: Suit): string | undefined {
 }
 
 const PokerCard: React.FC<PokerCardProps> = ({ rank, suit, size = 'md', back = false, dimmed = false, style }) => {
+  const cls = `block shrink-0 box-border ${sizes[size]}${dimmed ? ' opacity-30 transition-opacity duration-300' : ''}`;
+
   if (back) {
     return (
       <img
         src={cardAssets[BACK_KEY]?.default}
-        className={`jp-pcard sz-${size}${dimmed ? ' dimmed' : ''}`}
+        className={cls}
         style={style}
         alt="Dorso de carta"
       />
@@ -48,7 +59,7 @@ const PokerCard: React.FC<PokerCardProps> = ({ rank, suit, size = 'md', back = f
   return (
     <img
       src={src}
-      className={`jp-pcard sz-${size}${dimmed ? ' dimmed' : ''}`}
+      className={cls}
       style={style}
       alt={`${rank} de ${suit}`}
     />
