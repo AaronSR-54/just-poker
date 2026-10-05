@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
-
-const rivalAvatars = import.meta.glob<{ default: string }>(
-  '../assets/rivals/*.webp',
-  { eager: true, query: 'url' },
-);
-
-function rivalAvatar(name: string): string | undefined {
-  const slug = name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return rivalAvatars[`../assets/rivals/${slug}.webp`]?.default;
-}
-import Watermark from '../components/Watermark';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { loadSavedGame } from '../game/saveGame';
+import { rivalAvatar, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
+import { container, fadeUp, slideSwap } from '../animations/motion';
+import { useUserStore } from '../store/userStore';
+import { useOnboardingStore } from '../store/onboardingStore';
 
 interface Rival {
   n: string;
@@ -38,8 +32,7 @@ const TABLES: Table[] = [
     id: 'easy', diff: 'Fácil', roman: 'I',
     title: 'El Remanso',
     blurb: 'Sin prisa ni presión.',
-    tone: 'bg-success brightness-[0.55]',
-    imgClassName: 'contrast-[0.85] saturate-75',
+    ...DIFFICULTY_AVATAR_TONE.easy,
     rivals: [
       { n: 'Mia', alias: 'la Impulsiva', t: 'Juega demasiadas manos, se retira bajo presión.' },
       { n: 'Dan', alias: 'Papel de Fumar', t: 'Farolea al azar, sin lógica.' },
@@ -50,8 +43,7 @@ const TABLES: Table[] = [
     id: 'medium', diff: 'Media', roman: 'II',
     title: 'La Guarida',
     blurb: 'El equilibrio justo.',
-    tone: 'bg-bone brightness-[0.7]',
-    imgClassName: 'contrast-100 saturate-100',
+    ...DIFFICULTY_AVATAR_TONE.medium,
     rivals: [
       { n: 'Leo', alias: 'El Libro', t: 'Agresivo-prudente, juega por el libro.' },
       { n: 'Nora', alias: 'la Lectora', t: 'Lee patrones de apuesta, muy paciente.' },
@@ -62,8 +54,7 @@ const TABLES: Table[] = [
     id: 'hard', diff: 'Difícil', roman: 'III',
     title: 'La Fosa',
     blurb: 'Solo para quien sabe lo que hace.',
-    tone: 'bg-danger brightness-[0.5]',
-    imgClassName: 'contrast-125 saturate-150',
+    ...DIFFICULTY_AVATAR_TONE.hard,
     rivals: [
       { n: 'Víctor', alias: 'La Calculadora', t: 'Frío, calcula probabilidades constantemente.' },
       { n: 'Elena', alias: 'La Trampa', t: 'Tiende trampas con manos fuertes, casi nunca se retira.' },
@@ -82,14 +73,19 @@ const DifficultyCard: React.FC<{
   table: Table;
   selected: boolean;
   size?: keyof typeof difficultyCardSizes;
+  dataTour?: string;
   onClick: () => void;
-}> = ({ table, selected, size = 'sm', onClick }) => {
+}> = ({ table, selected, size = 'sm', dataTour, onClick }) => {
   const s = difficultyCardSizes[size];
   return (
-    <div className={['w-full', size === 'lg' ? 'flex-1 min-h-0 @container' : ''].join(' ')}>
+    <motion.div
+      variants={fadeUp}
+      className={['w-full', size === 'lg' ? 'flex-1 min-h-0 @container' : ''].join(' ')}
+    >
       <button
         type="button"
         aria-pressed={selected}
+        data-tour={dataTour}
         onClick={onClick}
         className={[
           'flex h-full w-full items-center justify-between text-left cursor-pointer border-[1.5px]',
@@ -105,7 +101,7 @@ const DifficultyCard: React.FC<{
           {table.rivals.map(r => r.n).join(' · ')}
         </div>
       </button>
-    </div>
+    </motion.div>
   );
 };
 
@@ -130,10 +126,19 @@ const TableDetail: React.FC<{ table: Table; onStart: () => void }> = ({ table, o
         <strong className="font-bold">Dificultad {table.diff}.</strong> {table.blurb}
       </div>
     </div>
-    <div className="flex flex-col gap-5">
-      {table.rivals.map(r => <RivalCard key={r.n} rival={r} tone={table.tone} imgClassName={table.imgClassName} />)}
-    </div>
-    <Button variant="primary" onClick={onStart} className="justify-between! rounded-[14px]! min-h-14!">
+    <motion.div
+      variants={container(0.07)}
+      initial="hidden"
+      animate="visible"
+      className="flex flex-col gap-5"
+    >
+      {table.rivals.map(r => (
+        <motion.div key={r.n} variants={fadeUp}>
+          <RivalCard rival={r} tone={table.tone} imgClassName={table.imgClassName} />
+        </motion.div>
+      ))}
+    </motion.div>
+    <Button variant="primary" data-tour="start-game" onClick={onStart} className="justify-between! rounded-[14px]! min-h-14!">
       <span>Jugar</span>
       <span className="font-display font-bold leading-none text-fs-500">→</span>
     </Button>
@@ -167,11 +172,28 @@ const Title: React.FC<{ className?: string }> = ({ className }) => (
 
 const Local: React.FC = () => {
   const [selectedId, setSelectedId] = useState('medium');
+  const [dir, setDir] = useState(1);
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const onboardingCompleted = useUserStore(s => s.onboardingCompleted);
+  const setDifficulty = useOnboardingStore(s => s.setDifficulty);
   const selected = TABLES.find(t => t.id === selectedId)!;
 
+  const selectTable = (id: string) => {
+    if (id === selectedId) return;
+    const from = TABLES.findIndex(t => t.id === selectedId);
+    const to = TABLES.findIndex(t => t.id === id);
+    setDir(to >= from ? 1 : -1);
+    setSelectedId(id);
+    setDifficulty(id);
+  };
+
   const startGame = () => {
+    // En la bienvenida, «Jugar» abre la mano guiada en lugar de una partida real.
+    if (!onboardingCompleted) {
+      navigate('/game/guide');
+      return;
+    }
     if (loadSavedGame() && !window.confirm('Tienes una partida en curso. Si empiezas una nueva, se descartará. ¿Continuar?')) {
       return;
     }
@@ -180,13 +202,11 @@ const Local: React.FC = () => {
 
   const renderCards = (size: 'sm' | 'lg') =>
     TABLES.map(t => (
-      <DifficultyCard key={t.id} table={t} selected={t.id === selectedId} size={size} onClick={() => setSelectedId(t.id)} />
+      <DifficultyCard key={t.id} table={t} selected={t.id === selectedId} size={size} dataTour={`difficulty-${t.id}`} onClick={() => selectTable(t.id)} />
     ));
 
   const shell = (children: React.ReactNode) => (
     <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-      <div className="absolute inset-0 -z-20 bg-ink" aria-hidden="true" />
-      <Watermark />
       <div className="relative z-10 flex flex-1 flex-col">{children}</div>
     </div>
   );
@@ -200,11 +220,30 @@ const Local: React.FC = () => {
             <Wordmark className="text-fs-600" />
           </div>
         </div>
-        <div className="mt-auto flex flex-col gap-4 pt-5">
-          <Title className="text-[clamp(2rem,8.5vw,2.75rem)]" />
-          <div className="flex flex-col gap-2">{renderCards('sm')}</div>
-          <TableDetail table={selected} onStart={startGame} />
-        </div>
+        <motion.div
+          variants={container(0.07, 0.05)}
+          initial="hidden"
+          animate="visible"
+          className="mt-auto flex flex-col gap-4 pt-5"
+        >
+          <motion.div variants={fadeUp}>
+            <Title className="text-[clamp(2rem,8.5vw,2.75rem)]" />
+          </motion.div>
+          <motion.div variants={container(0.06)} data-tour="difficulty-list" className="flex flex-col gap-2">{renderCards('sm')}</motion.div>
+          <motion.div variants={fadeUp}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selected.id}
+                variants={slideSwap(dir, 28)}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <TableDetail table={selected} onStart={startGame} />
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
       </div>,
     );
   }
@@ -217,13 +256,30 @@ const Local: React.FC = () => {
       </header>
       <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[3.5rem] pt-4 lg:px-20">
         <div className="flex w-full items-stretch justify-center gap-8 lg:gap-12">
-          <div className="flex flex-[48] min-h-0 flex-col gap-6">
-            <Title className="text-[clamp(2rem,4.5vw,3.25rem)]" />
-            <div className="flex min-h-0 flex-1 flex-col gap-3">{renderCards('lg')}</div>
-          </div>
-          <div className="flex flex-[52] flex-col justify-center">
-            <TableDetail table={selected} onStart={startGame} />
-          </div>
+          <motion.div
+            variants={container(0.07, 0.05)}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-[48] min-h-0 flex-col gap-6"
+          >
+            <motion.div variants={fadeUp}>
+              <Title className="text-[clamp(2rem,4.5vw,3.25rem)]" />
+            </motion.div>
+            <motion.div variants={container(0.06)} data-tour="difficulty-list" className="flex min-h-0 flex-1 flex-col gap-3">{renderCards('lg')}</motion.div>
+          </motion.div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex flex-[52] flex-col justify-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selected.id}
+                variants={slideSwap(dir, 28)}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <TableDetail table={selected} onStart={startGame} />
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
         </div>
       </div>
     </>,

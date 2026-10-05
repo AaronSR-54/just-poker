@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import { RANKS, rankFor } from '../types';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore, type GameRecord } from '../store/userStore';
+import { FadeIn, Stagger, StaggerItem } from '../components/Animated';
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -56,7 +57,7 @@ const HistoryRow: React.FC<{ rec: GameRecord }> = ({ rec }) => {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">{rivals.join(' · ')}</div>
-        <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">
+        <div className="font-body tracking-[0.04em] opacity-70 text-fs-100">
           {mode === 'local' ? 'Local' : 'Online'} · {timeAgo(playedAt)}
         </div>
       </div>
@@ -83,10 +84,10 @@ const MilestoneDot: React.FC<{
         {rank.roman}
       </span>
     </div>
-    <div className={`text-center font-body text-[9px] tracking-[0.04em] ${reached ? 'opacity-80' : 'opacity-40'}`}>
+    <div className={`text-center font-body text-fs-100 tracking-[0.04em] ${reached ? 'opacity-80' : 'opacity-40'}`}>
       {rank.name}
     </div>
-    <div className={`text-center font-body text-[9px] tracking-[0.04em] ${reached ? 'opacity-60' : 'opacity-40'}`}>
+    <div className={`text-center font-body text-fs-100 tracking-[0.04em] ${reached ? 'opacity-60' : 'opacity-40'}`}>
       {reached ? (when ?? '—') : `${rank.min} pts`}
     </div>
   </div>
@@ -95,7 +96,7 @@ const MilestoneDot: React.FC<{
 const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex min-w-[100px] flex-1 flex-col gap-1 rounded-[10px] border border-bone/[0.18] px-4 py-[0.875rem]">
     <div className="font-display font-bold text-[22px]">{value}</div>
-    <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">{label}</div>
+    <div className="font-body tracking-[0.04em] opacity-70 text-fs-100">{label}</div>
   </div>
 );
 // ---- Componente principal ----
@@ -138,14 +139,14 @@ const Profile: React.FC = () => {
   const editSection = editing && (
     <div className="flex w-full flex-col gap-3">
       <input
-        className="block w-full rounded-md border-[1.5px] border-current bg-transparent px-4 py-[0.875rem] font-body text-fs-300 text-inherit outline-none focus:shadow-[0_0_0_0.1875rem_rgba(205,197,183,0.18)]"
+        className="block w-full rounded-md border-[1.5px] border-current bg-transparent px-4 py-[0.875rem] font-body text-fs-300 text-inherit outline-none"
         value={nameDraft}
         onChange={e => setNameDraft(e.target.value)}
         placeholder="Tu nombre"
         maxLength={16}
         onKeyDown={e => { if (e.key === 'Enter') saveProfile(); }}
       />
-      <div className="font-body tracking-[0.04em] text-[10px] opacity-60">
+      <div className="font-body tracking-[0.04em] text-fs-100 opacity-60">
         El avatar se genera con las iniciales de tu nombre.
       </div>
     </div>
@@ -174,15 +175,19 @@ const Profile: React.FC = () => {
   const historySection = (
     <div className="mt-1 flex flex-col gap-3">
       <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Historial de partidas</div>
-      <div className="flex flex-col gap-2">
+      <Stagger className="flex flex-col gap-2">
         {history.length === 0 ? (
           <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 py-3">
             Aún no has jugado ninguna partida. Siéntate a una mesa para empezar.
           </div>
         ) : (
-          history.map(h => <HistoryRow key={h.id} rec={h} />)
+          history.map(h => (
+            <StaggerItem key={h.id}>
+              <HistoryRow rec={h} />
+            </StaggerItem>
+          ))
         )}
-      </div>
+      </Stagger>
     </div>
   );
 
@@ -190,7 +195,7 @@ const Profile: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex items-center justify-between border-b border-bone/[0.18] px-[1.125rem] py-[0.875rem]">
           <div className="flex cursor-pointer items-center gap-2" onClick={() => navigate('/')}>
             <span className="font-display font-bold text-fs-300">←</span>
@@ -210,7 +215,7 @@ const Profile: React.FC = () => {
             <div className="w-full">
               <ProgressBar value={progressInRank} max={100} />
             </div>
-            <div className="font-body tracking-[0.04em] opacity-70 text-[10px]">
+            <div className="font-body tracking-[0.04em] opacity-70 text-fs-100">
               {nextRank ? `${nextRank.min - points} pts para ${nextRank.name}` : 'Has alcanzado el rango máximo'}
             </div>
             <Button size="sm" variant="outline" onClick={() => (editing ? saveProfile() : setEditing(true))}>
@@ -219,9 +224,9 @@ const Profile: React.FC = () => {
             {editSection}
           </div>
 
-          {statsRow}
-          {milestonesSection}
-          {historySection}
+          <FadeIn delay={0.1}>{statsRow}</FadeIn>
+          <FadeIn delay={0.18}>{milestonesSection}</FadeIn>
+          <FadeIn delay={0.26}>{historySection}</FadeIn>
         </div>
       </div>
     );
@@ -230,7 +235,7 @@ const Profile: React.FC = () => {
   // ---- DESKTOP ----
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
           <div className="cursor-pointer" onClick={() => navigate('/')}>
@@ -243,7 +248,7 @@ const Profile: React.FC = () => {
         className="flex flex-1 items-start gap-12 overflow-y-auto px-[3.75rem] py-10"
       >
         {/* Columna izquierda */}
-        <div className="flex flex-[0_0_20rem] flex-col gap-5">
+        <FadeIn className="flex flex-[0_0_20rem] flex-col gap-5">
           <div className="flex flex-col items-start gap-4">
             <Avatar name={user.username} size={120} />
             <div className="font-display font-bold leading-none text-[32px]">{user.username}</div>
@@ -264,16 +269,16 @@ const Profile: React.FC = () => {
             {editing ? 'Guardar perfil' : 'Editar perfil'}
           </Button>
           {editSection}
-        </div>
+        </FadeIn>
 
         {/* Columna derecha */}
         <div className="flex max-w-[560px] flex-1 flex-col gap-6">
-          <div className="flex flex-col gap-3">
+          <FadeIn className="flex flex-col gap-3">
             <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Estadísticas</div>
             {statsRow}
-          </div>
-          {milestonesSection}
-          {historySection}
+          </FadeIn>
+          <FadeIn delay={0.12}>{milestonesSection}</FadeIn>
+          <FadeIn delay={0.2}>{historySection}</FadeIn>
         </div>
       </div>
     </div>

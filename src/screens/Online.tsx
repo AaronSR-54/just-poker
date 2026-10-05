@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import Button from '../components/Button';
+import { AnimatePresence } from 'framer-motion';
 import RankBadge from '../components/RankBadge';
+import { FadeIn } from '../components/Animated';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore } from '../store/userStore';
 import { connectSocket, emitAck } from '../net/socket';
@@ -16,9 +18,9 @@ const CodeDigit: React.FC<{ digit?: string; focused?: boolean }> = ({ digit, foc
       className={[
         'flex h-20 w-16 items-center justify-center rounded-lg bg-transparent',
         'font-display font-bold text-[32px] leading-none',
-        'transition-[border-color,box-shadow] duration-200',
+        'transition-[border-color] duration-200',
         focused
-          ? 'border-2 border-bone shadow-[0_0_0_0.375rem_rgba(205,197,183,0.10)]'
+          ? 'border-2 border-bone'
           : 'border-[1.5px] border-bone/20',
         hasDigit ? 'text-bone' : '',
       ].join(' ')}
@@ -164,11 +166,12 @@ const Online: React.FC = () => {
   // ------- MOBILE -------
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         {mode !== 'main' && brandBar}
 
+        <AnimatePresence mode="wait">
         {mode === 'main' && (
-          <div className="flex flex-1 flex-col justify-center gap-5 px-5 py-[1.875rem]">
+          <FadeIn key="main" className="flex flex-1 flex-col justify-center gap-5 px-5 py-[1.875rem]">
             <div className="mb-[10px] text-center font-display font-bold text-fs-400 uppercase tracking-[0.08em]">
               Just <em className="font-light italic tracking-normal">Poker</em>
             </div>
@@ -178,7 +181,7 @@ const Online: React.FC = () => {
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">Pública</div>
               <div className="font-display font-bold leading-none text-[18px]">Unirse a una mesa aleatoria</div>
               <RankBadge points={user.points} />
-              <Button variant="primary" block glow disabled={busy} onClick={findPublic}>
+              <Button variant="primary" block disabled={busy} onClick={findPublic}>
                 {busy ? 'Conectando…' : 'Buscar partida'}
               </Button>
             </div>
@@ -199,11 +202,11 @@ const Online: React.FC = () => {
 
             {errorLine}
             <Button variant="ghost" size="sm" onClick={() => navigate('/')}>← Menú</Button>
-          </div>
+          </FadeIn>
         )}
 
         {mode === 'create' && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-[1.875rem]">
+          <FadeIn key="create" className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-[1.875rem]">
             <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de sala</div>
             <div className="flex gap-3">
               {createdCode.split('').map((d, i) => <CodeDigit key={i} digit={d} />)}
@@ -212,7 +215,7 @@ const Online: React.FC = () => {
               Comparte este código. Las privadas no cuentan para el ranking.
             </div>
             <div className="flex w-full flex-col gap-2">
-              <Button variant="primary" block glow onClick={goToCreatedLobby}>
+              <Button variant="primary" block onClick={goToCreatedLobby}>
                 Ir al lobby
               </Button>
               <Button variant="outline" block onClick={() => navigator.clipboard.writeText(createdCode)}>
@@ -220,11 +223,11 @@ const Online: React.FC = () => {
               </Button>
               <Button variant="ghost" block onClick={() => setMode('main')}>Cancelar</Button>
             </div>
-          </div>
+          </FadeIn>
         )}
 
         {mode === 'join-typing' && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-[1.875rem]">
+          <FadeIn key="join-typing" className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-[1.875rem]">
             <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de 4 dígitos</div>
             <div className="flex gap-3">
               {code.map((d, i) => (
@@ -234,28 +237,30 @@ const Online: React.FC = () => {
             {keypad}
             {errorLine}
             <div className="flex w-full flex-col gap-2">
-              <Button variant="primary" block glow disabled={!codeFilled || busy} onClick={joinWithCode}>
+              <Button variant="primary" block disabled={!codeFilled || busy} onClick={joinWithCode}>
                 {busy ? 'Uniéndose…' : 'Unirse'}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setMode('main')}>Cancelar</Button>
             </div>
-          </div>
+          </FadeIn>
         )}
+        </AnimatePresence>
       </div>
     );
   }
 
   // ------- DESKTOP -------
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
           <Button size="sm" variant="ghost" onClick={() => navigate('/')}>← Menú</Button>
         }
       />
 
+      <AnimatePresence mode="wait">
       {mode === 'main' && (
-        <div className="flex flex-1 items-stretch justify-center gap-12 px-[3.75rem] py-10">
+        <FadeIn key="main" className="flex flex-1 items-stretch justify-center gap-12 px-[3.75rem] py-10">
           <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] bg-bone p-12 text-ink">
             <div className="flex flex-col gap-4">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">Pública</div>
@@ -268,7 +273,7 @@ const Online: React.FC = () => {
               <div className="font-body text-fs-100 tracking-[0.04em] text-ink opacity-70">
                 Las partidas públicas cuentan para el ranking global.
               </div>
-              <Button variant="primary" block glow disabled={busy} onClick={findPublic}>
+              <Button variant="primary" block disabled={busy} onClick={findPublic}>
                 {busy ? 'Conectando…' : 'Buscar partida'}
               </Button>
             </div>
@@ -298,11 +303,11 @@ const Online: React.FC = () => {
               {errorLine}
             </div>
           )}
-        </div>
+        </FadeIn>
       )}
 
       {mode === 'create' && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-[3.75rem] py-10">
+        <FadeIn key="create" className="flex flex-1 flex-col items-center justify-center gap-6 px-[3.75rem] py-10">
           <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Tu código de sala</div>
           <div className="mt-2 flex items-center gap-4">
             {createdCode.split('').map((d, i) => <CodeDigit key={i} digit={d} />)}
@@ -315,15 +320,15 @@ const Online: React.FC = () => {
             <Button variant="outline" onClick={() => navigator.clipboard.writeText(createdCode)}>
               Copiar código
             </Button>
-            <Button variant="primary" glow onClick={goToCreatedLobby}>
+            <Button variant="primary" onClick={goToCreatedLobby}>
               Ir al lobby
             </Button>
           </div>
-        </div>
+        </FadeIn>
       )}
 
       {mode === 'join-typing' && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-[3.75rem] py-10">
+        <FadeIn key="join-typing" className="flex flex-1 flex-col items-center justify-center gap-6 px-[3.75rem] py-10">
           <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de 4 dígitos</div>
           <div className="flex gap-4">
             {code.map((d, i) => (
@@ -334,12 +339,13 @@ const Online: React.FC = () => {
           {errorLine}
           <div className="mt-2 flex gap-4">
             <Button variant="ghost" onClick={() => setMode('main')}>Cancelar</Button>
-            <Button variant="primary" glow disabled={!codeFilled || busy} onClick={joinWithCode}>
+            <Button variant="primary" disabled={!codeFilled || busy} onClick={joinWithCode}>
               {busy ? 'Uniéndose…' : 'Unirse'}
             </Button>
           </div>
-        </div>
+        </FadeIn>
       )}
+      </AnimatePresence>
     </div>
   );
 };

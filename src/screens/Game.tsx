@@ -1,21 +1,37 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button';
-import Badge from '../components/Badge';
+import Avatar from '../components/Avatar';
 import PokerCard from '../components/PokerCard';
-import type { GamePhase, CardRank, Suit } from '../types';
+import type { GamePhase, CardRank, Suit, ButtonSize } from '../types';
 import { PokerGame, type PokerState } from '../game/poker';
 import { PHASE_LABELS } from '../game/gameState';
 import { evaluateHand, getRelevantCards } from '../game/hands';
-import { calculateEquity } from '../game/equity';
-import { PERSONALITIES } from '../ai/personalities';
+import { PERSONALITIES, getActionDelay } from '../ai/personalities';
 import { createAIPlayer, getAIAction, type AIPlayer } from '../ai/aiPlayer';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore } from '../store/userStore';
 import { saveGame, loadSavedGame, clearSavedGame } from '../game/saveGame';
+import { rivalAvatar, rivalAlias, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
+import ChipIcon from '../components/ChipIcon';
+import PotAward, { POT_AWARD_HOLD, type PotAwardData } from '../components/PotAward';
+import PositionChip from '../components/PositionChip';
+import TutorialCoach from '../components/TutorialCoach';
+import { buildTutorialDeck, tutorialAIAction } from '../game/tutorial';
+import GameSettings from '../components/GameSettings';
+import SettingsButton from '../components/SettingsButton';
+import { useSettingsStore, speedFactor } from '../store/settingsStore';
+import { container, fadeUp, popIn, t, setMotionScale } from '../animations/motion';
+import { playSfx } from '../audio/sfx';
+import { useGameSounds } from '../hooks/useGameSounds';
 
 const TURN_DURATION = 30;
+/** Pausa entre rondas de apuestas antes de repartir la siguiente calle. */
+const STREET_DELAY = 900;
+
+/** Pausa tras el showdown antes de abrir el overlay de fin de partida. */
+const GAME_OVER_DELAY = 2200;
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -25,234 +41,241 @@ function getDifficulty(gameId: string): Difficulty {
   return 'easy';
 }
 
+/** Anillo del avatar de los rivales según la dificultad, para darle más presencia. */
+const DIFFICULTY_AVATAR_RING: Record<Difficulty, string> = {
+  easy: 'ring-success/45',
+  medium: 'ring-bone/35',
+  hard: 'ring-danger/50',
+};
+
 // ---------- Componentes pequeños ----------
 
-const FloatingMenu: React.FC<{ onLeave: () => void }> = ({ onLeave }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+const TimerBar: React.FC<{ duration: number; className?: string; paused?: boolean }> = ({ duration, className = '', paused = false }) => (
+  <div className={`h-[3px] overflow-hidden rounded-pill bg-bone/10 ${className}`}>
+    <div
+      className="h-full w-full animate-timer-drain rounded-pill bg-bone"
+      style={{ animationDuration: `${duration}ms`, animationPlayState: paused ? 'paused' : 'running' }}
+    />
+  </div>
+);
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
+// ---------- Slot de rival ----------
 
+/** Delta de fichas ganadas/gastadas en la mano, mostrado bajo el total del jugador. */
+const DeltaLine: React.FC<{ amount: number; filled?: boolean; className?: string }> = ({ amount, filled = false, className = '' }) => {
+  const color = amount > 0
+    ? (filled ? 'text-success-bone' : 'text-success')
+    : (filled ? 'text-danger-bone' : 'text-danger');
   return (
-    <div ref={ref}>
-      <button
-        className="fixed right-4 top-4 z-100 flex size-9 cursor-pointer items-center justify-center rounded-full border border-bone/[0.18] bg-bone/[0.06] text-fs-400 text-bone transition-[transform,background-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone"
-        aria-label="Menú de partida"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        ⋮
-      </button>
-      {open && (
-        <div className="fixed right-4 top-14 z-101 min-w-40 rounded-xl border border-bone/[0.18] bg-ink p-2 shadow-[0_0.5rem_2rem_rgba(0,0,0,0.4)]">
-          <button
-            className="block w-full cursor-pointer rounded-lg px-[0.875rem] py-[0.625rem] text-left font-display font-bold text-fs-100 tracking-[0.1em] uppercase text-bone transition-colors duration-[160ms] ease-brand hover:bg-bone/[0.08]"
-            onClick={onLeave}
-          >
-            Salir de la partida
-          </button>
-        </div>
+    <div className={`flex h-4 items-center justify-center ${className}`}>
+      {amount !== 0 && (
+        <motion.span
+          key={amount}
+          initial={{ opacity: 0, y: amount > 0 ? 6 : -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={t(0.24)}
+          className={`font-display font-bold text-fs-100 ${color}`}
+        >
+          {amount > 0 ? `+${amount}` : `−${Math.abs(amount)}`}
+        </motion.span>
       )}
     </div>
   );
 };
 
-const TimerBar: React.FC<{ seconds: number; max: number }> = ({ seconds, max }) => {
-  const pct = (seconds / max) * 100;
-  return (
-    <div className="absolute -bottom-2 left-0 right-0 h-[3px] overflow-hidden rounded-sm bg-bone/10">
-      <div
-        className="h-full rounded-sm bg-bone transition-[width] duration-1000 ease-linear"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-};
-
-const BlindDot: React.FC<{ role: 'dealer' | 'sb' | 'bb' }> = ({ role }) => (
-  <span
-    className={`inline-flex size-[1.125rem] shrink-0 items-center justify-center rounded-full font-display font-bold text-fs-100 tracking-[0.04em] max-md:size-3.5 ${
-      role === 'dealer'
-        ? 'bg-bone text-ink'
-        : role === 'sb'
-          ? 'bg-info/20 text-info'
-          : 'bg-danger/20 text-danger'
-    }`}
-  >
-    {role === 'dealer' ? 'D' : role.toUpperCase()}
-  </span>
-);
-
-const StatusBadge: React.FC<{
-  isActive?: boolean;
-  isWinner?: boolean;
-  lastAction?: string;
-  folded?: boolean;
-  handOver?: boolean;
-  bet?: number;
-}> = ({ isActive, isWinner, lastAction, folded, handOver, bet = 0 }) => {
-  if (folded) return null;
-  if (isWinner) return <Badge variant="neutral">Ganador</Badge>;
-  if (isActive && !handOver) return <Badge variant="turn">Turno</Badge>;
-  if (bet > 0) return <Badge variant="info">Apuesta: <strong>{bet}</strong></Badge>;
-  if (lastAction && lastAction !== '—' && lastAction !== 'Se retiró' && lastAction !== 'Eliminado') {
-    return <Badge variant="neutral" className="opacity-70">{lastAction}</Badge>;
-  }
-  return null;
-};
-
-// ---------- Slot de rival ----------
-
 interface RivalSlotProps {
   name: string;
-  cards?: { rank: CardRank; suit: Suit }[];
   folded?: boolean;
   eliminated?: boolean;
   isActive?: boolean;
   isWinner?: boolean;
-  lastAction?: string;
-  showdown?: boolean;
   chips?: number;
-  bet?: number;
+  /** Fichas ganadas (+) o gastadas (−) en la mano. */
+  delta?: number;
   isAllIn?: boolean;
   handOver?: boolean;
-  winAmount?: number;
   blindRole?: 'dealer' | 'sb' | 'bb' | null;
   compact?: boolean;
-  /** Barra de “pensando” de la IA (animación CSS, no el timer humano). */
-  thinking?: boolean;
-  isDimmed?: (card: { rank: CardRank; suit: Suit }) => boolean;
+  /** Tinte del avatar según la dificultad (mismo que en la pantalla local). */
+  avatarTone?: string;
+  avatarImgClassName?: string;
+  /** Anillo del avatar según la dificultad. */
+  avatarRing?: string;
+  /** Duración (ms) del turno activo; si se define, se muestra la barra. */
+  timerDuration?: number;
+  /** Cambia por turno para reiniciar la animación de la barra. */
+  timerKey?: string;
+  /** Retardo de entrada para escalonar los slots de la mesa. */
+  enterDelay?: number;
+  /** Valor de `data-tour` para que el coach del tutorial pueda señalar el asiento. */
+  dataTour?: string;
 }
 
+/**
+ * Tarjeta de jugador con altura fija: todos los elementos ocupan su lugar
+ * siempre, y los estados se expresan con color/opacidad, nunca apareciendo
+ * o desapareciendo elementos que muevan el layout.
+ */
 const RivalSlot: React.FC<RivalSlotProps> = ({
   name,
-  cards,
   folded = false,
   eliminated = false,
   isActive = false,
   isWinner = false,
-  lastAction,
-  showdown = false,
   chips = 0,
-  bet = 0,
+  delta = 0,
   isAllIn = false,
   handOver = false,
-  winAmount = 0,
   blindRole = null,
   compact = false,
-  thinking = true,
-  isDimmed,
+  avatarTone,
+  avatarImgClassName,
+  avatarRing,
+  timerDuration,
+  timerKey,
+  enterDelay = 0,
+  dataTour,
 }) => {
-  if (eliminated) {
-    return (
-      <div
-        className={`relative flex flex-col items-center gap-2.5 rounded-slot border border-bone/[0.18] bg-transparent px-5 py-[1.125rem] opacity-25 ${
-          compact ? 'min-w-[90px]' : 'min-w-[130px]'
-        }`}
-      >
-        <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{name}</span>
-        <span className="font-body tracking-[0.04em] opacity-70 text-fs-100">Eliminado</span>
-      </div>
-    );
-  }
+  const filled = isWinner;
+  const dimmed = eliminated || folded;
+  // En all-in se muestra la etiqueta en lugar del total, que quedaría a 0.
+  const showAllIn = isAllIn && !handOver;
 
-  const cardSize = compact ? 'xs' : 'sm';
   return (
-    <div
+    <motion.div
+      data-tour={dataTour}
+      initial={{ opacity: 0, y: 14, scale: 0.96 }}
+      animate={{ opacity: dimmed ? 0.32 : 1, y: 0, scale: isWinner ? 1.03 : 1 }}
+      transition={t(0.35, enterDelay)}
       className={[
-        'relative flex flex-col items-center rounded-slot border bg-transparent',
-        compact ? 'min-w-[90px] gap-1 rounded-[10px] px-2.5 py-2' : 'min-w-[130px] gap-2.5 px-5 py-[1.125rem]',
-        isActive ? 'border-bone shadow-[0_0_0_0.375rem_rgba(205,197,183,0.1)]' : 'border-bone/[0.18]',
-        folded ? 'opacity-[0.32]' : '',
-        isWinner ? 'border-bone bg-bone/[0.06]' : '',
+        'relative flex flex-col items-center rounded-slot border text-center',
+        compact ? 'w-[104px] gap-2 rounded-[10px] px-3 py-3' : 'w-[150px] gap-3.5 px-6 py-5',
+        filled
+          ? 'border-bone bg-bone text-ink'
+          : isActive && !handOver
+            ? 'border-bone bg-transparent animate-turn-pulse'
+            : 'border-bone/[0.18] bg-transparent',
       ].join(' ')}
     >
-      {isActive && !handOver && thinking && (
-        <div className="absolute -bottom-2 left-0 right-0 h-[3px] overflow-hidden rounded-sm bg-bone/10" key={`think-${name}-${bet}-${lastAction}`}>
-          <div className="h-full w-full bg-bone animate-timer-drain" />
-        </div>
+      {isActive && !handOver && timerDuration !== undefined && (
+        <TimerBar key={timerKey} duration={timerDuration} className="absolute -bottom-2 inset-x-4" />
       )}
 
-      <div className="flex items-center gap-1">
-        {blindRole && <BlindDot role={blindRole} />}
-        <span className={compact ? 'font-display font-bold text-fs-100 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-200'}>{name}</span>
-      </div>
+      <span className={`inline-flex shrink-0 rounded-full ring-1 ${avatarRing ?? 'ring-bone/20'}`}>
+        <Avatar name={name} src={rivalAvatar(name)} size={compact ? 48 : 64} tone={avatarTone} imgClassName={avatarImgClassName} />
+      </span>
 
-      <div className="flex items-center gap-0.5">
-        <span className="text-fs-200 opacity-50 max-md:text-fs-100">🪙</span>
-        <span className={`font-display font-bold text-fs-300 max-md:text-fs-100 ${chips < 100 ? 'text-danger' : ''}`}>{chips}</span>
-        <AnimatePresence>
-          {winAmount > 0 && (
-            <motion.span
-              key={`win-${winAmount}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="ml-1 font-display font-bold text-fs-200 text-success"
+      <div className="flex w-full flex-col items-center gap-1">
+        <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
+          <div className="min-w-0 truncate font-display font-bold leading-none text-fs-200">{name}</div>
+          {blindRole && (
+            <span
+              className="shrink-0"
+              data-tour={blindRole === 'sb' ? 'small-blind' : blindRole === 'bb' ? 'big-blind' : undefined}
             >
-              +{winAmount}
-            </motion.span>
+              <PositionChip role={blindRole} filled={filled} />
+            </span>
           )}
-        </AnimatePresence>
+        </div>
+        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70">{rivalAlias(name) ? `“${rivalAlias(name)}”` : ''}</div>
       </div>
 
-      {isAllIn && <Badge variant="warning">ALL-IN</Badge>}
-
-      <div className={`flex ${compact ? 'gap-0' : 'gap-1'}`}>
-        {folded || !cards || cards.length === 0 ? (
-          <>
-            <PokerCard size={cardSize} back />
-            <PokerCard size={cardSize} back />
-          </>
-        ) : (
-          cards.map((c, i) => (
-            <PokerCard key={i} size={cardSize} rank={c.rank} suit={c.suit} back={!showdown} dimmed={isDimmed?.(c)} />
-          ))
-        )}
+      <div className="relative flex w-full items-center justify-center gap-0.5 pb-2">
+        <span data-chips className="inline-flex">
+          <ChipIcon className={`size-5 ${filled ? 'text-ink' : 'text-bone'}`} />
+        </span>
+        <div className="relative flex flex-col items-center">
+          {showAllIn ? (
+            <span className={`flex h-5 items-center font-display font-bold text-fs-200 ${filled ? 'text-danger-bone' : 'text-danger'}`}>ALL-IN</span>
+          ) : (
+            <span className={`flex h-5 items-center whitespace-nowrap font-display font-bold tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
+          )}
+          <div className="absolute left-1/2 top-full -translate-x-1/2">
+            <DeltaLine amount={showAllIn ? 0 : delta} filled={filled} className="whitespace-nowrap" />
+          </div>
+        </div>
       </div>
-
-      <StatusBadge
-        isActive={isActive}
-        isWinner={isWinner}
-        lastAction={lastAction}
-        folded={folded}
-        handOver={handOver}
-        bet={bet}
-      />
-    </div>
+    </motion.div>
   );
 };
+
+/** Cartas boca arriba de un rival, mostradas debajo de su tarjeta en el showdown. */
+const ShowdownCards: React.FC<{
+  cards: { rank: CardRank; suit: Suit }[];
+  size: 'xs' | 'sm' | 'md';
+  isDimmed?: (card: { rank: CardRank; suit: Suit }) => boolean;
+}> = ({ cards, size, isDimmed }) => (
+  <motion.div
+    className="flex justify-center gap-1"
+    variants={container(0.07)}
+    initial="hidden"
+    animate="visible"
+  >
+    {cards.map((c, i) => (
+      <motion.div key={i} variants={popIn}>
+        <PokerCard
+          size={size}
+          rank={c.rank}
+          suit={c.suit}
+          dimmed={isDimmed?.(c)}
+        />
+      </motion.div>
+    ))}
+  </motion.div>
+);
+
+/** Nombre de la jugada (p. ej. "Color"). Resalta cuando es la mano ganadora. */
+const HandLabel: React.FC<{ name: string; winner?: boolean; className?: string }> = ({ name, winner = false, className = '' }) => {
+  if (!name) return null;
+  if (winner) {
+    return (
+      <span className={`inline-flex items-center whitespace-nowrap rounded-pill bg-bone px-2.5 py-0.5 font-display font-bold text-fs-100 uppercase tracking-[0.08em] text-ink ${className}`}>
+        {name}
+      </span>
+    );
+  }
+  return (
+    <span className={`whitespace-nowrap font-display text-fs-100 uppercase tracking-[0.04em] opacity-70 ${className}`}>{name}</span>
+  );
+};
+
 // ---------- Zona comunitaria ----------
+
+const COMMUNITY_SLOT: Record<'md' | 'xxl', { w: string; h: string; gap: string }> = {
+  md: { w: 'w-[min(4rem,16vw)]', h: 'h-[min(5.625rem,22.4vw)]', gap: 'gap-1.5' },
+  xxl: { w: 'w-[min(8.125rem,15vw)]', h: 'h-[min(11.375rem,21vw)]', gap: 'gap-3' },
+};
 
 const CommunityRow: React.FC<{
   phase: GamePhase;
   community: { rank: CardRank; suit: Suit }[];
   pot: number;
-  handNumber: number;
+  /** El bote ya se ha repartido: se desvanece mientras las fichas vuelan. */
+  potAwarded?: boolean;
   cardSize?: 'md' | 'xxl';
   isDimmed?: (card: { rank: CardRank; suit: Suit }) => boolean;
-}> = ({ phase, community, pot, handNumber, cardSize = 'xxl', isDimmed }) => {
+}> = ({ phase, community, pot, potAwarded = false, cardSize = 'xxl', isDimmed }) => {
   const visibleCount = phase === 'pre-flop' ? 0 : phase === 'flop' ? 3 : phase === 'turn' ? 4 : 5;
-  const slotW = cardSize === 'xxl' ? 130 : 64;
-  const slotH = cardSize === 'xxl' ? 182 : 90;
+  const slot = COMMUNITY_SLOT[cardSize];
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex items-center gap-2">
-        <span className="inline-flex rounded-pill border border-bone/[0.18] px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5">
-          {PHASE_LABELS[phase] || phase}
-        </span>
-        <span className="font-body tracking-[0.04em] opacity-70 text-fs-100">Mano #{handNumber}</span>
+    <div data-tour="board" className="flex flex-col items-center gap-3">
+      <div data-tour="phase" className="flex h-7 items-center gap-2">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={phase}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={t(0.24)}
+            className="inline-flex rounded-pill border border-bone/[0.18] px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5"
+          >
+            {PHASE_LABELS[phase] || phase}
+          </motion.span>
+        </AnimatePresence>
       </div>
 
-      <div className={`flex justify-center ${cardSize === 'xxl' ? 'gap-3' : 'gap-2'}`}>
+      <div className={`flex justify-center ${slot.gap}`}>
         {Array.from({ length: 5 }).map((_, i) => {
           if (i < visibleCount && community[i]) {
             const card = community[i];
@@ -272,18 +295,22 @@ const CommunityRow: React.FC<{
               </motion.div>
             );
           }
-          return <div key={i} className="rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14]" style={{ width: slotW, height: slotH }} />;
+          return <div key={i} className={`rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14] ${slot.w} ${slot.h}`} />;
         })}
       </div>
 
       <motion.div
-        className="flex items-center gap-2 rounded-pill bg-bone/[0.06] px-4 py-1.5 font-display font-bold text-fs-200 tracking-[0.06em]"
+        data-tour="pot"
+        className="flex items-center gap-1.5 font-display font-bold text-fs-200 tracking-[0.06em]"
         key={pot}
         initial={{ scale: 1.1 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.25 }}
+        animate={{ scale: potAwarded ? 0.9 : 1, opacity: potAwarded ? 0 : 1 }}
+        transition={t(0.3, potAwarded ? POT_AWARD_HOLD : 0)}
       >
-        <span className="opacity-50">Bote</span>
+        <span className="opacity-50">Bote:</span>
+        <span data-chips className="inline-flex">
+          <ChipIcon className="size-5 text-bone" />
+        </span>
         <span>{pot}</span>
       </motion.div>
     </div>
@@ -292,32 +319,79 @@ const CommunityRow: React.FC<{
 
 // ---------- Log de acciones ----------
 
-const ACTION_VERBS: Record<string, string> = {
-  fold: 'se retiró',
-  check: 'pasó',
-  call: 'igualó',
-  raise: 'subió',
-  blind: 'ciega',
+const ACTION_VERBS: Record<string, { third: string; second: string }> = {
+  fold: { third: 'se ha retirado', second: 'te has retirado' },
+  check: { third: 'ha pasado', second: 'has pasado' },
+  call: { third: 'ha igualado', second: 'has igualado' },
+  raise: { third: 'ha subido', second: 'has subido' },
+  blind: { third: 'ha puesto la ciega', second: 'has puesto la ciega' },
 };
 
-const ActionLog: React.FC<{ state: PokerState }> = ({ state }) => {
-  const recent = state.actions.slice(-4);
-  if (recent.length === 0) return null;
+const ActionLog: React.FC<{ state: PokerState; winnerName?: string; winnerHand?: string; winnerIsHuman?: boolean; compact?: boolean }> = ({
+  state,
+  winnerName = '',
+  winnerHand = '',
+  winnerIsHuman = false,
+  compact = false,
+}) => {
+  const entries = state.actions.slice(-4).map(a => {
+    const p = state.players[a.playerIndex];
+    const verb = ACTION_VERBS[a.type];
+    const isHuman = a.playerIndex === 0;
+    const text = `${isHuman ? verb?.second ?? a.type : verb?.third ?? a.type}${a.amount ? ` ${a.amount}` : ''}`;
+    return { name: isHuman ? 'Tú' : p?.name ?? '?', text };
+  });
+  if (winnerName) {
+    if (winnerIsHuman) {
+      entries.push({ name: 'Tú', text: winnerHand ? `has ganado con ${winnerHand}` : 'has ganado' });
+    } else {
+      entries.push({ name: winnerName, text: winnerHand ? `ha ganado con ${winnerHand}` : 'ha ganado' });
+    }
+  }
+
+  // En móvil solo se muestra la última entrada, pero el alto queda reservado
+  // siempre (fila fija) para que la mesa no se desplace al aparecer/desaparecer.
+  if (compact) {
+    const line = entries[entries.length - 1];
+    return (
+      <div className="flex flex-col items-start gap-0.5 text-left">
+        <div className="font-body text-fs-100 tracking-[0.04em] opacity-50">Mano #{state.handNumber}</div>
+        <div className="flex h-4 w-full items-center">
+          <AnimatePresence mode="wait">
+            {line && (
+              <motion.span
+                key={`${line.name}-${line.text}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={t(0.2)}
+                className="min-w-0 truncate whitespace-nowrap font-body text-fs-100 text-bone"
+              >
+                {line.name ? <><strong>{line.name}</strong> {line.text}</> : line.text}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  if (entries.length === 0) return null;
+  const lines = entries.slice(-4);
   return (
-    <div className="flex min-h-5 flex-col items-center gap-0.5">
-      {recent.map((a, i) => {
-        const p = state.players[a.playerIndex];
-        return (
-          <div
-            key={`${a.timestamp}-${i}`}
-            className="font-body text-fs-100 text-bone"
-            style={{ opacity: 0.35 + (0.65 * (i + 1)) / recent.length }}
-          >
-            <strong>{p?.name ?? '?'}</strong> {ACTION_VERBS[a.type] ?? a.type}
-            {a.amount ? ` ${a.amount}` : ''}
-          </div>
-        );
-      })}
+    <div className="flex flex-col items-start gap-0.5 text-left">
+      <div className="mb-0.5 font-body text-fs-100 tracking-[0.04em] opacity-50">Mano #{state.handNumber}</div>
+      {lines.map((line, i) => (
+        <motion.div
+          key={`${line.name}-${line.text}-${i}`}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 0.35 + (0.65 * (i + 1)) / lines.length, x: 0 }}
+          transition={t(0.24)}
+          className="font-body text-fs-100 text-bone"
+        >
+          {line.name ? <><strong>{line.name}</strong> {line.text}</> : line.text}
+        </motion.div>
+      ))}
     </div>
   );
 };
@@ -333,10 +407,14 @@ interface RaisePanelProps {
   potSize: number;
   playerChips: number;
   callAmount: number;
+  /** Bloquea el botón de confirmar (usado en la guía hasta elegir importe). */
+  confirmDisabled?: boolean;
+  /** En móvil los atajos ocupan todo el ancho y son más altos. */
+  fill?: boolean;
 }
 
-const RaisePanel: React.FC<RaisePanelProps> = ({
-  raiseAmount, onRaiseChange, onRaise, minRaise, maxRaise, potSize, playerChips, callAmount,
+const RaiseControls: React.FC<RaisePanelProps> = ({
+  raiseAmount, onRaiseChange, onRaise, minRaise, maxRaise, potSize, playerChips, callAmount, confirmDisabled, fill = false,
 }) => {
   const halfPot = Math.floor(potSize / 2);
   const allInAmount = Math.max(minRaise, playerChips - callAmount);
@@ -348,55 +426,84 @@ const RaisePanel: React.FC<RaisePanelProps> = ({
   ];
 
   return (
-    <div className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 flex min-w-[12.5rem] flex-col gap-2.5 rounded-xl border border-bone/[0.18] bg-ink p-4 shadow-[0_0.5rem_2rem_rgba(0,0,0,0.4)]">
-      <div className="flex flex-wrap justify-center gap-1">
-        {quickAmounts.map((qa) => {
-          const val = Math.min(qa.value, maxRaise);
-          return (
-            <button
-              key={qa.label}
-              onClick={() => onRaiseChange(val)}
-              className={`cursor-pointer rounded-lg border bg-transparent px-2.5 py-1 font-display font-bold text-fs-200 text-bone transition-[transform,border-color,background-color] duration-[160ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-                raiseAmount === val ? 'border-bone bg-bone/12' : 'border-bone/[0.18]'
-              }`}
-            >
-              {qa.label}
-            </button>
-          );
-        })}
+    <div data-tour="raise-panel" className="flex w-full flex-col gap-2.5">
+      <div data-tour="raise-amount" className="flex w-full flex-col gap-2.5">
+        <div
+          data-tour="raise-quick"
+          className={fill ? 'grid w-full grid-cols-4 gap-2' : 'flex flex-wrap justify-center gap-1'}
+        >
+          {quickAmounts.map((qa) => {
+            const val = Math.min(qa.value, maxRaise);
+            return (
+              <button
+                key={qa.label}
+                onClick={() => onRaiseChange(val)}
+                className={`flex cursor-pointer items-center justify-center rounded-lg border bg-transparent font-display font-bold text-bone transition-[transform,border-color,background-color] duration-[160ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+                  fill ? 'py-2 text-fs-200' : 'px-2.5 py-1 text-fs-200'
+                } ${
+                  raiseAmount === val ? 'border-bone bg-bone/12' : 'border-bone/[0.18]'
+                }`}
+              >
+                {qa.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div data-tour="raise-slider" className="flex w-full items-center gap-2">
+          <span className="font-body tracking-[0.04em] opacity-70 min-w-6 text-fs-100">{minRaise}</span>
+          <input
+            type="range"
+            min={minRaise}
+            max={maxRaise}
+            value={raiseAmount}
+            onChange={(e) => onRaiseChange(Number(e.target.value))}
+            className="flex-1 cursor-pointer"
+          />
+          <span className="min-w-[1.875rem] text-center font-display font-bold text-fs-300">{playerChips}</span>
+        </div>
       </div>
 
-      <div className="flex w-full max-w-60 items-center gap-2">
-        <span className="font-body tracking-[0.04em] opacity-70 min-w-6 text-fs-100">{minRaise}</span>
-        <input
-          type="range"
-          min={minRaise}
-          max={maxRaise}
-          value={raiseAmount}
-          onChange={(e) => onRaiseChange(Number(e.target.value))}
-          className="flex-1 cursor-pointer"
-        />
-        <span className="min-w-[1.875rem] text-center font-display font-bold text-fs-300">{raiseAmount}</span>
-      </div>
-
-      <Button variant="primary" size="sm" onClick={onRaise}>
+      <Button data-tour="raise-confirm" variant="primary" size="sm" block onClick={onRaise} disabled={confirmDisabled}>
         {raiseAmount >= allInAmount ? `All-in ${playerChips}` : `Subir ${raiseAmount}`}
       </Button>
     </div>
   );
 };
 
-const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = (props) => {
+const RaisePanel: React.FC<RaisePanelProps> = (props) => (
+  <motion.div
+    initial={{ opacity: 0, y: 8, scale: 0.97 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    transition={t(0.2)}
+    className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 min-w-[12.5rem] max-w-72 origin-bottom-right rounded-[14px] border border-bone/[0.18] bg-ink p-4 shadow-[0_0.25rem_1rem_rgba(0,0,0,0.25)]"
+  >
+    <RaiseControls {...props} />
+  </motion.div>
+);
+
+const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = ({ onClose, ...props }) => {
   return (
-    <div className="fixed inset-0 z-200 flex items-end justify-center bg-black/60" onClick={props.onClose}>
-      <div
-        className="flex w-full max-w-[25rem] flex-col gap-4 rounded-t-[1.25rem] border border-b-[0] border-bone/[0.18] bg-ink px-5 pb-8 pt-6"
+    <motion.div
+      className="fixed inset-0 z-200 flex items-end justify-center bg-black/60"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={t(0.2)}
+      onClick={onClose}
+    >
+      <motion.div
+        className="flex w-full max-w-[25rem] flex-col gap-4 rounded-t-[14px] border border-b-[0] border-bone/[0.18] bg-ink px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-6"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={t(0.32)}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-1 w-9 self-center rounded-sm bg-bone/20" />
-        <RaisePanel {...props} />
-      </div>
-    </div>
+        <RaiseControls {...props} fill />
+      </motion.div>
+    </motion.div>
   );
 };
 // ---------- Overlay de fin de partida ----------
@@ -404,8 +511,9 @@ const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = (props) 
 const GameOverOverlay: React.FC<{
   state: PokerState;
   onRestart: () => void;
-  onLeave: () => void;
-}> = ({ state, onRestart, onLeave }) => {
+  onSelectDifficulty: () => void;
+  onHome: () => void;
+}> = ({ state, onRestart, onSelectDifficulty, onHome }) => {
   const standings = [...state.players]
     .sort((a, b) => {
       if (a.id === state.gameWinner) return -1;
@@ -416,43 +524,65 @@ const GameOverOverlay: React.FC<{
 
   return (
     <motion.div
-      className="fixed inset-0 z-300 flex items-center justify-center bg-ink-900/85 backdrop-blur-sm"
+      className="fixed inset-0 z-300 flex items-center justify-center bg-ink-900/85"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
+      exit={{ opacity: 0, transition: t(0.2) }}
+      transition={t(0.35)}
     >
       <motion.div
-        className="flex w-[calc(100%-3rem)] max-w-[26.25rem] flex-col items-center gap-5 rounded-md border border-bone/[0.18] bg-ink px-10 py-9 text-center"
+        className="flex w-[calc(100%-3rem)] max-w-[26.25rem] flex-col items-center gap-5 rounded-[14px] border border-bone/[0.18] bg-ink px-10 py-9 text-center"
         initial={{ scale: 0.92, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.15 }}
+        exit={{ scale: 0.96, y: 12, transition: t(0.2) }}
+        transition={t(0.42, 0.1)}
       >
         <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Fin de la partida · {state.handNumber} manos</div>
         <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">
-          {humanWon ? '¡Has ganado la mesa!' : `${standings[0].name} gana la mesa`}
+          {humanWon ? 'Has ganado' : 'Has perdido'}
         </div>
 
-        <div className="flex w-full flex-col gap-2">
+        <motion.div
+          variants={container(0.08, 0.25)}
+          initial="hidden"
+          animate="visible"
+          className="flex w-full flex-col gap-2"
+        >
           {standings.map((p, i) => (
-            <div
+            <motion.div
               key={p.id}
+              variants={fadeUp}
               className={`flex w-full items-center justify-between rounded-[0.625rem] border border-bone/[0.18] px-[0.875rem] py-[0.625rem] ${
-                i === 0 ? 'border-bone bg-bone text-ink' : ''
+                p.id === 0 ? 'border-bone bg-bone text-ink' : ''
               }`}
             >
               <div className="flex items-center gap-2">
                 <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{i + 1}.º</span>
-                <span className="font-body leading-[1.45] text-fs-300">{p.name}{p.id === 0 ? ' (tú)' : ''}</span>
+                <span className={`font-body leading-[1.45] text-fs-300${p.id === 0 ? ' font-bold' : ''}`}>{p.name}</span>
               </div>
-              <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">🪙 {p.chips}</span>
-            </div>
+              <span className="inline-flex items-center gap-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase">
+                <ChipIcon className={`size-5 ${p.id === 0 ? 'text-ink' : 'text-bone'}`} /> {p.chips}
+              </span>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onLeave}>Salir</Button>
-          <Button variant="primary" glow onClick={onRestart}>Jugar otra vez</Button>
-        </div>
+        <motion.div
+          variants={container(0.06, 0.5)}
+          initial="hidden"
+          animate="visible"
+          className="flex w-full flex-col gap-2"
+        >
+          <motion.div variants={fadeUp}>
+            <Button variant="primary" block onClick={onRestart}>Nueva partida</Button>
+          </motion.div>
+          <motion.div variants={fadeUp}>
+            <Button variant="outline" block onClick={onSelectDifficulty}>Seleccionar dificultad</Button>
+          </motion.div>
+          <motion.div variants={fadeUp}>
+            <Button variant="ghost" size="sm" block onClick={onHome}>Volver a inicio</Button>
+          </motion.div>
+        </motion.div>
       </motion.div>
     </motion.div>
   );
@@ -465,22 +595,93 @@ const LocalGame: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
   const user = useUserStore(s => s.user);
+  const completeOnboarding = useUserStore(s => s.completeOnboarding);
 
   const gameRef = useRef<PokerGame | null>(null);
   const [gameState, setGameState] = useState<PokerState | null>(null);
   const [aiPlayers, setAiPlayers] = useState<AIPlayer[]>([]);
   const [raiseAmount, setRaiseAmount] = useState(20);
   const [showRaise, setShowRaise] = useState(false);
-  const [showEquity, setShowEquity] = useState(false);
+  const [expectedAction, setExpectedAction] = useState<'call' | 'check' | 'raise' | null>(null);
+  const [raiseTouched, setRaiseTouched] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(TURN_DURATION);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Segundos restantes del turno, fuera de React para evitar lecturas obsoletas. */
+  const timerSecondsRef = useRef(TURN_DURATION);
+  const [aiTurn, setAiTurn] = useState<{ playerIndex: number; duration: number } | null>(null);
+  const [tutorialRun, setTutorialRun] = useState(0);
+  const [tutorialReady, setTutorialReady] = useState(false);
+  const [coachPaused, setCoachPaused] = useState(false);
+  const [gameOverModal, setGameOverModal] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [potAward, setPotAward] = useState<PotAwardData | null>(null);
+  const [awardProgress, setAwardProgress] = useState<Record<number, number>>({});
+  const awardedHandRef = useRef<number | null>(null);
+  const gameOverTimerRef = useRef<number | null>(null);
+  const streetTimerRef = useRef<number | null>(null);
+  const gameSpeed = useSettingsStore((s) => s.gameSpeed);
+  const speed = speedFactor(gameSpeed);
+  /** Duración real (ms) del turno humano, escalada por la velocidad de juego. */
+  const turnDurationMs = TURN_DURATION * 1000 * speed;
 
-  const isLocal = !!gameId && gameId.startsWith('local-');
+  useGameSounds(gameState);
+
+  // Aplica la velocidad de juego a las animaciones (framer-motion).
+  useEffect(() => {
+    setMotionScale(speed);
+    return () => setMotionScale(1);
+  }, [speed]);
+
+  /**
+   * Sincroniza el estado de la partida con la UI. Si la ronda acaba de cerrarse
+   * (streetPending), mantiene las apuestas en la mesa durante una breve pausa
+   * antes de repartir la siguiente calle.
+   */
+  const commitState = useCallback(() => {
+    const g = gameRef.current;
+    if (!g) return;
+    const s = g.getState();
+    setGameState(s);
+    if (streetTimerRef.current) {
+      window.clearTimeout(streetTimerRef.current);
+      streetTimerRef.current = null;
+    }
+    if (s.streetPending) {
+      streetTimerRef.current = window.setTimeout(() => {
+        streetTimerRef.current = null;
+        const current = gameRef.current;
+        if (!current) return;
+        current.resolveStreet();
+        setGameState(current.getState());
+      }, STREET_DELAY * speedFactor(useSettingsStore.getState().gameSpeed));
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (streetTimerRef.current) window.clearTimeout(streetTimerRef.current);
+  }, []);
+
+  const isTutorial = gameId === 'guide';
+  const isLocal = (!!gameId && gameId.startsWith('local-')) || isTutorial;
 
   // ---- Inicialización (nueva partida o reanudar) ----
   useEffect(() => {
     if (!isLocal || !gameId) return;
+
+    if (isTutorial) {
+      const g = new PokerGame(4, 10, 20, ['Tú', 'Mia', 'Dan', 'Sam']);
+      g.setDeck(buildTutorialDeck());
+      g.setAutoDeal(false);
+      const ais = PERSONALITIES.easy.map((p, i) => createAIPlayer(i + 1, p));
+      gameRef.current = g;
+      setAiPlayers(ais);
+      g.startHand();
+      setRaiseAmount(g.getState().minRaise);
+      setGameState(g.getState());
+      return;
+    }
 
     const shouldResume = searchParams.get('continue') === '1';
     const saved = shouldResume ? loadSavedGame() : null;
@@ -488,10 +689,12 @@ const LocalGame: React.FC = () => {
     if (saved && saved.gameId === gameId) {
       try {
         const g = PokerGame.deserialize(saved.state);
+        g.setAutoDeal(false);
         const personalities = PERSONALITIES[saved.difficulty] ?? PERSONALITIES[getDifficulty(gameId)];
         const ais = personalities.map((p, i) => createAIPlayer(i + 1, p));
         gameRef.current = g;
         setAiPlayers(ais);
+        if (g.getState().streetPending) g.resolveStreet();
         const resumed = g.getState();
         setRaiseAmount(resumed.minRaise);
         setGameState(resumed);
@@ -505,6 +708,7 @@ const LocalGame: React.FC = () => {
     const personalities = PERSONALITIES[diff];
     const names = [user.username, ...personalities.map(p => p.name)];
     const g = new PokerGame(4, 10, 20, names);
+    g.setAutoDeal(false);
     const ais = personalities.map((p, i) => createAIPlayer(i + 1, p));
 
     gameRef.current = g;
@@ -520,7 +724,7 @@ const LocalGame: React.FC = () => {
 
   // ---- Persistir la partida en curso ----
   useEffect(() => {
-    if (!isLocal || !gameId || !gameState || !gameRef.current) return;
+    if (isTutorial || !isLocal || !gameId || !gameState || !gameRef.current) return;
     if (gameState.gameOver) {
       clearSavedGame();
       return;
@@ -530,7 +734,25 @@ const LocalGame: React.FC = () => {
       difficulty: getDifficulty(gameId),
       state: gameRef.current.serialize(),
     });
-  }, [gameState, isLocal, gameId]);
+  }, [gameState, isLocal, gameId, isTutorial]);
+
+  // ---- Animación de reparto del bote ----
+  // Al terminar la mano, lanza las fichas del bote hacia cada ganador. Solo una
+  // vez por mano (los ganadores pueden ser varios por side pots o botes divididos).
+  useEffect(() => {
+    if (!gameState) return;
+    const { handOver, winner, handNumber, pot, bigBlind, winAmounts } = gameState;
+    if (!handOver || !winner || winner.length === 0 || pot <= 0) return;
+    if (awardedHandRef.current === handNumber) return;
+    awardedHandRef.current = handNumber;
+    setAwardProgress({});
+    setPotAward({
+      handNumber,
+      pot,
+      unit: bigBlind,
+      winners: winner.map(id => ({ id, amount: winAmounts[id] ?? 0 })),
+    });
+  }, [gameState]);
 
   // Mantén la cantidad de subida dentro de [minRaise, maxRaise]
   useEffect(() => {
@@ -556,57 +778,84 @@ const LocalGame: React.FC = () => {
 
   const startTimer = useCallback(() => {
     stopTimer();
-    setTimerSeconds(TURN_DURATION);
+    const totalMs = turnDurationMs;
+    const startedAt = Date.now();
+    const totalSeconds = Math.ceil(totalMs / 1000);
+    timerSecondsRef.current = totalSeconds;
+    setTimerSeconds(totalSeconds);
     timerRef.current = setInterval(() => {
-      setTimerSeconds((prev) => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
+      const remainingMs = Math.max(0, totalMs - (Date.now() - startedAt));
+      const seconds = Math.ceil(remainingMs / 1000);
+      timerSecondsRef.current = seconds;
+      setTimerSeconds(seconds);
+      if (remainingMs > 0) return;
+
+      // Al agotarse el tiempo, se resuelve el turno del humano aquí mismo. Así
+      // no depende de un render posterior (que podía leer un 0 obsoleto y
+      // retirar al jugador nada más empezar su turno).
+      stopTimer();
+      const g = gameRef.current;
+      if (!g) return;
+      const s = g.getState();
+      if (s.currentPlayer !== 0 || s.handOver || s.streetPending) return;
+      if (g.canCheck(0)) g.check(0);
+      else g.fold(0);
+      commitState();
+      setShowRaise(false);
+    }, 100);
+  }, [stopTimer, commitState, turnDurationMs]);
 
   const currentPlayerIdx = gameState?.currentPlayer;
   const isHandOver = gameState?.handOver;
+  const currentPhase = gameState?.phase;
+  const isStreetPending = gameState?.streetPending;
   useEffect(() => {
-    if (currentPlayerIdx === undefined || isHandOver === undefined) return;
-    if (currentPlayerIdx === 0 && !isHandOver) {
+    if (isTutorial || currentPlayerIdx === undefined || isHandOver === undefined) return;
+    if (settingsOpen) {
+      stopTimer();
+      return;
+    }
+    if (currentPlayerIdx === 0 && !isHandOver && !isStreetPending) {
       startTimer();
     } else {
       stopTimer();
     }
     return stopTimer;
-  }, [currentPlayerIdx, isHandOver, startTimer, stopTimer]);
+  }, [currentPlayerIdx, isHandOver, currentPhase, isStreetPending, startTimer, stopTimer, isTutorial, settingsOpen]);
 
-  // Auto check/fold al agotarse el tiempo
+  // Tic tac en los últimos segundos del turno y aviso al agotarse.
+  const lastTimerCue = useRef(-1);
   useEffect(() => {
-    if (timerSeconds > 0 || !gameState) return;
-    if (gameState.currentPlayer !== 0 || gameState.handOver) return;
-
-    const g = gameRef.current;
-    if (!g) return;
-
-    if (g.canCheck(0)) g.check(0);
-    else g.fold(0);
-    setGameState(g.getState());
-    setShowRaise(false);
-  }, [timerSeconds, gameState]);
+    if (isTutorial || settingsOpen) return;
+    if (timerSeconds === lastTimerCue.current) return;
+    lastTimerCue.current = timerSeconds;
+    if (timerSeconds === 0) playSfx('time_expire');
+    else if (timerSeconds <= 5) playSfx('timer_tick');
+  }, [timerSeconds, isTutorial, settingsOpen]);
 
   // ---- Turnos de la IA ----
   useEffect(() => {
     const g = gameRef.current;
-    if (!g || !gameState) return;
+    if (!g || !gameState || isTutorial) return;
+    if (settingsOpen) {
+      setAiTurn(null);
+      return;
+    }
 
     const current = gameState.currentPlayer;
-    if (current === 0 || gameState.handOver) return;
+    if (current === 0 || gameState.handOver || gameState.streetPending) {
+      setAiTurn(null);
+      return;
+    }
 
     const ai = aiPlayers.find(a => a.playerIndex === current);
     if (!ai) return;
 
+    const delay = getActionDelay(ai.personality) * speed;
+    setAiTurn({ playerIndex: current, duration: delay });
+
     let cancelled = false;
-    getAIAction(ai, gameState).then((action) => {
+    getAIAction(ai, gameState, delay).then((action) => {
       if (cancelled || !gameRef.current) return;
       const currentState = gameRef.current.getState();
       if (currentState.currentPlayer !== current || currentState.handOver) return;
@@ -616,22 +865,95 @@ const LocalGame: React.FC = () => {
       else if (action.type === 'call') gameRef.current.call(current);
       else if (action.type === 'raise') gameRef.current.raise(current, action.amount || currentState.minRaise);
 
-      setGameState(gameRef.current.getState());
+      commitState();
     });
 
     return () => { cancelled = true; };
-  }, [gameState, aiPlayers]);
+  }, [gameState, aiPlayers, isTutorial, commitState, settingsOpen, speed]);
+
+  // ---- Turnos de la IA en la mano guiada: siempre pasa o iguala ----
+  useEffect(() => {
+    const g = gameRef.current;
+    if (!g || !gameState || !isTutorial || !tutorialReady || coachPaused || settingsOpen) return;
+
+    const current = gameState.currentPlayer;
+    if (current === 0 || gameState.handOver || gameState.streetPending) {
+      setAiTurn(null);
+      return;
+    }
+
+    const ai = aiPlayers.find(a => a.playerIndex === current);
+    const delay = (ai ? getActionDelay(ai.personality) : 800) * speed;
+    setAiTurn({ playerIndex: current, duration: delay });
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled || !gameRef.current) return;
+      const currentState = gameRef.current.getState();
+      if (currentState.currentPlayer !== current || currentState.handOver) return;
+      const action = tutorialAIAction(currentState, current);
+      if (action.type === 'check') gameRef.current.check(current);
+      else gameRef.current.call(current);
+      commitState();
+    }, delay);
+
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [gameState, isTutorial, tutorialReady, coachPaused, aiPlayers, commitState, settingsOpen, speed]);
 
   const updateState = () => {
-    const g = gameRef.current;
-    if (!g) return;
-    setGameState(g.getState());
+    if (!gameRef.current) return;
     setShowRaise(false);
+    commitState();
   };
+
+  // Fin de partida: deja ver el showdown (mano ganadora y fichas) antes de
+  // abrir el overlay. Si aún queda partida, ocúltalo de inmediato.
+  const gameOverForHuman = Boolean(
+    gameState &&
+    (gameState.gameOver ||
+      (gameState.handOver && (gameState.players[0].chips <= 0 || gameState.players[0].eliminated)))
+  );
+
+  useEffect(() => {
+    if (!gameOverForHuman || settingsOpen) {
+      setGameOverModal(false);
+      if (gameOverTimerRef.current) {
+        window.clearTimeout(gameOverTimerRef.current);
+        gameOverTimerRef.current = null;
+      }
+      return;
+    }
+    if (gameOverTimerRef.current) return;
+    gameOverTimerRef.current = window.setTimeout(() => {
+      gameOverTimerRef.current = null;
+      setGameOverModal(true);
+    }, GAME_OVER_DELAY * speed);
+    return () => {
+      if (gameOverTimerRef.current) {
+        window.clearTimeout(gameOverTimerRef.current);
+        gameOverTimerRef.current = null;
+      }
+    };
+  }, [gameOverForHuman, settingsOpen, speed]);
+
+  // Al reanudar la partida, reactiva la pausa de calle que quedó pendiente.
+  useEffect(() => {
+    if (settingsOpen) {
+      if (streetTimerRef.current) {
+        window.clearTimeout(streetTimerRef.current);
+        streetTimerRef.current = null;
+      }
+      return;
+    }
+    if (gameState?.streetPending && !streetTimerRef.current) {
+      commitState();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsOpen, gameState?.streetPending, commitState]);
 
   const handleAction = (action: 'fold' | 'check' | 'call' | 'raise') => {
     const g = gameRef.current;
-    if (!g || !gameState || gameState.currentPlayer !== 0) return;
+    if (!g || !gameState || gameState.currentPlayer !== 0 || gameState.streetPending) return;
 
     if (action === 'fold') g.fold(0);
     else if (action === 'check') g.check(0);
@@ -641,9 +963,21 @@ const LocalGame: React.FC = () => {
     updateState();
   };
 
+  const handleRaiseChange = (value: number) => {
+    setRaiseAmount(value);
+    setRaiseTouched(true);
+  };
+
+  // Reinicia la marca interactiva cada vez que se abre o cierra el panel de subida.
+  useEffect(() => {
+    setRaiseTouched(false);
+  }, [showRaise]);
+
   const startNewHand = () => {
     const g = gameRef.current;
     if (!g) return;
+    setPotAward(null);
+    setAwardProgress({});
     g.startHand();
     updateState();
   };
@@ -651,27 +985,65 @@ const LocalGame: React.FC = () => {
   const restartGame = () => {
     const g = gameRef.current;
     if (!g) return;
+    setPotAward(null);
+    setAwardProgress({});
     g.reset();
     g.startHand();
     updateState();
   };
 
-  // ---- Equity del jugador humano (opcional) ----
-  const humanEquity = useMemo(() => {
-    if (!showEquity || !gameState || gameState.handOver) return null;
-    const human = gameState.players[0];
-    if (human.cards.length < 2 || human.folded) return null;
-    const opponents = gameState.players.filter((p, i) => i !== 0 && !p.folded && !p.eliminated).length;
-    if (opponents === 0) return null;
-    const sims = gameState.community.length >= 4 ? 300 : 400;
-    return calculateEquity(human.cards, gameState.community, Math.max(1, opponents), sims);
-  }, [showEquity, gameState]);
+  const handlePotAwardLanded = useCallback((winnerId: number, value: number) => {
+    setAwardProgress(prev => ({ ...prev, [winnerId]: (prev[winnerId] ?? 0) + value }));
+    playSfx('chips_stack');
+  }, []);
+
+  const finishPotAward = useCallback(() => {
+    setAwardProgress(prev => {
+      const next = { ...prev };
+      for (const w of potAward?.winners ?? []) next[w.id] = w.amount;
+      return next;
+    });
+    setPotAward(null);
+  }, [potAward]);
+
+  const finishTutorial = () => {
+    completeOnboarding();
+    navigate('/local');
+  };
+
+  const restartTutorial = () => {
+    restartGame();
+    setTutorialReady(false);
+    setTutorialRun(n => n + 1);
+  };
+
+  const openSettings = () => setSettingsOpen(true);
+
+  const leaveGame = () => {
+    if (window.confirm('¿Seguro que quieres salir de la partida? Se perderá el progreso.')) {
+      clearSavedGame();
+      navigate('/');
+    }
+  };
+
+  const settingsOverlay = (
+    <AnimatePresence>
+      {settingsOpen && (
+        <GameSettings
+          onClose={() => setSettingsOpen(false)}
+          onTutorial={() => navigate('/game/guide')}
+          onHandsGuide={() => navigate('/hands', { state: { from: gameId } })}
+          onLeave={leaveGame}
+        />
+      )}
+    </AnimatePresence>
+  );
 
   // ---- Guards de render ----
 
   if (!isLocal) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Juego no disponible</div>
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">
@@ -687,7 +1059,7 @@ const LocalGame: React.FC = () => {
 
   if (!gameState) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex flex-1 flex-col items-center justify-center">
           <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Cargando partida...</div>
         </div>
@@ -702,8 +1074,14 @@ const LocalGame: React.FC = () => {
   const winner = state.winner;
   const showdown = state.showdown;
   const handOver = state.handOver;
+  const streetPending = state.streetPending;
   const human = state.players[0];
+  // En showdown se muestran todos los rivales (también los retirados).
   const rivals = state.players.slice(1);
+
+  const difficulty = getDifficulty(gameId ?? '');
+  const avatarTone = DIFFICULTY_AVATAR_TONE[difficulty];
+  const avatarRing = DIFFICULTY_AVATAR_RING[difficulty];
 
   const maxBet = Math.max(0, ...state.players.map(p => p.bet));
   const canCheck = human.bet >= maxBet;
@@ -724,34 +1102,31 @@ const LocalGame: React.FC = () => {
     return null;
   };
 
+  const humanRole = blindRoleFor(0);
+
   const humanHandName = (() => {
     if (human.cards.length < 2) return '';
     if (state.community.length >= 3) return evaluateHand(human.cards, state.community).name;
-    // Preflop: describir las cartas
+    // Preflop: solo "Pareja" si la hay; el resto es Carta Alta.
     const [a, b] = human.cards;
-    if (a.rank === b.rank) return `Pareja de ${a.rank}`;
-    return a.suit === b.suit ? `${a.rank} ${b.rank} del mismo palo` : '';
+    if (a.rank === b.rank) return 'Pareja';
+    return a.rank === b.rank  ? `Pareja` : 'Carta Alta';
   })();
 
   const winningHandName = winner && winner.length > 0 && state.players[winner[0]].cards.length >= 2 && state.community.length >= 3
     ? evaluateHand(state.players[winner[0]].cards, state.community).name
     : '';
 
-  const winnerData = (() => {
-    if (!winner || winner.length === 0) return null;
-    const names = winner.map(w => state.players[w].name).join(' y ');
-    const totalWon = winner.reduce((acc, w) => acc + (state.winAmounts[w] || 0), 0);
-    const handName = winner.includes(0) ? humanHandName : winningHandName;
-    const handSuffix = handName ? ` con ${handName}` : '';
-    if (winner.includes(0)) {
-      return winner.length > 1
-        ? { label: `Empate — ganaste ${state.winAmounts[0] ?? 0}${handSuffix}` }
-        : { label: `Ganaste ${totalWon}${handSuffix}` };
-    }
-    return winner.length > 1
-      ? { label: `${names} ganaron ${totalWon}${handSuffix}` }
-      : { label: `${names} ganó ${totalWon}${handSuffix}` };
-  })();
+  const handNameFor = (cards: { rank: CardRank; suit: Suit }[]): string =>
+    cards.length >= 2 && state.community.length >= 3 ? evaluateHand(cards, state.community).name : '';
+
+  const winnerLog = handOver && winner && winner.length > 0
+    ? {
+        name: winner.map(w => state.players[w].name).join(' e '),
+        hand: winner.includes(0) ? humanHandName : winningHandName,
+        isHuman: winner.includes(0),
+      }
+    : null;
 
   const winningCards = (() => {
     if (!winner || winner.length === 0 || state.phase !== 'showdown' || state.community.length < 3) return new Set<string>();
@@ -763,115 +1138,148 @@ const LocalGame: React.FC = () => {
   const isDimmed = (card: { rank: string; suit: string }): boolean =>
     winningCards.size > 0 && !winningCards.has(`${card.rank}${card.suit}`);
 
-  const WinnerMessage: React.FC = () => {
-    if (!winnerData) return null;
-    return (
-      <motion.div
-        className="flex flex-wrap items-center justify-center gap-2"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <span className="font-display font-bold leading-none text-fs-400 text-bone">
-          <strong>{winnerData.label}</strong>
-        </span>
-      </motion.div>
-    );
+  const humanIsWinner = winner !== null && winner.includes(0);
+  const humanAllIn = human.isAllIn && !handOver;
+  // El bote ya repartido se desvanece del centro mientras vuela a los ganadores.
+  const potAwarded = handOver && winner !== null && winner.length > 0;
+  // Fichas del ganador que aún no han aterrizado: se restan del total para que
+  // el contador crezca en tiempo real conforme llegan las fichas.
+  const awardRemainingFor = (id: number): number => {
+    if (!potAwarded) return 0;
+    const target = state.winAmounts[id] ?? 0;
+    return Math.max(0, target - (awardProgress[id] ?? 0));
   };
+  const displayedChips = (id: number, total: number): number => total - awardRemainingFor(id);
+  const humanNet = state.winAmounts[0] - state.committed[0];
+  // Retirado o perdedor: sus cartas se oscurecen igual que las de los rivales.
+  const humanCardsDimmed = human.folded || (handOver && !humanIsWinner);
 
   const humanInfo = (
-    <div className={`flex flex-col items-center gap-1 ${isMobile ? '' : 'min-w-[140px]'}`}>
-      <div className="flex items-center gap-1">
-        {blindRoleFor(0) && <BlindDot role={blindRoleFor(0)!} />}
-        <span className={isMobile ? 'font-display font-bold text-fs-100 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{human.name}</span>
+    <div
+      data-tour="human-seat"
+      className={[
+        'flex flex-col items-start gap-1 rounded-slot border px-4 py-3',
+        'transition-[border-color,background-color,color,opacity] duration-300 ease-brand',
+        isMobile ? 'justify-center' : 'min-w-[140px]',
+        humanIsWinner
+          ? 'border-bone bg-bone text-ink'
+          : human.folded
+            ? 'border-bone/[0.18] opacity-[0.32]'
+            : 'border-bone/[0.18]',
+      ].join(' ')}
+    >
+      <div className="flex items-center gap-1.5">
+        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{human.name}</span>
+        {humanRole && (
+          <span className="shrink-0" data-tour={humanRole === 'dealer' ? 'dealer' : undefined}>
+            <PositionChip role={humanRole} filled={humanIsWinner} />
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-0.5">
-        <span className="text-fs-200 opacity-50 max-md:text-fs-100">🪙</span>
-        <span className={`font-display font-bold text-fs-300 max-md:text-fs-100 ${human.chips < 100 ? 'text-danger' : ''}`}>{human.chips}</span>
-        <AnimatePresence>
-          {!handOver && human.bet > 0 && (
-            <motion.span
-              key={`spent-${human.bet}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="ml-1 font-display font-bold text-fs-200 text-danger opacity-90"
-            >
-              −{human.bet}
-            </motion.span>
-          )}
-          {handOver && state.winAmounts[0] > 0 && (
-            <motion.span
-              key={`hwin-${state.handNumber}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="ml-1 font-display font-bold text-fs-200 text-success"
-            >
-              +{state.winAmounts[0]}
-            </motion.span>
-          )}
-        </AnimatePresence>
+        <span data-chips className="inline-flex">
+          <ChipIcon className={`size-5 ${humanIsWinner ? 'text-ink' : 'text-bone'}`} />
+        </span>
+        {humanAllIn ? (
+          <span className={`font-display font-bold text-fs-300 ${humanIsWinner ? 'text-danger-bone' : 'text-danger'}`}>ALL-IN</span>
+        ) : (
+          <span className={`font-display font-bold tabular-nums text-fs-300 ${human.chips < 100 && !humanIsWinner ? 'text-danger' : ''}`}>{displayedChips(0, human.chips)}</span>
+        )}
+        <DeltaLine amount={humanAllIn ? 0 : handOver ? (humanIsWinner ? humanNet : 0) : -human.bet} filled={humanIsWinner} className="ml-1" />
       </div>
-      {human.isAllIn && <Badge variant="warning">ALL-IN</Badge>}
     </div>
   );
 
   const humanCards = (
-    <div className="flex flex-col items-center gap-1">
-      {humanHandName && !handOver && (
-        <Badge variant="neutral">{humanHandName}</Badge>
-      )}
-      <div className="flex gap-2">
-        {human.cards.length > 0 ? (
-          human.cards.map((c, i) => (
-            <PokerCard key={i} size="lg" rank={c.rank} suit={c.suit} dimmed={isDimmed({ rank: c.rank, suit: c.suit })} />
-          ))
-        ) : (
-          <>
-            <PokerCard size="lg" back />
-            <PokerCard size="lg" back />
-          </>
-        )}
-      </div>
-      {showEquity && humanEquity && (
-        <div className="flex flex-col gap-1 rounded-[0.625rem] border border-bone/[0.18] bg-bone/[0.04] px-3 py-2">
-          <div className="flex items-center gap-1.5">
-            <span className="font-display font-bold text-fs-100 text-bone opacity-80">{humanEquity.winPct}%</span>
-            <div className="h-1 flex-1 overflow-hidden rounded-sm bg-bone/10">
-              <div className="h-full rounded-sm bg-bone transition-[width] duration-300 ease-brand" style={{ width: `${humanEquity.winPct}%` }} />
-            </div>
-          </div>
-          <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">prob. de ganar{humanEquity.tiePct > 0 ? ` · empate ${humanEquity.tiePct}%` : ''}</span>
+    <div data-tour="human-cards" className="flex flex-col items-center gap-1">
+      <HandLabel name={humanHandName} winner={humanIsWinner} />
+      {human.cards.length > 0 && (
+        <div className="flex gap-2">
+          {human.cards.map((c, i) => (
+            <motion.div
+              key={`${state.handNumber}-${i}`}
+              initial={{ opacity: 0, y: -28, rotate: -7 }}
+              animate={{ opacity: 1, y: 0, rotate: 0 }}
+              transition={t(0.42, 0.08 * i)}
+            >
+              <PokerCard
+                size={isMobile ? 'md' : 'lg'}
+                rank={c.rank}
+                suit={c.suit}
+                dimmed={humanCardsDimmed || isDimmed({ rank: c.rank, suit: c.suit })}
+              />
+            </motion.div>
+          ))}
         </div>
       )}
     </div>
   );
 
-  const actionButtons = handOver ? (
-    <div className="flex flex-col items-center gap-2">
-      <WinnerMessage />
-      {!state.gameOver && (
-        <Button variant="primary" size="sm" onClick={startNewHand}>
-          Nueva Mano
+  const renderActionButtons = (size: ButtonSize, { fill = false, stack = false }: { fill?: boolean; stack?: boolean } = {}) => {
+    if (handOver) {
+      return (
+        <div className={`flex flex-col items-center gap-2 ${fill ? 'w-full' : ''}`}>
+          {!state.gameOver && (
+            <Button variant="primary" size={size} block={fill} className={fill ? 'min-h-11' : ''} onClick={startNewHand}>
+              Nueva Mano
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    const raiseButton = (
+      <div className="relative">
+        <Button
+          data-tour="btn-raise"
+          variant="primary"
+          size={size}
+          block={fill}
+          className={fill ? 'flex-1 min-h-11' : ''}
+          onClick={() => setShowRaise(!showRaise)}
+          disabled={activePlayer !== 0 || streetPending || !canRaise || (isTutorial && expectedAction !== 'raise')}
+        >
+          Subir
         </Button>
-      )}
-    </div>
-  ) : (
-    <div className="flex justify-center gap-2">
+        {!fill && showRaise && activePlayer === 0 && (
+          <RaisePanel
+            raiseAmount={raiseAmount}
+            onRaiseChange={handleRaiseChange}
+            onRaise={() => handleAction('raise')}
+            minRaise={state.minRaise}
+            maxRaise={Math.max(state.minRaise, maxRaise)}
+            potSize={pot}
+            playerChips={human.chips}
+            callAmount={callAmount}
+            confirmDisabled={isTutorial && !raiseTouched}
+          />
+        )}
+      </div>
+    );
+
+    const passButton = (
       <Button
+        data-tour="btn-pass"
         variant="outline"
-        size="sm"
+        size={size}
+        block={fill}
+        className={fill ? 'flex-1 min-h-11' : ''}
         onClick={() => handleAction(canCheck ? 'check' : 'fold')}
-        disabled={activePlayer !== 0}
+        disabled={activePlayer !== 0 || streetPending || (isTutorial && (expectedAction !== 'check' || !canCheck))}
       >
         {canCheck ? 'Pasar' : 'Retirarse'}
       </Button>
+    );
+
+    const callButton = (
       <Button
+        data-tour="btn-call"
         variant="outline"
-        size="sm"
+        size={size}
+        block={fill}
+        className={fill ? 'flex-1 min-h-11' : ''}
         onClick={() => handleAction('call')}
-        disabled={activePlayer !== 0 || callAmount === 0}
+        disabled={activePlayer !== 0 || streetPending || callAmount === 0 || (isTutorial && expectedAction !== 'call')}
       >
         {callAmount > 0
           ? callAmount >= human.chips
@@ -879,61 +1287,85 @@ const LocalGame: React.FC = () => {
             : `Igualar ${callAmount}`
           : 'Igualar'}
       </Button>
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={() => setShowRaise(!showRaise)}
-        disabled={activePlayer !== 0 || !canRaise}
-      >
-        Subir
-      </Button>
-    </div>
-  );
+    );
 
-  const equityToggle = (
-    <button
-      className={`fixed right-[3.875rem] top-4 z-100 flex size-9 cursor-pointer items-center justify-center rounded-full border font-display font-bold text-fs-200 text-bone transition-[transform,background-color,border-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-        showEquity ? 'border-bone bg-bone/16' : 'border-bone/[0.18] bg-bone/[0.06]'
-      }`}
-      onClick={() => setShowEquity(v => !v)}
-      title="Mostrar probabilidad de ganar"
-      aria-label="Mostrar probabilidad de ganar"
-      aria-pressed={showEquity}
-    >
-      %
-    </button>
-  );
+    // Móvil: los tres botones en fila.
+    if (fill) {
+      return (
+        <div className="flex w-full gap-2">
+          {passButton}
+          {callButton}
+          {raiseButton}
+        </div>
+      );
+    }
+
+    // Tablet: el botón de subir va arriba, con pasar e igualar debajo.
+    if (stack) {
+      return (
+        <div className="flex w-full flex-col items-end gap-2">
+          {raiseButton}
+          <div className="flex gap-2">
+            {passButton}
+            {callButton}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap justify-end gap-2">
+        {passButton}
+        {callButton}
+        {raiseButton}
+      </div>
+    );
+  };
 
   // ---------- MÓVIL ----------
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
-        <FloatingMenu onLeave={() => navigate('/')} />
-        {equityToggle}
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex shrink-0 items-start justify-between gap-3 px-[0.875rem] pb-1 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <div className="pointer-events-none min-w-0 flex-1">
+            <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+          </div>
+          <SettingsButton onClick={openSettings} inline />
+        </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[0.875rem] py-3">
-          <div className="flex flex-wrap justify-center gap-2">
-            {rivals.map((r) => (
-              <RivalSlot
-                key={r.id}
-                compact
-                name={r.name}
-                cards={r.cards.length > 0 ? r.cards : undefined}
-                folded={r.folded}
-                eliminated={r.eliminated}
-                isActive={activePlayer === r.id}
-                isWinner={winner !== null && winner.includes(r.id)}
-                lastAction={r.lastAction !== '—' ? r.lastAction : undefined}
-                showdown={showdown}
-                chips={r.chips}
-                bet={r.bet}
-                isAllIn={r.isAllIn}
-                handOver={handOver}
-                winAmount={handOver ? state.winAmounts[r.id] : 0}
-                blindRole={blindRoleFor(r.id)}
-                isDimmed={isDimmed}
-              />
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[0.875rem] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2">
+          <div data-tour="rivals" className="flex flex-wrap justify-center gap-2">
+            {rivals.map((r, i) => (
+              <div key={r.id} className="flex flex-col items-center gap-1.5">
+                <RivalSlot
+                  compact
+                  enterDelay={i * 0.08}
+                  name={r.name}
+                  folded={r.folded}
+                  eliminated={r.eliminated}
+                  isActive={activePlayer === r.id}
+                  isWinner={winner !== null && winner.includes(r.id)}
+                  chips={displayedChips(r.id, r.chips)}
+                  blindRole={blindRoleFor(r.id)} dataTour={`rival-${r.id}`}
+                  delta={handOver ? (winner !== null && winner.includes(r.id) ? state.winAmounts[r.id] - state.committed[r.id] : 0) : -r.bet}
+                  isAllIn={r.isAllIn}
+                  handOver={handOver}
+                  avatarTone={avatarTone.tone}
+                  avatarImgClassName={avatarTone.imgClassName}
+                  avatarRing={avatarRing}
+                  timerDuration={aiTurn?.playerIndex === r.id ? aiTurn.duration : undefined}
+                  timerKey={`${state.handNumber}-${phase}-${r.id}`}
+                />
+                <div className="flex min-h-[5.5rem] flex-col items-center gap-1.5">
+                  {showdown && !r.folded && r.cards.length > 0 && (
+                    <>
+                      <ShowdownCards cards={r.cards} size="sm" isDimmed={isDimmed} />
+                      <HandLabel name={handNameFor(r.cards)} winner={winner !== null && winner.includes(r.id)} />
+                    </>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
 
@@ -942,46 +1374,72 @@ const LocalGame: React.FC = () => {
               phase={phase}
               community={state.community}
               pot={pot}
-              handNumber={state.handNumber}
+              potAwarded={potAwarded}
               cardSize="md"
               isDimmed={isDimmed}
             />
-            <ActionLog state={state} />
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            {humanCards}
-            {humanInfo}
+            <div className="flex w-full items-center justify-between gap-3">
+              <div className="flex items-center justify-start self-end">{humanInfo}</div>
+              <div className="flex justify-end">{humanCards}</div>
+            </div>
 
-            {activePlayer === 0 && !handOver && (
-              <div className="w-4/5">
-                <TimerBar seconds={timerSeconds} max={TURN_DURATION} />
-              </div>
-            )}
+            <div data-tour="actions" className="w-full">
+              {renderActionButtons('sm', { fill: true })}
+            </div>
 
-            {actionButtons}
+            <div className="h-[3px] w-full">
+              {!isTutorial && activePlayer === 0 && !handOver && !streetPending && (
+                <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}-${settingsOpen}`} duration={turnDurationMs} className="w-full" paused={settingsOpen} />
+              )}
+            </div>
           </div>
         </div>
 
-        {showRaise && activePlayer === 0 && !handOver && (
-          <RaiseSheet
-            raiseAmount={raiseAmount}
-            onRaiseChange={setRaiseAmount}
-            onRaise={() => handleAction('raise')}
-            onClose={() => setShowRaise(false)}
-            minRaise={state.minRaise}
-            maxRaise={Math.max(state.minRaise, maxRaise)}
-            potSize={pot}
-            playerChips={human.chips}
-            callAmount={callAmount}
-          />
-        )}
-
         <AnimatePresence>
-          {state.gameOver && (
-            <GameOverOverlay state={state} onRestart={restartGame} onLeave={() => navigate('/')} />
+          {showRaise && activePlayer === 0 && !handOver && (
+            <RaiseSheet
+              raiseAmount={raiseAmount}
+              onRaiseChange={handleRaiseChange}
+              onRaise={() => handleAction('raise')}
+              onClose={() => setShowRaise(false)}
+              minRaise={state.minRaise}
+              maxRaise={Math.max(state.minRaise, maxRaise)}
+              potSize={pot}
+              playerChips={human.chips}
+              callAmount={callAmount}
+              confirmDisabled={isTutorial && !raiseTouched}
+            />
           )}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {gameOverModal && (
+            <GameOverOverlay
+              state={state}
+              onRestart={restartGame}
+              onSelectDifficulty={() => navigate('/local')}
+              onHome={() => navigate('/')}
+            />
+          )}
+        </AnimatePresence>
+
+        {potAward && (
+          <PotAward key={potAward.handNumber} data={potAward} onLanded={handlePotAwardLanded} onDone={finishPotAward} />
+        )}
+
+        {settingsOverlay}
+
+        {isTutorial && (
+          <TutorialCoach
+            key={tutorialRun}
+            state={state}
+            onFinish={finishTutorial}
+            onRestart={restartTutorial} onResume={() => setTutorialReady(true)} onRaisePanel={(open) => setShowRaise(open)} onExpectedAction={setExpectedAction} raiseOpen={showRaise} onPause={setCoachPaused}
+          />
+        )}
       </div>
     );
   }
@@ -989,112 +1447,110 @@ const LocalGame: React.FC = () => {
   // ---------- DESKTOP ----------
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
-      <FloatingMenu onLeave={() => navigate('/')} />
-      {equityToggle}
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="pointer-events-none fixed left-12 top-[max(1.25rem,env(safe-area-inset-top))] z-40 hidden max-w-[16rem] xl:block">
+        <ActionLog state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+      </div>
 
-      <div className="flex flex-1 flex-col px-12 pb-6 pt-4">
-        <div className="flex justify-center gap-4">
-          {rivals.map((r) => (
-            <RivalSlot
-              key={r.id}
-              name={r.name}
-              cards={r.cards.length > 0 ? r.cards : undefined}
-              folded={r.folded}
-              eliminated={r.eliminated}
-              isActive={activePlayer === r.id}
-              isWinner={winner !== null && winner.includes(r.id)}
-              lastAction={r.lastAction !== '—' ? r.lastAction : undefined}
-              showdown={showdown}
-              chips={r.chips}
-              bet={r.bet}
-              isAllIn={r.isAllIn}
-              handOver={handOver}
-              winAmount={handOver ? state.winAmounts[r.id] : 0}
-              blindRole={blindRoleFor(r.id)}
-              isDimmed={isDimmed}
-            />
+      <div className="hidden xl:block">
+        <SettingsButton onClick={openSettings} />
+      </div>
+
+      <div className="flex flex-1 flex-col px-6 pb-6 pt-4 lg:px-12">
+        <div className="flex shrink-0 items-start justify-between gap-3 xl:hidden">
+          <div className="pointer-events-none min-w-0 flex-1">
+            <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+          </div>
+          <SettingsButton onClick={openSettings} inline />
+        </div>
+
+        <div data-tour="rivals" className="mt-3 flex justify-center gap-3 lg:mt-4 lg:gap-4">
+          {rivals.map((r, i) => (
+            <div key={r.id} className="flex flex-col items-center gap-2">
+              <RivalSlot
+                enterDelay={i * 0.08}
+                name={r.name}
+                folded={r.folded}
+                eliminated={r.eliminated}
+                isActive={activePlayer === r.id}
+                isWinner={winner !== null && winner.includes(r.id)}
+                chips={displayedChips(r.id, r.chips)}
+                blindRole={blindRoleFor(r.id)} dataTour={`rival-${r.id}`}
+                delta={handOver ? (winner !== null && winner.includes(r.id) ? state.winAmounts[r.id] - state.committed[r.id] : 0) : -r.bet}
+                isAllIn={r.isAllIn}
+                handOver={handOver}
+                avatarTone={avatarTone.tone}
+                avatarImgClassName={avatarTone.imgClassName}
+                avatarRing={avatarRing}
+                timerDuration={aiTurn?.playerIndex === r.id ? aiTurn.duration : undefined}
+                timerKey={`${state.handNumber}-${phase}-${r.id}`}
+              />
+              <div className="flex min-h-[7.1875rem] flex-col items-center gap-2">
+                {showdown && !r.folded && r.cards.length > 0 && (
+                  <>
+                    <ShowdownCards cards={r.cards} size="md" isDimmed={isDimmed} />
+                    <HandLabel name={handNameFor(r.cards)} winner={winner !== null && winner.includes(r.id)} />
+                  </>
+                )}
+              </div>
+            </div>
           ))}
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-6">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-4 lg:py-6">
           <CommunityRow
             phase={phase}
             community={state.community}
             pot={pot}
-            handNumber={state.handNumber}
+            potAwarded={potAwarded}
             isDimmed={isDimmed}
           />
-          <ActionLog state={state} />
         </div>
 
-        <div className="relative flex items-end justify-between pb-5">
-          {activePlayer === 0 && !handOver && <TimerBar seconds={timerSeconds} max={TURN_DURATION} />}
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-4">
+            <div className="justify-self-start">{humanInfo}</div>
 
-          {humanInfo}
+            <div className="flex flex-col items-center gap-1">{humanCards}</div>
 
-          <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
-            {humanCards}
+            <div data-tour="actions" className="flex flex-col items-end gap-2 justify-self-end">
+              {renderActionButtons('sm', { stack: !handOver && isTablet })}
+            </div>
           </div>
 
-          <div className="flex min-w-[200px] flex-col items-center gap-2">
-            {handOver ? (
-              actionButtons
-            ) : (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAction(canCheck ? 'check' : 'fold')}
-                  disabled={activePlayer !== 0}
-                >
-                  {canCheck ? 'Pasar' : 'Retirarse'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAction('call')}
-                  disabled={activePlayer !== 0 || callAmount === 0}
-                >
-                  {callAmount > 0
-                    ? callAmount >= human.chips
-                      ? `All-in ${human.chips}`
-                      : `Igualar ${callAmount}`
-                    : 'Igualar'}
-                </Button>
-                <div className="relative">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setShowRaise(!showRaise)}
-                    disabled={activePlayer !== 0 || !canRaise}
-                  >
-                    Subir
-                  </Button>
-                  {showRaise && activePlayer === 0 && (
-                    <RaisePanel
-                      raiseAmount={raiseAmount}
-                      onRaiseChange={setRaiseAmount}
-                      onRaise={() => handleAction('raise')}
-                      minRaise={state.minRaise}
-                      maxRaise={Math.max(state.minRaise, maxRaise)}
-                      potSize={pot}
-                      playerChips={human.chips}
-                      callAmount={callAmount}
-                    />
-                  )}
-                </div>
-              </div>
+          <div className="h-[3px] w-full">
+            {!isTutorial && activePlayer === 0 && !handOver && !streetPending && (
+              <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}-${settingsOpen}`} duration={turnDurationMs} className="w-full" paused={settingsOpen} />
             )}
           </div>
         </div>
       </div>
 
       <AnimatePresence>
-        {state.gameOver && (
-          <GameOverOverlay state={state} onRestart={restartGame} onLeave={() => navigate('/')} />
+        {gameOverModal && (
+          <GameOverOverlay
+            state={state}
+            onRestart={restartGame}
+            onSelectDifficulty={() => navigate('/local')}
+            onHome={() => navigate('/')}
+          />
         )}
       </AnimatePresence>
+
+      {potAward && (
+        <PotAward key={potAward.handNumber} data={potAward} onLanded={handlePotAwardLanded} onDone={finishPotAward} />
+      )}
+
+      {settingsOverlay}
+
+      {isTutorial && (
+        <TutorialCoach
+          key={tutorialRun}
+          state={state}
+          onFinish={finishTutorial}
+          onRestart={restartTutorial} onResume={() => setTutorialReady(true)} onRaisePanel={(open) => setShowRaise(open)} onExpectedAction={setExpectedAction} raiseOpen={showRaise} onPause={setCoachPaused}
+        />
+      )}
     </div>
   );
 };

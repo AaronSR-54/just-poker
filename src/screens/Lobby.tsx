@@ -5,6 +5,7 @@ import Avatar from '../components/Avatar';
 import Button from '../components/Button';
 import RankBadge from '../components/RankBadge';
 import Badge from '../components/Badge';
+import { Stagger, StaggerItem } from '../components/Animated';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore } from '../store/userStore';
 import { connectSocket, getSocket } from '../net/socket';
@@ -201,7 +202,6 @@ const Lobby: React.FC = () => {
         <Button
           variant="primary"
           block={isMobile}
-          glow
           disabled={count < 1 || countdown !== null}
           onClick={start}
         >
@@ -231,7 +231,7 @@ const Lobby: React.FC = () => {
 
   if (error && !room) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">No se pudo entrar</div>
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">{error}</div>
@@ -243,7 +243,7 @@ const Lobby: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex shrink-0 items-center justify-between border-b border-bone/10 px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
           <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
           <div className="flex items-center gap-3">
@@ -256,11 +256,13 @@ const Lobby: React.FC = () => {
           <div className="flex flex-1 flex-col items-center justify-center gap-4">
             <div className="text-center font-display font-bold leading-none text-[18px]">{titleText}</div>
             {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
-            <div className="flex w-full max-w-[260px] flex-col gap-3">
+            <Stagger className="flex w-full max-w-[260px] flex-col gap-3" stagger={0.08} delay={0.1}>
               {slotsData.map((s, i) => (
-                <LobbySlot key={i} {...s} />
+                <StaggerItem key={i}>
+                  <LobbySlot {...s} />
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
             {codeBlock}
           </div>
           {footer}
@@ -270,7 +272,7 @@ const Lobby: React.FC = () => {
   }
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-ink font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
           <div className="flex items-center gap-3">
@@ -284,11 +286,13 @@ const Lobby: React.FC = () => {
         <div className="flex flex-1 flex-col items-center justify-center gap-6">
           <div className="font-display font-bold leading-none tracking-[-0.01em] text-center text-fs-700">{titleText}</div>
           {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
-          <div className="flex flex-wrap justify-center gap-4">
+          <Stagger className="flex flex-wrap justify-center gap-4" stagger={0.08} delay={0.1}>
             {slotsData.map((s, i) => (
-              <LobbySlot key={i} {...s} />
+              <StaggerItem key={i}>
+                <LobbySlot {...s} />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
           {codeBlock}
         </div>
         {footer}
