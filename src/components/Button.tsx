@@ -5,7 +5,6 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   block?: boolean;
-  glow?: boolean;
   as?: React.ElementType;
   children: React.ReactNode;
 }
@@ -15,15 +14,14 @@ const base =
   'rounded-[0.875rem] font-display font-bold text-fs-200 tracking-[0.12em] uppercase ' +
   'border-[1.5px] cursor-pointer select-none whitespace-nowrap ' +
   'transition-[translate,border-color,background-color,color,filter] duration-[240ms] ease-brand ' +
+  'enabled:hover:-translate-y-0.5 enabled:active:translate-y-px ' +
   'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ' +
   'disabled:opacity-35 disabled:cursor-not-allowed';
 
 const variants: Record<ButtonVariant, string> = {
-  outline: 'border-bone/40 text-ink enabled:hover:border-bone enabled:hover:translate-x-2 enabled:active:translate-x-0',
-  primary:
-    'border-bone bg-bone text-ink enabled:hover:brightness-[1.08] enabled:hover:translate-x-2 enabled:active:translate-x-0',
-  ghost:
-    'border-transparent text-ink enabled:hover:text-ink enabled:hover:opacity-80 enabled:hover:translate-x-2 enabled:active:translate-x-0',
+  outline: 'border-bone/40 text-bone enabled:hover:border-bone',
+  primary: 'border-bone bg-bone text-ink enabled:hover:brightness-[1.08]',
+  ghost: 'border-transparent text-bone enabled:hover:opacity-80',
 };
 
 const sizes: Record<Exclude<ButtonSize, ''>, string> = {
@@ -37,7 +35,6 @@ const Button: React.FC<ButtonProps> = ({
   size = '',
   block = false,
   disabled = false,
-  glow = false,
   as: As = 'button',
   className,
   ...rest
@@ -47,7 +44,6 @@ const Button: React.FC<ButtonProps> = ({
     variants[variant] ?? variants.outline,
     size ? sizes[size] : '',
     block ? 'w-full' : '',
-    glow ? 'shadow-[0_0_0_6px_rgba(205,197,183,0.18)]' : '',
     className || '',
   ]
     .filter(Boolean)
