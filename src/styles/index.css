@@ -48,9 +48,16 @@
 
   /* Accents */
   --color-danger: rgb(232 115 74);
+  --color-danger-bone: rgb(158 43 32);
   --color-info: rgb(91 138 240);
   --color-success: rgb(143 206 143);
+  --color-success-deep: rgb(40 88 44);
+  --color-success-bone: rgb(21 128 61);
   --color-suit-accent: rgb(150 56 44);
+
+  /* Posiciones de ciegas (versiones desaturadas y cálidas de #000eb3 / #f4cf01) */
+  --color-blind-sb: rgb(56 74 132);
+  --color-blind-bb: rgb(214 174 70);
 
   /* Typography */
   --font-display: "Satoshi Variable", "Satoshi", "Inter", system-ui, sans-serif;
@@ -92,8 +99,20 @@
 
   /* Animations */
   --animate-jp-pulse: jp-pulse 1.4s ease-in-out infinite;
+  --animate-turn-pulse: turn-pulse 1.6s ease-in-out infinite;
   --animate-lobby-pulse: lobby-pulse 1.6s ease-out infinite;
   --animate-timer-drain: jp-timer-drain 2.2s linear forwards;
+  --animate-jp-float: jp-float 7s ease-in-out infinite;
+
+  @keyframes jp-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
 
   @keyframes jp-pulse {
     0%,
@@ -104,6 +123,16 @@
     50% {
       opacity: 1;
       transform: scale(1.4);
+    }
+  }
+
+  @keyframes turn-pulse {
+    0%,
+    100% {
+      border-color: rgb(205 197 183 / 0.35);
+    }
+    50% {
+      border-color: rgb(205 197 183 / 1);
     }
   }
 
@@ -144,7 +173,28 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* En desktop (>=768px) los tamaños pequeños crecen para garantizar
+     legibilidad: nunca 10px ni 12px. En móvil se mantiene la escala fina. */
+  @media (min-width: 48rem) {
+    :root {
+      --text-fs-100: 0.8125rem;
+      --text-fs-200: 0.875rem;
+    }
+  }
+
   input[type="range"] {
     accent-color: var(--color-bone);
+  }
+
+  /* Accesibilidad: respeta la preferencia del sistema de reducir movimiento. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
