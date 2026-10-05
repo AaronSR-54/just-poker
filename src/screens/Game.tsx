@@ -851,25 +851,44 @@ const LocalGame: React.FC = () => {
     const ai = aiPlayers.find(a => a.playerIndex === current);
     if (!ai) return;
 
+    // El rival decide en el mismo tiempo que a ×1, escalado por la velocidad.
     const delay = getActionDelay(ai.personality) * speed;
-    setAiTurn({ playerIndex: current, duration: delay });
+    // Su barra dura lo mismo que la del jugador; como decide antes, nunca se agota.
+    setAiTurn({ playerIndex: current, duration: turnDurationMs });
 
     let cancelled = false;
-    getAIAction(ai, gameState, delay).then((action) => {
-      if (cancelled || !gameRef.current) return;
+    let settled = false;
+
+    const applyAction = (type: string, amount?: number) => {
+      if (settled || cancelled || !gameRef.current) return;
       const currentState = gameRef.current.getState();
       if (currentState.currentPlayer !== current || currentState.handOver) return;
-
-      if (action.type === 'fold') gameRef.current.fold(current);
-      else if (action.type === 'check') gameRef.current.check(current);
-      else if (action.type === 'call') gameRef.current.call(current);
-      else if (action.type === 'raise') gameRef.current.raise(current, action.amount || currentState.minRaise);
-
+      settled = true;
+      if (type === 'fold') gameRef.current.fold(current);
+      else if (type === 'check') gameRef.current.check(current);
+      else if (type === 'call') gameRef.current.call(current);
+      else if (type === 'raise') gameRef.current.raise(current, amount || currentState.minRaise);
       commitState();
-    });
+    };
 
-    return () => { cancelled = true; };
-  }, [gameState, aiPlayers, isTutorial, commitState, settingsOpen, speed]);
+    getAIAction(ai, gameState, delay).then((action) => applyAction(action.type, action.amount));
+
+    // Red de seguridad: si la barra llegara a fallar, el rival nunca se retira;
+    // pasa o iguala.
+    const safety = window.setTimeout(() => {
+      if (settled || cancelled) return;
+      const g2 = gameRef.current;
+      if (!g2) return;
+      const s = g2.getState();
+      if (s.currentPlayer !== current || s.handOver || s.streetPending) return;
+      settled = true;
+      if (g2.canCheck(current)) g2.check(current);
+      else g2.call(current);
+      commitState();
+    }, turnDurationMs);
+
+    return () => { cancelled = true; window.clearTimeout(safety); };
+  }, [gameState, aiPlayers, isTutorial, commitState, settingsOpen, speed, turnDurationMs]);
 
   // ---- Turnos de la IA en la mano guiada: siempre pasa o iguala ----
   useEffect(() => {
@@ -884,7 +903,8 @@ const LocalGame: React.FC = () => {
 
     const ai = aiPlayers.find(a => a.playerIndex === current);
     const delay = (ai ? getActionDelay(ai.personality) : 800) * speed;
-    setAiTurn({ playerIndex: current, duration: delay });
+    // Su barra dura lo mismo que la del jugador; como decide antes, nunca se agota.
+    setAiTurn({ playerIndex: current, duration: turnDurationMs });
 
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -898,7 +918,7 @@ const LocalGame: React.FC = () => {
     }, delay);
 
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [gameState, isTutorial, tutorialReady, coachPaused, aiPlayers, commitState, settingsOpen, speed]);
+  }, [gameState, isTutorial, tutorialReady, coachPaused, aiPlayers, commitState, settingsOpen, speed, turnDurationMs]);
 
   const updateState = () => {
     if (!gameRef.current) return;
