@@ -33,8 +33,13 @@ Los tokens viven en el bloque `@theme` de `index.css` y Tailwind los expone como
 | `--color-bg` / `--color-fg` | semánticos | `bg-bg`, `text-fg` |
 | `--color-border` | `rgba(255,255,255,.10)` | `border-border` |
 | `--color-danger` | `rgb(232 115 74)` | `text-danger`, `bg-danger/20` |
+| `--color-danger-bone` | `rgb(158 43 32)` | `text-danger-bone` (rojo sobre `bone`) |
 | `--color-info` | `rgb(91 138 240)` | `text-info`, `bg-info/15` |
 | `--color-success` | `rgb(143 206 143)` | `text-success` |
+| `--color-success-deep` | `rgb(40 88 44)` | `text-success-deep` (sobre fondo claro) |
+| `--color-success-bone` | `rgb(21 128 61)` | `text-success-bone` (verde sobre `bone`) |
+| `--color-blind-sb` | `rgb(56 74 132)` | `bg-blind-sb` (small blind) |
+| `--color-blind-bb` | `rgb(214 174 70)` | `bg-blind-bb` (big blind) |
 
 Para opacidad usa el modificador `/`: `bg-bone/10`, `border-bone/[0.18]`, `bg-ink-900/85`. **No escribas `rgba(205,197,183,…)` ni `#fff` inline**; usa `bone` con `/`.
 
@@ -43,6 +48,8 @@ Para opacidad usa el modificador `/`: `bg-bone/10`, `border-bone/[0.18]`, `bg-in
 Fuentes: `font-display`, `font-body`, `font-ui`.
 
 Escala de tamaños (utilidades `text-fs-*`): `fs-100` 10px, `fs-200` 12px, `fs-300` 14px, `fs-400` 16px, `fs-500` 20px, `fs-600` 24px, `fs-700` 32px, `fs-800` 48px, `fs-900` 96px.
+
+> **Legibilidad en desktop:** a partir de 768px los tokens pequeños crecen automáticamente (`fs-100` → 13px, `fs-200` → 14px) para no usar nunca 10px ni 12px en desktop. Usa siempre los tokens `text-fs-*`; **no escribas tamaños en px crudos** (ni `text-xs`). Si necesitas un tamaño menor, resérvalo a móvil con `max-md:text-fs-100`.
 
 **Recetas tipográficas** (copia estas cadenas tal cual; no son clases, son combinaciones de utilidades nativas):
 
