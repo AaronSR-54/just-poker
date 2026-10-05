@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import Button from './Button';
-import Badge from './Badge';
 import SettingSlider from './SettingSlider';
 import { GAME_SPEEDS, SPEED_LABELS, useSettingsStore, type GameSpeed } from '../store/settingsStore';
 import { playSfx } from '../audio/sfx';
@@ -18,7 +17,7 @@ interface GameSettingsProps {
 
 /** Fila de acción con etiqueta y flecha. */
 const LinkRow: React.FC<{ label: string; hint: string; onClick: () => void }> = ({ label, hint, onClick }) => (
-  <Button variant="outline" block className="justify-between! text-left" onClick={onClick}>
+  <Button variant="outline" block className="justify-between! rounded-[0.875rem]! text-left" onClick={onClick}>
     <span className="flex flex-col items-start gap-0.5">
       <span>{label}</span>
       <span className="font-body text-fs-100 tracking-[0.04em] normal-case opacity-60">{hint}</span>
@@ -105,7 +104,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHand
                     type="button"
                     aria-pressed={active}
                     onClick={() => setGameSpeed(speed)}
-                    className={`cursor-pointer rounded-[10px] border-[1.5px] py-2 font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+                    className={`cursor-pointer rounded-full border-[1.5px] py-2 font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
                       active ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone'
                     }`}
                   >
@@ -126,18 +125,23 @@ const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHand
 
         <Section title="Apoya el proyecto">
           <div className="flex flex-col gap-3 rounded-[14px] border border-blind-bb/40 bg-blind-bb/[0.08] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1">
-                <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-blind-bb">Buy me a coffee</div>
-                <div className="font-display font-bold leading-none text-fs-500">Invítame a un café</div>
-              </div>
-              <Badge variant="neutral" className="bg-blind-bb/20 text-blind-bb">Próximamente</Badge>
+            <div className="flex flex-col gap-1">
+              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-blind-bb">Buy me a coffee</div>
+              <div className="font-display font-bold leading-none text-fs-500">Apoya el proyecto</div>
             </div>
             <p className="font-body text-fs-200 leading-[1.45] opacity-70">
-              Just Poker es gratis y sin anuncios. Muy pronto podrás apoyar el proyecto con un café.
+              Just Poker es gratis y sin anuncios. Si te gusta, puedes apoyarme para seguir mejorando la aplicación.
             </p>
-            <Button variant="outline" block disabled className="border-blind-bb/40! text-blind-bb!">
-              Enlace disponible pronto
+            <Button
+              as="a"
+              href="https://buymeacoffee.com/sanz_aar"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outline"
+              block
+              className="border-blind-bb/40! text-blind-bb!"
+            >
+              Invítame a un café
             </Button>
           </div>
         </Section>
