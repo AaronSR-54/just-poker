@@ -1,0 +1,13 @@
+Audio credits
+=============
+
+The sound effects in this folder are from Kenney (https://kenney.nl), released
+under Creative Commons CC0 1.0 Universal (public domain dedication):
+https://creativecommons.org/publicdomain/zero/1.0/
+
+- Casino Audio (v1.1)     https://kenney.nl/assets/casino-audio
+- Interface Sounds (v1.0) https://kenney.nl/assets/interface-sounds
+- Impact Sounds (v1.1)    https://kenney.nl/assets/impact-sounds
+
+CC0 does not require attribution; this credit is included voluntarily.
+Thanks to Kenney for making these assets free.
