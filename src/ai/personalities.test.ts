@@ -4,6 +4,7 @@ import { PokerGame } from '../game/poker';
 
 const tight: Personality = {
   name: 'Test',
+  alias: 'el Test',
   difficulty: 'hard',
   points: 500,
   traits: { tightness: 0.9, aggression: 0.5, bluffFrequency: 0 },

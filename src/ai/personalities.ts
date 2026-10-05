@@ -4,6 +4,8 @@ import { calculateEquity } from '../game/equity';
 
 export interface Personality {
   name: string;
+  /** Apodo mostrado junto al nombre en los slots */
+  alias: string;
   difficulty: 'easy' | 'medium' | 'hard';
   /** Puntos de ranking mostrados en su slot */
   points: number;
@@ -170,6 +172,7 @@ export function decideAction(
 
 export const MIA: Personality = {
   name: 'Mia',
+  alias: 'la Impulsiva',
   difficulty: 'easy',
   points: 45,
   traits: { tightness: 0.2, aggression: 0.3, bluffFrequency: 0.1 },
@@ -177,6 +180,7 @@ export const MIA: Personality = {
 
 export const DAN: Personality = {
   name: 'Dan',
+  alias: 'Papel de Fumar',
   difficulty: 'easy',
   points: 80,
   traits: { tightness: 0.5, aggression: 0.6, bluffFrequency: 0.4 },
@@ -184,6 +188,7 @@ export const DAN: Personality = {
 
 export const SAM: Personality = {
   name: 'Sam',
+  alias: 'Perfil Bajo',
   difficulty: 'easy',
   points: 60,
   traits: { tightness: 0.5, aggression: 0.5, bluffFrequency: 0.2 },
@@ -191,6 +196,7 @@ export const SAM: Personality = {
 
 export const LEO: Personality = {
   name: 'Leo',
+  alias: 'El Libro',
   difficulty: 'medium',
   points: 210,
   traits: { tightness: 0.6, aggression: 0.6, bluffFrequency: 0.2 },
@@ -198,6 +204,7 @@ export const LEO: Personality = {
 
 export const NORA: Personality = {
   name: 'Nora',
+  alias: 'la Lectora',
   difficulty: 'medium',
   points: 340,
   traits: { tightness: 0.7, aggression: 0.4, bluffFrequency: 0.15 },
@@ -205,6 +212,7 @@ export const NORA: Personality = {
 
 export const KAI: Personality = {
   name: 'Kai',
+  alias: 'Dos Caras',
   difficulty: 'medium',
   points: 260,
   traits: { tightness: 0.5, aggression: 0.5, bluffFrequency: 0.35 },
@@ -212,6 +220,7 @@ export const KAI: Personality = {
 
 export const VICTOR: Personality = {
   name: 'Víctor',
+  alias: 'La Calculadora',
   difficulty: 'hard',
   points: 720,
   traits: { tightness: 0.65, aggression: 0.6, bluffFrequency: 0.25 },
@@ -219,6 +228,7 @@ export const VICTOR: Personality = {
 
 export const ELENA: Personality = {
   name: 'Elena',
+  alias: 'La Trampa',
   difficulty: 'hard',
   points: 900,
   traits: { tightness: 0.6, aggression: 0.5, bluffFrequency: 0.2 },
@@ -226,6 +236,7 @@ export const ELENA: Personality = {
 
 export const REX: Personality = {
   name: 'Rex',
+  alias: 'Todo o Nada',
   difficulty: 'hard',
   points: 1050,
   traits: { tightness: 0.4, aggression: 0.9, bluffFrequency: 0.4 },
@@ -237,9 +248,12 @@ export const PERSONALITIES: Record<string, Personality[]> = {
   hard: [VICTOR, ELENA, REX],
 };
 
+/** Retardo (ms) del turno de un rival, simulando que piensa entre 1 y 3 segundos. */
 export function getActionDelay(personality: Personality): number {
-  const base = 700 + Math.random() * 900;
-  if (personality.difficulty === 'easy') return base + Math.random() * 500;
-  if (personality.difficulty === 'medium') return base;
-  return Math.max(400, base - 250);
+  const min = 1000;
+  const max = 3000;
+  // Los rivales fáciles tardan algo más; los difíciles deciden antes.
+  const skew = personality.difficulty === 'easy' ? 1.2 : personality.difficulty === 'hard' ? 0.8 : 1;
+  const delay = min + (max - min) * Math.random() * skew;
+  return Math.round(Math.min(max, Math.max(min, delay)));
 }

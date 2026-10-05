@@ -10,9 +10,12 @@ export function createAIPlayer(playerIndex: number, personality: Personality): A
   return { personality, playerIndex };
 }
 
-export function getAIAction(ai: AIPlayer, state: PokerState): Promise<{ type: string; amount?: number }> {
+export function getAIAction(
+  ai: AIPlayer,
+  state: PokerState,
+  delay = getActionDelay(ai.personality),
+): Promise<{ type: string; amount?: number }> {
   return new Promise((resolve) => {
-    const delay = getActionDelay(ai.personality);
     setTimeout(() => {
       const action = decideAction(ai.playerIndex, state, ai.personality);
       resolve(action);

@@ -27,12 +27,15 @@ export interface PokerState {
   minRaise: number;
   winner: number[] | null;
   winAmounts: number[];
+  committed: number[];
   showdown: boolean;
   handOver: boolean;
   gameOver: boolean;
   gameWinner: number | null;
   handNumber: number;
   actions: ActionType[];
+  /** Ronda de apuestas completa esperando a repartir la siguiente calle. */
+  streetPending: boolean;
 }
 
 /** Estado privado completo para persistir/reanudar una partida. */
@@ -55,6 +58,7 @@ export interface PokerSaveData {
   committed: number[];
   acted: boolean[];
   deck: Card[];
+  streetPending: boolean;
 }
 
 const STARTING_CHIPS = 1000;
@@ -85,6 +89,12 @@ export class PokerGame {
   private committed: number[] = [];
   /** Quién ha actuado en la ronda de apuestas actual. */
   private acted: boolean[] = [];
+  /** Mazo fijo opcional (tutorial/tests); si existe se usa en cada mano. */
+  private presetDeck: Card[] | null = null;
+  /** Si es false, la transición entre calles se suspende hasta llamar a resolveStreet(). */
+  private autoDeal = true;
+  /** La ronda actual está completa y espera a que la UI reparta la siguiente calle. */
+  private streetPending = false;
 
   constructor(playerCount: number, smallBlind = 10, bigBlind = 20, names?: string[], chips?: number[]) {
     this.smallBlind = smallBlind;
@@ -110,6 +120,20 @@ export class PokerGame {
 
   // ---------- Ciclo de vida ----------
 
+  /** Fija un mazo concreto (en orden de reparto) para las próximas manos. */
+  setDeck(deck: Card[] | null): void {
+    this.presetDeck = deck ? deck.map(c => ({ ...c })) : null;
+  }
+
+  /**
+   * Activa o desactiva el reparto automático al cerrar una ronda de apuestas.
+   * Con `false`, el estado queda en `streetPending` y la UI decide cuándo llamar
+   * a `resolveStreet()` (p. ej. para mostrar una pausa entre calles).
+   */
+  setAutoDeal(autoDeal: boolean): void {
+    this.autoDeal = autoDeal;
+  }
+
   startHand(): void {
     if (this.gameOver) return;
 
@@ -126,7 +150,7 @@ export class PokerGame {
       return;
     }
 
-    this.deck = shuffle(createDeck());
+    this.deck = this.presetDeck ? this.presetDeck.map(c => ({ ...c })) : shuffle(createDeck());
     this.community = [];
     this.phase = 'pre-flop';
     this.minRaise = this.bigBlind;
@@ -135,6 +159,7 @@ export class PokerGame {
     this.handOver = false;
     this.actions = [];
     this.handNumber++;
+    this.streetPending = false;
     this.committed = this.players.map(() => 0);
     this.acted = this.players.map(() => false);
 
@@ -186,6 +211,7 @@ export class PokerGame {
     this.winner = null;
     this.community = [];
     this.phase = 'pre-flop';
+    this.streetPending = false;
   }
 
   // ---------- Helpers de asientos ----------
@@ -308,6 +334,7 @@ export class PokerGame {
     return (
       !this.handOver &&
       !this.gameOver &&
+      !this.streetPending &&
       this.currentPlayer === playerIndex &&
       !p.folded &&
       !p.isAllIn &&
@@ -365,12 +392,28 @@ export class PokerGame {
         this.runout();
         return;
       }
+      if (!this.autoDeal) {
+        // La UI mostrará una pausa y llamará a resolveStreet().
+        this.streetPending = true;
+        return;
+      }
       this.dealCommunity();
       return;
     }
 
     this.currentPlayer = this.nextAlive(this.currentPlayer);
     this.skipUnavailable();
+  }
+
+  /**
+   * Reparte la calle pendiente tras una pausa entre rondas. Solo tiene efecto
+   * si `advance()` dejó el estado en `streetPending` (autoDeal desactivado).
+   */
+  resolveStreet(): void {
+    if (!this.streetPending) return;
+    this.streetPending = false;
+    if (this.handOver || this.gameOver) return;
+    this.dealCommunity();
   }
 
   private dealCommunity(): void {
@@ -503,12 +546,14 @@ export class PokerGame {
       minRaise: this.minRaise,
       winner: this.winner ? [...this.winner] : null,
       winAmounts: [...this.winAmounts],
+      committed: [...this.committed],
       showdown: this.phase === 'showdown',
       handOver: this.handOver,
       gameOver: this.gameOver,
       gameWinner: this.gameWinner,
       handNumber: this.handNumber,
       actions: [...this.actions],
+      streetPending: this.streetPending,
     };
   }
 
@@ -533,6 +578,7 @@ export class PokerGame {
       committed: [...this.committed],
       acted: [...this.acted],
       deck: [...this.deck],
+      streetPending: this.streetPending,
     };
   }
 
@@ -561,6 +607,7 @@ export class PokerGame {
     game.committed = [...data.committed];
     game.acted = [...data.acted];
     game.deck = [...data.deck];
+    game.streetPending = data.streetPending ?? false;
     return game;
   }
 }
