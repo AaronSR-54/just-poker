@@ -35,7 +35,7 @@ const LobbySlot: React.FC<LobbySlotProps> = ({
   if (occupied && name) {
     return (
       <div
-        className={`flex min-w-40 flex-col items-center gap-2 rounded-[14px] border-[1.5px] bg-bone/[0.04] px-7 py-6 ${
+        className={`flex min-w-40 flex-col items-center gap-2 rounded-[14px] border-[1.5px] bg-ink-700 px-7 py-6 ${
           isYou ? 'border-bone' : 'border-bone/[0.18]'
         }`}
       >
@@ -50,7 +50,7 @@ const LobbySlot: React.FC<LobbySlotProps> = ({
   }
 
   return (
-    <div className="flex min-h-40 min-w-40 flex-col items-center justify-center gap-3 rounded-[14px] border-2 border-dashed border-bone/[0.18] px-7 py-6">
+    <div className="flex min-h-40 min-w-40 flex-col items-center justify-center gap-3 rounded-[14px] border-2 border-dashed border-bone/[0.18] bg-ink px-7 py-6">
       <PulseDot />
       <div className="font-body tracking-[0.04em] opacity-70 text-fs-200">Esperando…</div>
     </div>
@@ -235,7 +235,7 @@ const Lobby: React.FC = () => {
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">No se pudo entrar</div>
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">{error}</div>
-          <Button variant="outline" onClick={() => navigate('/online')}>← Volver</Button>
+          <Button variant="outline" className="rounded-[0.875rem]!" onClick={() => navigate('/online')}>← Volver</Button>
         </div>
       </div>
     );
@@ -244,7 +244,7 @@ const Lobby: React.FC = () => {
   if (isMobile) {
     return (
       <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        <div className="flex shrink-0 items-center justify-between border-b border-bone/10 px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
+        <div className="flex shrink-0 items-center justify-between border-b border-bone/10 bg-ink px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
           <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
           <div className="flex items-center gap-3">
             <Avatar name={user.username} size={32} />

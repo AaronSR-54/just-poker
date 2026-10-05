@@ -1,17 +1,20 @@
 import React from 'react';
 import type { ButtonVariant, ButtonSize } from '../types';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+type ButtonOwnProps = {
   variant?: ButtonVariant;
   size?: ButtonSize;
   block?: boolean;
-  as?: React.ElementType;
   children: React.ReactNode;
-}
+};
+
+type ButtonProps<T extends React.ElementType> = ButtonOwnProps & {
+  as?: T;
+} & Omit<React.ComponentPropsWithoutRef<T>, keyof ButtonOwnProps | 'as'>;
 
 const base =
   'inline-flex items-center justify-center gap-2 min-h-12 px-[1.375rem] py-[0.875rem] ' +
-  'rounded-[0.875rem] font-display font-bold text-fs-200 tracking-[0.12em] uppercase ' +
+  'rounded-full font-display font-bold text-fs-200 tracking-[0.12em] uppercase ' +
   'border-[1.5px] cursor-pointer select-none whitespace-nowrap ' +
   'transition-[translate,border-color,background-color,color,filter] duration-[240ms] ease-brand ' +
   'enabled:hover:-translate-y-0.5 enabled:active:translate-y-px ' +
@@ -19,9 +22,9 @@ const base =
   'disabled:opacity-35 disabled:cursor-not-allowed';
 
 const variants: Record<ButtonVariant, string> = {
-  outline: 'border-bone/40 text-bone enabled:hover:border-bone',
+  outline: 'border-bone/40 bg-ink text-bone enabled:hover:border-bone',
   primary: 'border-bone bg-bone text-ink enabled:hover:brightness-[1.08]',
-  ghost: 'border-transparent text-bone enabled:hover:opacity-80',
+  ghost: 'border-transparent bg-ink text-bone enabled:hover:opacity-80',
 };
 
 const sizes: Record<Exclude<ButtonSize, ''>, string> = {
@@ -29,16 +32,16 @@ const sizes: Record<Exclude<ButtonSize, ''>, string> = {
   lg: 'min-h-14 px-7 py-[1.125rem] text-fs-300',
 };
 
-const Button: React.FC<ButtonProps> = ({
+function Button<T extends React.ElementType = 'button'>({
   children,
   variant = 'outline',
   size = '',
   block = false,
-  disabled = false,
-  as: As = 'button',
+  as,
   className,
   ...rest
-}) => {
+}: ButtonProps<T>) {
+  const As = (as ?? 'button') as React.ElementType;
   const cls = [
     base,
     variants[variant] ?? variants.outline,
@@ -50,10 +53,10 @@ const Button: React.FC<ButtonProps> = ({
     .join(' ');
 
   return (
-    <As className={cls} disabled={disabled} {...rest}>
+    <As className={cls} {...rest}>
       {children}
     </As>
   );
-};
+}
 
 export default Button;

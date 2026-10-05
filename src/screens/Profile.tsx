@@ -44,7 +44,7 @@ const HistoryRow: React.FC<{ rec: GameRecord }> = ({ rec }) => {
   return (
     <div
       className={`flex items-center gap-4 rounded-[10px] px-[1.125rem] py-[0.875rem] ${
-        place === 1 ? 'bg-bone text-ink' : 'border border-bone/10 bg-bone/[0.04] text-bone'
+        place === 1 ? 'bg-bone text-ink' : 'border border-bone/10 bg-ink-700 text-bone'
       }`}
     >
       <div
@@ -77,7 +77,7 @@ const MilestoneDot: React.FC<{
   <div className="flex flex-col items-center gap-1">
     <div
       className={`flex size-11 items-center justify-center rounded-full transition-all duration-300 ${
-        reached ? 'border-2 border-bone bg-bone/12' : 'border-2 border-bone/[0.18] bg-transparent'
+        reached ? 'border-2 border-bone bg-ink-400' : 'border-2 border-bone/[0.18] bg-ink'
       }`}
     >
       <span className={`font-display font-bold text-[18px] ${reached ? 'opacity-100' : 'opacity-30'}`}>
@@ -94,7 +94,7 @@ const MilestoneDot: React.FC<{
 );
 
 const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="flex min-w-[100px] flex-1 flex-col gap-1 rounded-[10px] border border-bone/[0.18] px-4 py-[0.875rem]">
+  <div className="flex min-w-[100px] flex-1 flex-col gap-1 rounded-[10px] border border-bone/[0.18] bg-ink px-4 py-[0.875rem]">
     <div className="font-display font-bold text-[22px]">{value}</div>
     <div className="font-body tracking-[0.04em] opacity-70 text-fs-100">{label}</div>
   </div>
@@ -139,7 +139,7 @@ const Profile: React.FC = () => {
   const editSection = editing && (
     <div className="flex w-full flex-col gap-3">
       <input
-        className="block w-full rounded-md border-[1.5px] border-current bg-transparent px-4 py-[0.875rem] font-body text-fs-300 text-inherit outline-none"
+        className="block w-full rounded-md border-[1.5px] border-current bg-ink px-4 py-[0.875rem] font-body text-fs-300 text-inherit outline-none"
         value={nameDraft}
         onChange={e => setNameDraft(e.target.value)}
         placeholder="Tu nombre"
@@ -196,7 +196,7 @@ const Profile: React.FC = () => {
   if (isMobile) {
     return (
       <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        <div className="flex items-center justify-between border-b border-bone/[0.18] px-[1.125rem] py-[0.875rem]">
+        <div className="flex items-center justify-between border-b border-bone/[0.18] bg-ink px-[1.125rem] py-[0.875rem]">
           <div className="flex cursor-pointer items-center gap-2" onClick={() => navigate('/')}>
             <span className="font-display font-bold text-fs-300">←</span>
             <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Menú</div>

@@ -28,8 +28,8 @@ const OptionButton: React.FC<{
     type="button"
     aria-pressed={active}
     onClick={onClick}
-    className={`cursor-pointer rounded-[10px] border-[1.5px] px-3 py-1.5 font-display font-bold text-fs-100 uppercase tracking-[0.08em] transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-      active ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone'
+    className={`cursor-pointer rounded-full border-[1.5px] px-3 py-1.5 font-display font-bold text-fs-100 uppercase tracking-[0.08em] transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+      active ? 'border-bone bg-bone text-ink' : 'border-bone/40 bg-ink text-bone'
     }`}
   >
     {children}
@@ -74,8 +74,8 @@ const HandsExplorer: React.FC = () => {
             key={h.name}
             type="button"
             onClick={() => setSelected(i)}
-            className={`flex cursor-pointer items-center gap-3 rounded-[10px] border-[1.5px] px-3 py-1.5 text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-              i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] text-bone'
+            className={`flex cursor-pointer items-center gap-3 rounded-full border-[1.5px] px-3 py-1.5 text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+              i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] bg-ink text-bone'
             }`}
           >
             <span className="w-[18px] font-display font-bold text-fs-200 opacity-70">{10 - i}</span>
@@ -148,12 +148,12 @@ const QuizHandRow: React.FC<{
   onPick: () => void;
 }> = ({ side, hand, revealed, picked, isWinner, disabled, onPick }) => {
   const stateCls = !revealed
-    ? 'border-bone/[0.18] enabled:hover:border-bone enabled:hover:-translate-y-0.5'
+    ? 'border-bone/[0.18] bg-ink enabled:hover:border-bone enabled:hover:-translate-y-0.5'
     : isWinner
-      ? 'border-success/70 bg-success/10'
+      ? 'border-success/70 bg-ink'
       : picked
-        ? 'border-danger/70 bg-danger/10'
-        : 'border-bone/[0.18] opacity-50';
+        ? 'border-danger/70 bg-ink'
+        : 'border-bone/[0.18] bg-ink opacity-50';
 
   return (
     <button
@@ -161,7 +161,7 @@ const QuizHandRow: React.FC<{
       disabled={disabled}
       onClick={onPick}
       aria-label={`Mano ${side}`}
-      className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-[14px] border-[1.5px] px-3 py-3 transition-[transform,border-color,background-color,opacity] duration-[240ms] ease-brand active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone disabled:cursor-default ${stateCls}`}
+      className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-full border-[1.5px] px-3 py-3 transition-[transform,border-color,background-color,opacity] duration-[240ms] ease-brand active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone disabled:cursor-default ${stateCls}`}
     >
       <span className="flex gap-1">
         {hand.cards.map(([rank, suit], i) => <PokerCard key={i} rank={rank} suit={suit} size="sm" />)}

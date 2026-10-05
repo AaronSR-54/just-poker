@@ -93,7 +93,7 @@ const DifficultyCard: React.FC<{
           'transition-[background-color,border-color,transform] duration-[240ms] ease-brand',
           'enabled:hover:-translate-y-0.5 enabled:hover:border-bone enabled:active:translate-y-px',
           'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone',
-          selected ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone',
+          selected ? 'border-bone bg-bone text-ink' : 'border-bone/40 bg-ink text-bone',
         ].join(' ')}
       >
         <div className={`font-display font-bold leading-none ${s.label}`}>{table.diff}</div>

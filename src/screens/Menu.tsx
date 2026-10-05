@@ -35,7 +35,7 @@ const CtaCard: React.FC<CtaCardProps> = ({ solid = false, stacked = false, fill 
       : 'h-full rounded-[clamp(0.75rem,3cqw,1rem)] px-[7.6cqw] py-[6.8cqw]',
     solid
       ? 'bg-bone text-ink border-bone hover:brightness-[1.06]'
-      : 'border-bone/40 bg-transparent text-bone',
+      : 'border-bone/40 bg-ink text-bone',
   ].join(' ');
 
   const wrapper = [

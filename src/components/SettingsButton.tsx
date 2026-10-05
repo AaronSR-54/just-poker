@@ -8,7 +8,7 @@ interface SettingsButtonProps {
 const SettingsButton: React.FC<SettingsButtonProps> = ({ onClick, inline = false }) => (
   <button
     type="button"
-    className={`z-100 flex size-9 cursor-pointer items-center justify-center rounded-full border border-bone/[0.18] bg-bone/[0.06] text-bone transition-[transform,background-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+    className={`z-100 flex size-9 cursor-pointer items-center justify-center rounded-full border border-bone/[0.18] bg-ink-600 text-bone transition-[transform,background-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-ink-400 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
       inline ? '' : 'fixed right-4 top-[max(0.75rem,env(safe-area-inset-top))]'
     }`}
     aria-label="Abrir ajustes"

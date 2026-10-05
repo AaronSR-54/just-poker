@@ -153,8 +153,8 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
         filled
           ? 'border-bone bg-bone text-ink'
           : isActive && !handOver
-            ? 'border-bone bg-transparent animate-turn-pulse'
-            : 'border-bone/[0.18] bg-transparent',
+            ? 'border-bone bg-ink animate-turn-pulse'
+            : 'border-bone/[0.18] bg-ink',
       ].join(' ')}
     >
       {isActive && !handOver && timerDuration !== undefined && (
@@ -271,7 +271,7 @@ const CommunityRow: React.FC<{
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={t(0.24)}
-            className="inline-flex rounded-pill border border-bone/[0.18] px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5"
+            className="inline-flex rounded-pill border border-bone/[0.18] bg-ink px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5"
           >
             {PHASE_LABELS[phase] || phase}
           </motion.span>
@@ -298,7 +298,7 @@ const CommunityRow: React.FC<{
               </motion.div>
             );
           }
-          return <div key={i} className={`rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14] ${slot.w} ${slot.h}`} />;
+          return <div key={i} className={`rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14] bg-ink ${slot.w} ${slot.h}`} />;
         })}
       </div>
 
@@ -1187,8 +1187,8 @@ const LocalGame: React.FC = () => {
         humanIsWinner
           ? 'border-bone bg-bone text-ink'
           : human.folded
-            ? 'border-bone/[0.18] opacity-[0.32]'
-            : 'border-bone/[0.18]',
+            ? 'border-bone/[0.18] bg-ink opacity-[0.32]'
+            : 'border-bone/[0.18] bg-ink',
       ].join(' ')}
     >
       <div className="flex items-center gap-1.5">

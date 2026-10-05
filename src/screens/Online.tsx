@@ -16,7 +16,7 @@ const CodeDigit: React.FC<{ digit?: string; focused?: boolean }> = ({ digit, foc
   return (
     <div
       className={[
-        'flex h-20 w-16 items-center justify-center rounded-lg bg-transparent',
+        'flex h-20 w-16 items-center justify-center rounded-lg bg-ink',
         'font-display font-bold text-[32px] leading-none',
         'transition-[border-color] duration-200',
         focused
@@ -36,7 +36,7 @@ const KeypadKey: React.FC<{ onClick: () => void; children: React.ReactNode }> = 
   <button
     type="button"
     onClick={onClick}
-    className="flex size-13 cursor-pointer items-center justify-center rounded-lg border border-bone/20 bg-transparent font-display font-bold text-fs-600 text-bone transition-[transform,background-color,border-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone/40 hover:bg-bone/[0.06] active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone md:size-14"
+    className="flex size-13 cursor-pointer items-center justify-center rounded-full border border-bone/20 bg-ink font-display font-bold text-fs-600 text-bone transition-[transform,background-color,border-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone/40 hover:bg-ink-600 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone md:size-14"
   >
     {children}
   </button>
@@ -158,7 +158,7 @@ const Online: React.FC = () => {
   );
 
   const brandBar = (
-    <div className="flex shrink-0 items-center justify-between border-b border-bone/10 px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
+    <div className="flex shrink-0 items-center justify-between border-b border-bone/10 bg-ink px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
       <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
     </div>
   );
@@ -186,7 +186,7 @@ const Online: React.FC = () => {
               </Button>
             </div>
 
-            <div className="flex flex-col items-center gap-3 rounded-[14px] border-[1.5px] border-bone bg-transparent p-7 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-[14px] border-[1.5px] border-bone bg-ink p-7 text-center">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Privada</div>
               <div className="font-display font-bold leading-none text-[18px]">Partida privada</div>
               <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 max-w-[260px]">
@@ -279,7 +279,7 @@ const Online: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] border-[1.5px] border-bone bg-transparent p-12">
+          <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] border-[1.5px] border-bone bg-ink p-12">
             <div className="flex flex-col gap-4">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Privada</div>
               <div className="font-display font-bold leading-none text-[36px]">Partida privada</div>
