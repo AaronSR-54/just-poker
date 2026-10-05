@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import Menu from './screens/Menu';
 import Local from './screens/Local';
@@ -10,11 +10,15 @@ import Background from './components/Background';
 import CrtOverlay from './components/CrtOverlay';
 import { page } from './animations/motion';
 import { playSfx, preloadSounds } from './audio/sfx';
+import { initMusic } from './audio/music';
 import { useSettingsStore } from './store/settingsStore';
 import { crtSupported } from './utils/crtSupport';
+import { useAndroidBackButton } from './hooks/useAndroidBackButton';
 
 function AnimatedRoutes() {
   const location = useLocation();
+  const navigate = useNavigate();
+  useAndroidBackButton(navigate, location.pathname);
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -51,7 +55,11 @@ function App() {
       playSfx('ui_click');
     };
     document.addEventListener('click', onClick);
-    return () => document.removeEventListener('click', onClick);
+    const disposeMusic = initMusic();
+    return () => {
+      document.removeEventListener('click', onClick);
+      disposeMusic();
+    };
   }, []);
 
   return (

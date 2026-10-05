@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../store/settingsStore';
+import { duckMusic } from './music';
 
 export type SfxName =
   | 'card_deal'
@@ -71,9 +72,13 @@ export interface PlaySfxOptions {
   gain?: number;
 }
 
+/** Efectos tan frecuentes o sutiles que no ahogan la música (no hacen ducking). */
+const NO_DUCK: ReadonlySet<SfxName> = new Set(['ui_click', 'timer_tick', 'turn_tick']);
+
 function fire(name: SfxName, gain: number): void {
   const { sfxVolume } = useSettingsStore.getState();
   if (sfxVolume <= 0) return;
+  if (!NO_DUCK.has(name)) duckMusic();
   const node = new Audio(pickSource(name));
   node.volume = clamp01(sfxVolume * GAIN[name] * gain);
   void node.play().catch(() => {});
