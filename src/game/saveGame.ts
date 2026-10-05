@@ -38,6 +38,14 @@ export function loadSavedGame(): SavedGame | null {
       Array.isArray(s.winAmounts) &&
       typeof s.currentPlayer === 'number';
     if (!validShape) return null;
+    const human = s.players[0];
+    const finished =
+      s.gameOver ||
+      (s.handOver && (!human || human.chips <= 0 || human.eliminated));
+    if (finished) {
+      clearSavedGame();
+      return null;
+    }
     return data;
   } catch {
     return null;
