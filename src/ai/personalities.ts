@@ -89,31 +89,68 @@ function sizeRaise(
   equity: number
 ): number {
   const player = state.players[playerIndex];
-  const pot = state.pot;
   const aggro = personality.traits.aggression;
-  // Fracción del bote: pasivos 1/3, agresivos bote completo
-  const fraction = 0.33 + aggro * 0.67 + (equity > 0.8 ? 0.25 : 0);
-  let amount = Math.round(pot * fraction);
-  // Respetar mínimos y máximos
-  amount = Math.max(amount, state.minRaise);
   const callAmount = Math.max(0, ...state.players.map(p => p.bet)) - player.bet;
   const maxRaise = Math.max(0, player.chips - callAmount);
   if (maxRaise <= 0) return 0;
   // Si el stack no llega para una subida mínima, ir all-in con lo disponible
   if (maxRaise <= state.minRaise) return maxRaise;
+  // Base por ciegas: escala con la agresión y no colapsa al mínimo en botes
+  // pequeños (el bug de la fracción de bote original).
+  const bbBase = state.bigBlind * (1 + aggro * 4);
+  const potBase = state.pot * (0.2 + aggro * 0.5);
+  let amount = Math.round(Math.max(bbBase, potBase));
+  // Con mano muy fuerte los agresivos cargan más el bote.
+  if (equity > 0.8) amount = Math.round(amount * (1 + aggro * 0.4));
   amount = Math.min(Math.max(amount, state.minRaise), maxRaise);
   return amount;
 }
+
+/**
+ * Ajuste por dificultad, sin añadir un 4º rasgo:
+ * - `error`: ruido simétrico sobre la equity estimada (juzgan peor).
+ * - `looseness`: relaja los umbrales (entran y suben con menos).
+ * Los `hard` usan los valores exactos del motor.
+ */
+const DIFFICULTY: Record<Personality['difficulty'], { error: number; looseness: number }> = {
+  easy: { error: 0.22, looseness: 0.2 },
+  medium: { error: 0.12, looseness: 0.1 },
+  hard: { error: 0, looseness: 0 },
+};
 
 export interface AIDecision {
   type: 'fold' | 'check' | 'call' | 'raise';
   amount?: number;
 }
 
+/** Contexto interno de una decisión, expuesto para diagnóstico (no altera el motor). */
+export interface DecisionInfo {
+  /** Equity efectiva usada para decidir (con ruido de dificultad). */
+  equity: number;
+  /** Equity estimada sin ruido. */
+  rawEquity: number;
+  raiseThreshold: number;
+  callThreshold: number;
+  /** Fuerza mínima para entrar al bote preflop (marcada por tightness). */
+  entryThreshold: number;
+  difficulty: Personality['difficulty'];
+  callAmount: number;
+  pot: number;
+  potOdds: number;
+  opponents: number;
+  /** Nº de cartas comunitarias (0 = preflop). */
+  street: number;
+  bluffRoll: boolean;
+  canCheck: boolean;
+  canRaise: boolean;
+  decision: AIDecision;
+}
+
 export function decideAction(
   playerIndex: number,
   state: PokerState,
-  personality: Personality
+  personality: Personality,
+  onDecision?: (info: DecisionInfo) => void
 ): AIDecision {
   const player = state.players[playerIndex];
   const maxBet = Math.max(0, ...state.players.map(p => p.bet));
@@ -121,38 +158,75 @@ export function decideAction(
   const canCheck = callAmount === 0;
   const canRaise = player.chips > callAmount;
 
-  const equity = estimateEquity(playerIndex, state);
+  const rawEquity = estimateEquity(playerIndex, state);
+  const { error, looseness } = DIFFICULTY[personality.difficulty];
+  // Los rivales fáciles juzgan mal: ruido simétrico sobre la equity estimada.
+  const equity = error > 0
+    ? Math.max(0, Math.min(1, rawEquity + (Math.random() * 2 - 1) * error))
+    : rawEquity;
+
   const potAfterCall = state.pot + callAmount;
   const potOdds = callAmount > 0 ? callAmount / potAfterCall : 0;
 
   const { tightness, aggression, bluffFrequency } = personality.traits;
 
-  // Umbrales por personalidad: tight pide más equity, loose menos
-  const raiseThreshold = 0.72 - aggression * 0.12;
-  const callThreshold = Math.max(0.18, 0.45 - (1 - tightness) * 0.22);
+  // Umbrales por personalidad: tight pide más equity, loose menos.
+  // La dificultad fácil los relaja (`looseness`) → juegan peor.
+  const raiseThreshold = 0.72 - aggression * 0.12 - looseness;
+  const callThreshold = Math.max(0.18, 0.45 - (1 - tightness) * 0.22) - looseness;
+  // Entrada al bote preflop gobernada por tightness: los loose entran con menos.
+  const entryThreshold = Math.max(0.1, 0.15 + tightness * 0.45 - looseness);
+  const preflop = state.community.length === 0;
 
   // ¿Farol? Más probable con pocos rivales y en calles tardías
   const opponents = activeOpponents(state, playerIndex);
   const streetBonus = state.community.length >= 4 ? 0.06 : 0;
   const bluffRoll = Math.random() < bluffFrequency * (opponents <= 2 ? 1.4 : 0.7) + streetBonus;
 
+  const finish = (decision: AIDecision): AIDecision => {
+    onDecision?.({
+      equity,
+      rawEquity,
+      raiseThreshold,
+      callThreshold,
+      entryThreshold,
+      difficulty: personality.difficulty,
+      callAmount,
+      pot: state.pot,
+      potOdds,
+      opponents,
+      street: state.community.length,
+      bluffRoll,
+      canCheck,
+      canRaise,
+      decision,
+    });
+    return decision;
+  };
+
   // 1) Mano muy fuerte o farol: subir
   if (canRaise && (equity >= raiseThreshold || (bluffRoll && equity >= 0.25))) {
     const amount = sizeRaise(personality, state, playerIndex, equity);
-    if (amount > 0) return { type: 'raise', amount };
+    if (amount > 0) return finish({ type: 'raise', amount });
   }
 
-  // 2) Igualar si la equity justifica el precio (pot odds)
+  // 2) Igualar
   if (callAmount > 0) {
+    // Preflop: entrar o no al bote lo decide tightness (VPIP), no el pot odds.
+    if (preflop) {
+      if (equity >= entryThreshold) return finish({ type: 'call' });
+      return finish({ type: 'fold' });
+    }
+    // Postflop: la equity debe justificar el precio (pot odds)
     const margin = equity - potOdds;
     if (equity >= callThreshold && margin > -0.05) {
-      return { type: 'call' };
+      return finish({ type: 'call' });
     }
     // Calls baratos con mano especulativa (personalidades loose)
     if (equity >= callThreshold * 0.7 && potOdds < 0.12 && tightness < 0.55) {
-      return { type: 'call' };
+      return finish({ type: 'call' });
     }
-    return { type: 'fold' };
+    return finish({ type: 'fold' });
   }
 
   // 3) Sin apuesta que igualar: pasar o apostar por valor
@@ -160,12 +234,12 @@ export function decideAction(
     // Apuesta de valor/ocasional con mano decente y agresión alta
     if (canRaise && equity >= 0.55 && Math.random() < aggression * 0.6) {
       const amount = sizeRaise(personality, state, playerIndex, equity);
-      if (amount > 0) return { type: 'raise', amount };
+      if (amount > 0) return finish({ type: 'raise', amount });
     }
-    return { type: 'check' };
+    return finish({ type: 'check' });
   }
 
-  return { type: 'fold' };
+  return finish({ type: 'fold' });
 }
 
 // ---------- Personalidades ----------
