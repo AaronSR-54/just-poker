@@ -229,7 +229,7 @@ const HandLabel: React.FC<{ name: string; winner?: boolean; className?: string }
   if (!name) return null;
   if (winner) {
     return (
-      <span className={`inline-flex items-center whitespace-nowrap rounded-pill bg-bone px-2.5 py-0.5 font-display font-bold text-fs-100 uppercase tracking-[0.08em] text-ink ${className}`}>
+      <span className={`whitespace-nowrap font-display font-bold text-fs-100 uppercase tracking-[0.04em] text-bone ${className}`}>
         {name}
       </span>
     );
@@ -257,6 +257,9 @@ const CommunityRow: React.FC<{
 }> = ({ phase, community, pot, potAwarded = false, cardSize = 'xxl', isDimmed }) => {
   const visibleCount = phase === 'pre-flop' ? 0 : phase === 'flop' ? 3 : phase === 'turn' ? 4 : 5;
   const slot = COMMUNITY_SLOT[cardSize];
+  // Índice de la primera carta de la calle actual: el escalonado solo reparte
+  // retardo entre las cartas recién descubiertas (las 3 del flop).
+  const streetStart = phase === 'flop' ? 0 : phase === 'turn' ? 3 : 4;
 
   return (
     <div data-tour="board" className="flex flex-col items-center gap-3">
@@ -284,7 +287,7 @@ const CommunityRow: React.FC<{
                 key={`${card.rank}${card.suit}`}
                 initial={{ opacity: 0, scale: 0.85, rotateY: 60 }}
                 animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
+                transition={t(0.35, (i - streetStart) * 0.1)}
               >
                 <PokerCard
                   size={cardSize}
@@ -438,7 +441,7 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
               <button
                 key={qa.label}
                 onClick={() => onRaiseChange(val)}
-                className={`flex cursor-pointer items-center justify-center rounded-lg border bg-transparent font-display font-bold text-bone transition-[transform,border-color,background-color] duration-[160ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+                className={`flex cursor-pointer items-center justify-center rounded-full border bg-transparent font-display font-bold text-bone transition-[transform,border-color,background-color] duration-[160ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
                   fill ? 'py-2 text-fs-200' : 'px-2.5 py-1 text-fs-200'
                 } ${
                   raiseAmount === val ? 'border-bone bg-bone/12' : 'border-bone/[0.18]'
@@ -571,7 +574,7 @@ const GameOverOverlay: React.FC<{
           variants={container(0.06, 0.5)}
           initial="hidden"
           animate="visible"
-          className="flex w-full flex-col gap-2"
+          className="flex w-full flex-col gap-2 border-t border-bone/[0.18] pt-5"
         >
           <motion.div variants={fadeUp}>
             <Button variant="primary" block onClick={onRestart}>Nueva partida</Button>
@@ -725,7 +728,8 @@ const LocalGame: React.FC = () => {
   // ---- Persistir la partida en curso ----
   useEffect(() => {
     if (isTutorial || !isLocal || !gameId || !gameState || !gameRef.current) return;
-    if (gameState.gameOver) {
+    const humanOut = gameState.handOver && (gameState.players[0].chips <= 0 || gameState.players[0].eliminated);
+    if (gameState.gameOver || humanOut) {
       clearSavedGame();
       return;
     }
@@ -1069,7 +1073,7 @@ const LocalGame: React.FC = () => {
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">
             Esta sala aún no está lista. Vuelve al lobby.
           </div>
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <Button variant="outline" className="rounded-[0.875rem]!" onClick={() => navigate('/')}>
             ← Volver al menú
           </Button>
         </div>
@@ -1124,21 +1128,20 @@ const LocalGame: React.FC = () => {
 
   const humanRole = blindRoleFor(0);
 
-  const humanHandName = (() => {
-    if (human.cards.length < 2) return '';
-    if (state.community.length >= 3) return evaluateHand(human.cards, state.community).name;
-    // Preflop: solo "Pareja" si la hay; el resto es Carta Alta.
-    const [a, b] = human.cards;
-    if (a.rank === b.rank) return 'Pareja';
-    return a.rank === b.rank  ? `Pareja` : 'Carta Alta';
-  })();
+  const evaluateVisibleHand = (cards: { rank: CardRank; suit: Suit }[]): string => {
+    if (cards.length < 2) return '';
+    if (state.community.length >= 3) return evaluateHand(cards, state.community).name;
+    // Sin cartas comunitarias: la mano es la de las dos cartas propias.
+    return cards[0].rank === cards[1].rank ? 'Pareja' : 'Carta Alta';
+  };
 
-  const winningHandName = winner && winner.length > 0 && state.players[winner[0]].cards.length >= 2 && state.community.length >= 3
-    ? evaluateHand(state.players[winner[0]].cards, state.community).name
+  const humanHandName = evaluateVisibleHand(human.cards);
+
+  const winningHandName = winner && winner.length > 0
+    ? evaluateVisibleHand(state.players[winner[0]].cards)
     : '';
 
-  const handNameFor = (cards: { rank: CardRank; suit: Suit }[]): string =>
-    cards.length >= 2 && state.community.length >= 3 ? evaluateHand(cards, state.community).name : '';
+  const handNameFor = evaluateVisibleHand;
 
   const winnerLog = handOver && winner && winner.length > 0
     ? {
@@ -1309,13 +1312,14 @@ const LocalGame: React.FC = () => {
       </Button>
     );
 
-    // Móvil: los tres botones en fila.
+    // Móvil: los tres botones en fila, con la acción más frecuente
+    // (Pasar/Retirarse) a la derecha, lo más cerca posible del pulgar.
     if (fill) {
       return (
         <div className="flex w-full gap-2">
-          {passButton}
-          {callButton}
           {raiseButton}
+          {callButton}
+          {passButton}
         </div>
       );
     }
@@ -1347,15 +1351,16 @@ const LocalGame: React.FC = () => {
   if (isMobile) {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        <div className="flex shrink-0 items-start justify-between gap-3 px-[0.875rem] pb-1 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <div className="pointer-events-none min-w-0 flex-1">
-            <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
-          </div>
-          <SettingsButton onClick={openSettings} inline />
-        </div>
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto_1fr] overflow-y-auto px-[0.875rem]">
+          <div className="flex flex-col self-start pt-[calc(0.75rem+env(safe-area-inset-top))]">
+            <div className="flex items-start justify-between gap-3 pb-1">
+              <div className="pointer-events-none min-w-0 flex-1">
+                <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+              </div>
+              <SettingsButton onClick={openSettings} inline />
+            </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[0.875rem] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2">
-          <div data-tour="rivals" className="flex flex-wrap justify-center gap-2">
+            <div data-tour="rivals" className="flex flex-wrap justify-center gap-2 pt-2">
             {rivals.map((r, i) => (
               <div key={r.id} className="flex flex-col items-center gap-1.5">
                 <RivalSlot
@@ -1387,9 +1392,10 @@ const LocalGame: React.FC = () => {
                 </div>
               </div>
             ))}
+            </div>
           </div>
 
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-3">
+          <div className="py-3">
             <CommunityRow
               phase={phase}
               community={state.community}
@@ -1400,10 +1406,10 @@ const LocalGame: React.FC = () => {
             />
           </div>
 
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-3 self-end pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             <div className="flex w-full items-center justify-between gap-3">
-              <div className="flex items-center justify-start self-end">{humanInfo}</div>
-              <div className="flex justify-end">{humanCards}</div>
+              <div className="flex justify-start">{humanCards}</div>
+              <div className="flex items-center justify-end self-end">{humanInfo}</div>
             </div>
 
             <div data-tour="actions" className="w-full">
@@ -1412,7 +1418,7 @@ const LocalGame: React.FC = () => {
 
             <div className="h-[3px] w-full">
               {!isTutorial && activePlayer === 0 && !handOver && !streetPending && (
-                <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}-${settingsOpen}`} duration={turnDurationMs} className="w-full" paused={settingsOpen} />
+                <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}-${settingsOpen}`} duration={turnDurationMs} className="mx-2" paused={settingsOpen} />
               )}
             </div>
           </div>
@@ -1476,15 +1482,16 @@ const LocalGame: React.FC = () => {
         <SettingsButton onClick={openSettings} />
       </div>
 
-      <div className="flex flex-1 flex-col px-6 pb-6 pt-4 lg:px-12">
-        <div className="flex shrink-0 items-start justify-between gap-3 xl:hidden">
-          <div className="pointer-events-none min-w-0 flex-1">
-            <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+      <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto_1fr] px-6 lg:px-12">
+        <div className="flex flex-col self-start pt-4">
+          <div className="flex shrink-0 items-start justify-between gap-3 xl:hidden">
+            <div className="pointer-events-none min-w-0 flex-1">
+              <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+            </div>
+            <SettingsButton onClick={openSettings} inline />
           </div>
-          <SettingsButton onClick={openSettings} inline />
-        </div>
 
-        <div data-tour="rivals" className="mt-3 flex justify-center gap-3 lg:mt-4 lg:gap-4">
+          <div data-tour="rivals" className="mt-3 flex justify-center gap-3 lg:mt-4 lg:gap-4">
           {rivals.map((r, i) => (
             <div key={r.id} className="flex flex-col items-center gap-2">
               <RivalSlot
@@ -1505,7 +1512,7 @@ const LocalGame: React.FC = () => {
                 timerDuration={aiTurn?.playerIndex === r.id ? aiTurn.duration : undefined}
                 timerKey={`${state.handNumber}-${phase}-${r.id}`}
               />
-              <div className="flex min-h-[7.1875rem] flex-col items-center gap-2">
+              <div className={`flex flex-col items-center gap-2 ${showdown ? 'min-h-[7.1875rem]' : ''}`}>
                 {showdown && !r.folded && r.cards.length > 0 && (
                   <>
                     <ShowdownCards cards={r.cards} size="md" isDimmed={isDimmed} />
@@ -1515,9 +1522,10 @@ const LocalGame: React.FC = () => {
               </div>
             </div>
           ))}
+          </div>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-4 lg:py-6">
+        <div className="py-4 lg:py-6">
           <CommunityRow
             phase={phase}
             community={state.community}
@@ -1527,7 +1535,7 @@ const LocalGame: React.FC = () => {
           />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 self-end pb-6">
           <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-4">
             <div className="justify-self-start">{humanInfo}</div>
 
@@ -1540,7 +1548,7 @@ const LocalGame: React.FC = () => {
 
           <div className="h-[3px] w-full">
             {!isTutorial && activePlayer === 0 && !handOver && !streetPending && (
-              <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}-${settingsOpen}`} duration={turnDurationMs} className="w-full" paused={settingsOpen} />
+              <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}-${settingsOpen}`} duration={turnDurationMs} className="mx-2" paused={settingsOpen} />
             )}
           </div>
         </div>
