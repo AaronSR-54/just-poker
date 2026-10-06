@@ -277,11 +277,11 @@ const PotAward: React.FC<PotAwardProps> = ({ data, onLanded, onDone }) => {
       const winner = winners[winnerIdx];
       const { seatEl, chipEl } = seats[winnerIdx];
 
-      // Pequeña dispersión en espiral para que no arranquen todas apiladas.
-      const angle = i * 2.399963;
-      const radius = i === 0 ? 0 : 3 + (i % 4) * 2;
-      const fromX = origin.x + Math.cos(angle) * radius;
-      const fromY = origin.y + Math.sin(angle) * radius * 0.6;
+      // Todas salen del propio icono del bote (mismo punto) para que se lea un
+      // chorro que va del bote al montón de cada ganador; el escalonado las
+      // separa lo suficiente para no superponerse en el arranque.
+      const fromX = origin.x;
+      const fromY = origin.y;
 
       const distance = chipEl ? Math.hypot(centerOf(chipEl).x - fromX, centerOf(chipEl).y - fromY) : 0;
       const delay = t(FLIGHT, POT_AWARD_HOLD + i * STAGGER).delay as number;
