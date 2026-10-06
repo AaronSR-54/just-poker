@@ -69,6 +69,47 @@ describe('evaluateHand', () => {
     expect(compareHands(a, b)).toBeGreaterThan(0);
   });
 
+  it('compara doble pareja por las parejas, no por el kicker', () => {
+    const board = [c('3', 'd'), c('2', 'c'), c('10', 'h'), c('3', 's'), c('2', 'd')];
+    const kings = evaluateHand([c('K', 's'), c('K', 'h')], board);
+    const aceFour = evaluateHand([c('4', 's'), c('A', 'h')], board);
+    expect(kings.name).toBe('Doble Pareja');
+    expect(aceFour.name).toBe('Doble Pareja');
+    expect(compareHands(kings, aceFour)).toBeGreaterThan(0);
+    expect(determineWinner([
+      { cards: [c('K', 's'), c('K', 'h')], folded: false },
+      { cards: [c('4', 's'), c('A', 'h')], folded: false },
+    ], board)).toEqual([0]);
+  });
+
+  it('compara doble pareja con kicker igual', () => {
+    const board = [c('9', 'd'), c('5', 'c'), c('K', 'h'), c('9', 's'), c('5', 'd')];
+    const ace = evaluateHand([c('A', 's'), c('2', 'h')], board);
+    const queen = evaluateHand([c('Q', 's'), c('3', 'h')], board);
+    expect(compareHands(ace, queen)).toBeGreaterThan(0);
+  });
+
+  it('caso reportado: 10,10 vs K,7 en mesa 4,2,4,2,8', () => {
+    const board = [c('4', 'd'), c('2', 'c'), c('4', 'h'), c('2', 's'), c('8', 'd')];
+    const tens = evaluateHand([c('10', 's'), c('10', 'h')], board);
+    const kingSeven = evaluateHand([c('K', 's'), c('7', 'h')], board);
+    expect(tens.name).toBe('Doble Pareja');
+    expect(kingSeven.name).toBe('Doble Pareja');
+    expect(compareHands(tens, kingSeven)).toBeGreaterThan(0);
+    expect(determineWinner([
+      { cards: [c('10', 's'), c('10', 'h')], folded: false },
+      { cards: [c('K', 's'), c('7', 'h')], folded: false },
+    ], board)).toEqual([0]);
+  });
+
+  it('compara full house por el trío, no por la pareja', () => {
+    const twosFullOfAces = evaluateHand([c('2', 's'), c('2', 'h')], [c('2', 'd'), c('A', 'c'), c('A', 'h')]);
+    const kingsFullOfThrees = evaluateHand([c('K', 's'), c('K', 'h')], [c('K', 'd'), c('3', 'c'), c('3', 'h')]);
+    expect(twosFullOfAces.name).toBe('Full House');
+    expect(kingsFullOfThrees.name).toBe('Full House');
+    expect(compareHands(kingsFullOfThrees, twosFullOfAces)).toBeGreaterThan(0);
+  });
+
   it('determineWinner maneja empates', () => {
     // Ambos juegan el board (escalera en mesa)
     const players = [

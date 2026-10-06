@@ -79,7 +79,17 @@ function evaluate5Cards(cards: Card[]): HandResult {
   // La escalera al As (A-2-3-4-5) es 5 alta. Reordenamos las cartas para que
   // compareHands no confunda el As (14) con una carta alta y la puntúe de más.
   const isWheel = ranks[0] === 14 && ranks[1] === 5 && ranks[2] === 4 && ranks[3] === 3 && ranks[4] === 2;
-  const ordered = isWheel ? [sorted[1], sorted[2], sorted[3], sorted[4], sorted[0]] : sorted;
+  // Orden pensado para compareHands: primero las cartas de mayor multiplicidad
+  // (trío/pareja antes que kickers) y, a igual multiplicidad, por rango. Así la
+  // doble pareja compara sus parejas y no un kicker alto.
+  const ordered = isWheel
+    ? [sorted[1], sorted[2], sorted[3], sorted[4], sorted[0]]
+    : [...cards].sort((a, b) => {
+        const fa = freq[rankValue(a.rank)];
+        const fb = freq[rankValue(b.rank)];
+        if (fa !== fb) return fb - fa;
+        return rankValue(b.rank) - rankValue(a.rank);
+      });
 
   if (isFlush && isStraight) {
     if (ranks[0] === 14 && ranks[1] === 13) {
