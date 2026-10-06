@@ -90,7 +90,7 @@ const HandDetail: React.FC<{ hand: HandExample; size?: keyof typeof detailSizes;
   );
 };
 
-const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; size?: 'sm' | 'lg'; fill?: boolean }> = ({ selected, onSelect, size = 'sm', fill = false }) => {
+const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; size?: 'sm' | 'lg'; fill?: boolean; dense?: boolean }> = ({ selected, onSelect, size = 'sm', fill = false, dense = false }) => {
   const { t } = useI18n();
   const large = size === 'lg';
   return (
@@ -98,7 +98,7 @@ const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; size
       variants={container(0.04)}
       initial="hidden"
       animate="visible"
-      className={`flex flex-col gap-1 ${fill ? 'h-full' : ''}`}
+      className={`${dense ? 'grid grid-cols-2 gap-1' : 'flex flex-col gap-1'} ${fill ? 'h-full' : ''}`}
     >
       {HANDS.map((h, i) => (
         <motion.button
@@ -106,12 +106,12 @@ const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; size
           variants={fadeIn}
           type="button"
           onClick={() => onSelect(i)}
-          className={`flex w-full cursor-pointer items-center gap-3 rounded-full border-[1.5px] text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-            large ? 'px-4 py-2.5' : 'px-3 py-1.5'
-          } ${fill ? 'flex-1' : ''} ${i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] bg-ink text-bone'}`}
+          className={`flex w-full cursor-pointer items-center rounded-full border-[1.5px] text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+            dense ? 'gap-1.5 px-2 py-1.5' : large ? 'gap-3 px-4 py-2.5' : 'gap-3 px-3 py-1.5'
+          } ${fill && !dense ? 'flex-1' : ''} ${i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] bg-ink text-bone'}`}
         >
-          <span className={`font-display font-bold opacity-70 ${large ? 'w-6 text-fs-300' : 'w-[18px] text-fs-200'}`}>{10 - i}</span>
-          <span className={`flex-1 font-display font-bold ${large ? 'text-fs-300' : 'text-fs-200'}`}>{t(`handName.${h.rank}`)}</span>
+          <span className={`font-display font-bold opacity-70 ${dense ? 'w-4 text-fs-200 min-[300px]:text-fs-300' : large ? 'w-6 text-fs-300' : 'w-[18px] text-fs-200 min-[300px]:text-fs-300'}`}>{10 - i}</span>
+          <span className={`flex-1 font-display font-bold ${large ? 'text-fs-300' : 'text-fs-200 min-[300px]:text-fs-300'}`}>{t(`handName.${h.rank}`)}</span>
         </motion.button>
       ))}
     </motion.div>
@@ -126,6 +126,8 @@ const HandsGuide: React.FC = () => {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const isWide = useMediaQuery('(min-width: 1280px)');
   const isMobile = useMediaQuery('(max-width: 767px)');
+  /** Pantallas bajas (móviles 16:9): lista de manos a dos columnas para evitar scroll. */
+  const isShort = useMediaQuery('(max-height: 720px)');
   const { t } = useI18n();
   const hand = HANDS[selected];
 
@@ -174,13 +176,13 @@ const HandsGuide: React.FC = () => {
             animate="visible"
             className="mx-auto mt-5 flex min-h-0 w-full max-w-[540px] flex-1 flex-col gap-4"
           >
-            <motion.div variants={fadeIn} className="flex shrink-0 flex-col items-center gap-2 text-center">
+            <motion.div variants={fadeIn} className="flex shrink-0 flex-col gap-2">
               <Title className="text-fs-700" />
               <p className="max-w-[440px] font-body leading-[1.45] opacity-70">{t('handsGuide.intro')}</p>
             </motion.div>
             <motion.div variants={fadeIn} className="shrink-0">{detail(isMobile ? 'sm' : 'md')}</motion.div>
             <motion.div variants={fadeIn} className="flex min-h-0 flex-1 flex-col">
-              <HandList selected={selected} onSelect={selectHand} fill />
+              <HandList selected={selected} onSelect={selectHand} fill dense={isShort} />
             </motion.div>
           </motion.div>
         </div>

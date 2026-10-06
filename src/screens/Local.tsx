@@ -43,8 +43,8 @@ const TABLES: Table[] = [
 ];
 
 const difficultyCardSizes = {
-  sm: { root: 'gap-4 rounded-[14px] px-[1.125rem] py-4', label: 'text-fs-500', rivals: 'text-fs-200' },
-  lg: { root: 'gap-6 rounded-[clamp(0.75rem,2.4cqw,1rem)] px-[4.5cqw] py-[4cqw]', label: 'text-[clamp(1.5rem,5.5cqw,2.75rem)]', rivals: 'text-fs-300 leading-[1.35]' },
+  sm: { root: 'gap-4 rounded-[14px] px-[1.125rem]', pad: 'py-4', label: 'text-fs-500', rivals: 'text-fs-200' },
+  lg: { root: 'gap-6 rounded-[clamp(0.75rem,2.4cqw,1rem)] px-[4.5cqw]', pad: 'py-[4cqw]', label: 'text-[clamp(1.5rem,5.5cqw,2.75rem)]', rivals: 'text-fs-300 leading-[1.35]' },
 } as const;
 
 // Tarjeta de dificultad seleccionable. Mismo componente en móvil y escritorio; solo varía el size.
@@ -53,8 +53,9 @@ const DifficultyCard: React.FC<{
   selected: boolean;
   size?: keyof typeof difficultyCardSizes;
   dataTour?: string;
+  dense?: boolean;
   onClick: () => void;
-}> = ({ table, selected, size = 'sm', dataTour, onClick }) => {
+}> = ({ table, selected, size = 'sm', dataTour, dense = false, onClick }) => {
   const { t } = useI18n();
   const s = difficultyCardSizes[size];
   return (
@@ -70,6 +71,7 @@ const DifficultyCard: React.FC<{
         className={[
           'flex h-full w-full items-center justify-between text-left cursor-pointer border-[1.5px]',
           s.root,
+          dense ? 'py-3' : s.pad,
           'transition-[background-color,border-color,transform] duration-[240ms] ease-brand',
           'enabled:hover:-translate-y-0.5 enabled:hover:border-bone enabled:active:translate-y-px',
           'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone',
@@ -90,7 +92,7 @@ const RivalCard: React.FC<{ rival: Rival; tone: string; imgClassName: string; co
   const slug = rivalSlug(rival.n);
   return (
     <div className={`flex items-center ${compact ? 'gap-3' : 'gap-4'}`}>
-      <Avatar name={rival.n} src={rivalAvatar(rival.n)} size={compact ? 48 : 56} tone={tone} imgClassName={imgClassName} />
+      <Avatar name={rival.n} src={rivalAvatar(rival.n)} size={compact ? 40 : 56} tone={tone} imgClassName={imgClassName} />
       <div className="flex flex-col gap-1">
         <div className="font-display font-bold leading-none text-fs-300">
           {rival.n} <em className="font-light italic opacity-80">“{t(rivalAliasKey(rival.n) ?? '')}”</em>
@@ -171,6 +173,9 @@ const Local: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 767px)');
   /** Pantallas muy estrechas (<300px): se compacta todo para que no haya scroll. */
   const isTiny = useMediaQuery('(max-width: 299px)');
+  /** Pantallas bajas (móviles 16:9): se compacta para evitar scroll vertical. */
+  const isShort = useMediaQuery('(max-height: 720px)');
+  const dense = isTiny || isShort;
   const { t } = useI18n();
   const onboardingCompleted = useUserStore(s => s.onboardingCompleted);
   const setDifficulty = useOnboardingStore(s => s.setDifficulty);
@@ -203,9 +208,9 @@ const Local: React.FC = () => {
     navigate(`/game/local-${selectedId}`);
   };
 
-  const renderCards = (size: 'sm' | 'lg') =>
+  const renderCards = (size: 'sm' | 'lg', denseCards = false) =>
     TABLES.map(t => (
-      <DifficultyCard key={t.id} table={t} selected={t.id === selectedId} size={size} dataTour={`difficulty-${t.id}`} onClick={() => selectTable(t.id)} />
+      <DifficultyCard key={t.id} table={t} selected={t.id === selectedId} size={size} dense={denseCards} dataTour={`difficulty-${t.id}`} onClick={() => selectTable(t.id)} />
     ));
 
   const shell = (children: React.ReactNode) => (
@@ -226,7 +231,7 @@ const Local: React.FC = () => {
 
   if (isMobile) {
     return shell(
-      <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] ${isTiny ? 'pb-5 pt-5' : 'pb-7 pt-8'}`}>
+      <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] ${dense ? 'pb-5 pt-5' : 'pb-7 pt-8'}`}>
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-4">
             <BackButton onClick={() => navigate('/')} />
@@ -237,12 +242,12 @@ const Local: React.FC = () => {
           variants={container(0.07, 0.05)}
           initial="hidden"
           animate="visible"
-          className={isTiny ? 'mt-auto flex flex-col gap-3 pt-3' : 'mt-auto flex flex-col gap-4 pt-5'}
+          className={dense ? 'mt-auto flex flex-col gap-3 pt-3' : 'mt-auto flex flex-col gap-4 pt-5'}
         >
           <motion.div variants={fadeUp}>
             <Title className={isTiny ? 'text-fs-600' : 'text-[clamp(2rem,8.5vw,2.75rem)]'} />
           </motion.div>
-          <motion.div variants={container(0.06)} data-tour="difficulty-list" className="flex flex-col gap-2">{renderCards('sm')}</motion.div>
+          <motion.div variants={container(0.06)} data-tour="difficulty-list" className="flex flex-col gap-2">{renderCards('sm', dense)}</motion.div>
           <motion.div variants={fadeUp}>
             <AnimatePresence mode="wait">
               <motion.div
@@ -252,7 +257,7 @@ const Local: React.FC = () => {
                 animate="visible"
                 exit="exit"
               >
-                <TableDetail table={selected} onStart={startGame} compact={isTiny} />
+                <TableDetail table={selected} onStart={startGame} compact={dense} />
               </motion.div>
             </AnimatePresence>
           </motion.div>

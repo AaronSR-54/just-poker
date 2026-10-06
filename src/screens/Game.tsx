@@ -153,7 +153,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
       transition={motionT(0.35, enterDelay)}
       className={[
         'relative flex flex-col items-center rounded-slot border text-center',
-        compact ? 'w-[min(104px,28vw)] gap-2 rounded-[10px] px-3 py-3' : 'w-[150px] gap-3.5 px-6 py-5',
+        compact ? 'w-[min(104px,28vw)] gap-1 rounded-[10px] px-3 py-3' : 'w-[150px] gap-2 px-6 py-5',
         filled
           ? 'border-bone bg-bone text-ink'
           : isActive && !handOver
@@ -169,9 +169,9 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
         <Avatar name={name} src={rivalAvatar(name)} size={compact ? 48 : 64} tone={avatarTone} imgClassName={avatarImgClassName} />
       </span>
 
-      <div className="flex w-full flex-col items-center gap-1">
-        <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
-          <div className="min-w-0 truncate font-display font-bold leading-none text-fs-200">{name}</div>
+      <div className="flex w-full flex-col items-center">
+        <div className="flex w-full min-w-0 items-baseline justify-center gap-1.5">
+          <div className="min-w-0 truncate font-display font-bold leading-4.5 text-fs-200">{name}</div>
           {blindRole && (
             <span
               className="shrink-0"
@@ -181,10 +181,10 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
             </span>
           )}
         </div>
-        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
+        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70 leading-3 sm:leading-2 md:leading-4">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
       </div>
 
-      <div className="relative flex w-full items-center justify-center gap-0.5 pb-2">
+      <div className="relative flex w-full items-center justify-center gap-0.5 py-2">
         <span data-chips className="inline-flex">
           <ChipIcon className={`size-5 ${filled ? 'text-ink' : 'text-bone'}`} />
         </span>
@@ -194,7 +194,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
           ) : (
             <span className={`flex items-center whitespace-nowrap font-display font-bold leading-none tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
           )}
-          <div className="absolute left-1/2 top-full -translate-x-1/2">
+          <div className="absolute left-3 md:left-4 top-full -translate-x-1/2">
             <DeltaLine amount={showAllIn ? 0 : delta} filled={filled} className="whitespace-nowrap" />
           </div>
         </div>
@@ -1398,7 +1398,7 @@ const LocalGame: React.FC = () => {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto_1fr] overflow-y-auto px-[0.875rem]">
-          <div className="flex flex-col self-start pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <div className="flex flex-col self-start pt-[calc(0.75rem+env(safe-area-inset-top))] [@media(max-height:700px)]:pt-[calc(0.375rem+env(safe-area-inset-top))]">
             <div className="flex items-start justify-between gap-3 pb-1">
               <div className="pointer-events-none min-w-0 flex-1">
                 <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
@@ -1448,7 +1448,7 @@ const LocalGame: React.FC = () => {
             </div>
           </div>
 
-          <div className="py-3">
+          <div className="py-3 [@media(max-height:700px)]:py-1">
             <CommunityRow
               phase={phase}
               community={state.community}
@@ -1460,7 +1460,7 @@ const LocalGame: React.FC = () => {
             />
           </div>
 
-          <div className="flex flex-col items-center gap-3 self-end pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+          <div className="flex flex-col items-center gap-3 self-end pb-[calc(2.5rem+env(safe-area-inset-bottom))] [@media(max-height:700px)]:gap-1.5 [@media(max-height:700px)]:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <div className="flex w-full items-center justify-between gap-3">
               <div className="flex justify-start">{humanCards}</div>
               <div className="flex items-center justify-end self-end">{humanInfo}</div>
