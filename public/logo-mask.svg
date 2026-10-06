@@ -4,8 +4,8 @@
       <feGaussianBlur stdDeviation="130" />
     </filter>
     <mask id="diamond">
-      <rect width="1000" height="2000" fill="#fff" />
-      <path d="M500 -600 L820 1000 L500 2600 L180 1000 Z" fill="#000" filter="url(#soft)" />
+      <rect width="1000" height="2000" fill="#000" />
+      <path d="M500 320 L790 1000 L500 1680 L210 1000 Z" fill="#fff" filter="url(#soft)" />
     </mask>
   </defs>
   <rect width="1000" height="2000" fill="#fff" mask="url(#diamond)" />

@@ -80,7 +80,7 @@ const MilestoneDot: React.FC<{
         reached ? 'border-2 border-bone bg-ink-400' : 'border-2 border-bone/[0.18] bg-ink'
       }`}
     >
-      <span className={`font-display font-bold text-[18px] ${reached ? 'opacity-100' : 'opacity-30'}`}>
+      <span className={`font-display font-bold text-[1.125rem] ${reached ? 'opacity-100' : 'opacity-30'}`}>
         {rank.roman}
       </span>
     </div>
@@ -95,7 +95,7 @@ const MilestoneDot: React.FC<{
 
 const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex min-w-[100px] flex-1 flex-col gap-1 rounded-[10px] border border-bone/[0.18] bg-ink px-4 py-[0.875rem]">
-    <div className="font-display font-bold text-[22px]">{value}</div>
+    <div className="font-display font-bold text-[1.375rem]">{value}</div>
     <div className="font-body tracking-[0.04em] opacity-70 text-fs-100">{label}</div>
   </div>
 );
@@ -195,7 +195,7 @@ const Profile: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex items-center justify-between border-b border-bone/[0.18] bg-ink px-[1.125rem] py-[0.875rem]">
           <div className="flex cursor-pointer items-center gap-2" onClick={() => navigate('/')}>
             <span className="font-display font-bold text-fs-300">←</span>
@@ -206,10 +206,10 @@ const Profile: React.FC = () => {
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-[1.125rem] py-6">
           <div className="flex flex-col items-center gap-3">
             <Avatar name={user.username} size={80} />
-            <div className="font-display font-bold leading-none text-[20px]">{user.username}</div>
+            <div className="font-display font-bold leading-none text-[1.25rem]">{user.username}</div>
             <RankBlock rank={currentRank} />
             <div className="flex items-baseline gap-2">
-              <span className="font-display font-bold text-[28px]">{points}</span>
+              <span className="font-display font-bold text-[1.75rem]">{points}</span>
               <span className="font-body tracking-[0.04em] opacity-70 text-fs-100">puntos</span>
             </div>
             <div className="w-full">
@@ -235,7 +235,7 @@ const Profile: React.FC = () => {
   // ---- DESKTOP ----
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
           <div className="cursor-pointer" onClick={() => navigate('/')}>
@@ -251,10 +251,10 @@ const Profile: React.FC = () => {
         <FadeIn className="flex flex-[0_0_20rem] flex-col gap-5">
           <div className="flex flex-col items-start gap-4">
             <Avatar name={user.username} size={120} />
-            <div className="font-display font-bold leading-none text-[32px]">{user.username}</div>
+            <div className="font-display font-bold leading-none text-[2rem]">{user.username}</div>
             <RankBlock rank={currentRank} />
             <div className="flex items-baseline gap-2">
-              <span className="font-display font-bold text-[42px]">{points}</span>
+              <span className="font-display font-bold text-[2.625rem]">{points}</span>
               <span className="font-body tracking-[0.04em] opacity-70 text-fs-300">puntos</span>
             </div>
             <div className="w-full">

@@ -16,8 +16,8 @@ const CodeDigit: React.FC<{ digit?: string; focused?: boolean }> = ({ digit, foc
   return (
     <div
       className={[
-        'flex h-20 w-16 items-center justify-center rounded-lg bg-ink',
-        'font-display font-bold text-[32px] leading-none',
+        'flex h-16 w-14 items-center justify-center rounded-lg bg-ink sm:h-20 sm:w-16',
+        'font-display font-bold text-[1.625rem] leading-none sm:text-[2rem]',
         'transition-[border-color] duration-200',
         focused
           ? 'border-2 border-bone'
@@ -166,20 +166,20 @@ const Online: React.FC = () => {
   // ------- MOBILE -------
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         {mode !== 'main' && brandBar}
 
         <AnimatePresence mode="wait">
         {mode === 'main' && (
-          <FadeIn key="main" className="flex flex-1 flex-col justify-center gap-5 px-5 py-[1.875rem]">
-            <div className="mb-[10px] text-center font-display font-bold text-fs-400 uppercase tracking-[0.08em]">
+          <FadeIn key="main" className="flex min-h-0 flex-1 flex-col [justify-content:safe_center] gap-5 overflow-y-auto px-5 py-[1.875rem]">
+            <div className="mb-2.5 text-center font-display font-bold text-fs-400 uppercase tracking-[0.08em]">
               Just <em className="font-light italic tracking-normal">Poker</em>
             </div>
-            <div className="text-center font-display font-bold leading-none text-[24px]">Jugar en línea</div>
+            <div className="text-center font-display font-bold leading-none text-[1.5rem]">Jugar en línea</div>
 
             <div className="flex flex-col items-center gap-3 rounded-[14px] bg-bone p-7 text-center text-ink">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">Pública</div>
-              <div className="font-display font-bold leading-none text-[18px]">Unirse a una mesa aleatoria</div>
+              <div className="font-display font-bold leading-none text-[1.125rem]">Unirse a una mesa aleatoria</div>
               <RankBadge points={user.points} />
               <Button variant="primary" block disabled={busy} onClick={findPublic}>
                 {busy ? 'Conectando…' : 'Buscar partida'}
@@ -188,7 +188,7 @@ const Online: React.FC = () => {
 
             <div className="flex flex-col items-center gap-3 rounded-[14px] border-[1.5px] border-bone bg-ink p-7 text-center">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Privada</div>
-              <div className="font-display font-bold leading-none text-[18px]">Partida privada</div>
+              <div className="font-display font-bold leading-none text-[1.125rem]">Partida privada</div>
               <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 max-w-[260px]">
                 Crea una sala con código o únete a una existente.
               </div>
@@ -206,7 +206,7 @@ const Online: React.FC = () => {
         )}
 
         {mode === 'create' && (
-          <FadeIn key="create" className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-[1.875rem]">
+          <FadeIn key="create" className="flex min-h-0 flex-1 flex-col items-center [justify-content:safe_center] gap-5 overflow-y-auto px-5 py-[1.875rem]">
             <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de sala</div>
             <div className="flex gap-3">
               {createdCode.split('').map((d, i) => <CodeDigit key={i} digit={d} />)}
@@ -227,7 +227,7 @@ const Online: React.FC = () => {
         )}
 
         {mode === 'join-typing' && (
-          <FadeIn key="join-typing" className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-[1.875rem]">
+          <FadeIn key="join-typing" className="flex min-h-0 flex-1 flex-col items-center [justify-content:safe_center] gap-5 overflow-y-auto px-5 py-[1.875rem]">
             <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de 4 dígitos</div>
             <div className="flex gap-3">
               {code.map((d, i) => (
@@ -251,7 +251,7 @@ const Online: React.FC = () => {
 
   // ------- DESKTOP -------
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
           <Button size="sm" variant="ghost" onClick={() => navigate('/')}>← Menú</Button>
@@ -264,7 +264,7 @@ const Online: React.FC = () => {
           <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] bg-bone p-12 text-ink">
             <div className="flex flex-col gap-4">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">Pública</div>
-              <div className="font-display font-bold leading-none text-[36px]">Unirse a una mesa aleatoria</div>
+              <div className="font-display font-bold leading-none text-[2.25rem]">Unirse a una mesa aleatoria</div>
               <div className="self-start">
                 <RankBadge points={user.points} />
               </div>
@@ -282,7 +282,7 @@ const Online: React.FC = () => {
           <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] border-[1.5px] border-bone bg-ink p-12">
             <div className="flex flex-col gap-4">
               <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Privada</div>
-              <div className="font-display font-bold leading-none text-[36px]">Partida privada</div>
+              <div className="font-display font-bold leading-none text-[2.25rem]">Partida privada</div>
               <div className="font-body leading-[1.45] max-w-[320px] opacity-80">
                 Crea una sala con un código de 4 dígitos o únete a una existente.
               </div>

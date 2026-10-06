@@ -220,7 +220,7 @@ const Lobby: React.FC = () => {
       <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">Código de sala</div>
       <div className="flex items-baseline gap-2">
         {room.code.split('').map((c, i) => (
-          <span key={i} className={`font-display font-bold ${isMobile ? 'text-[24px]' : 'text-[28px]'}`}>{c}</span>
+          <span key={i} className={`font-display font-bold ${isMobile ? 'text-[1.5rem]' : 'text-[1.75rem]'}`}>{c}</span>
         ))}
       </div>
       <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(room.code || '')}>
@@ -231,7 +231,7 @@ const Lobby: React.FC = () => {
 
   if (error && !room) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">No se pudo entrar</div>
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">{error}</div>
@@ -243,7 +243,7 @@ const Lobby: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex shrink-0 items-center justify-between border-b border-bone/10 bg-ink px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
           <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
           <div className="flex items-center gap-3">
@@ -252,9 +252,9 @@ const Lobby: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-between px-[1.125rem] py-6">
+        <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-[1.125rem] py-6">
           <div className="flex flex-1 flex-col items-center justify-center gap-4">
-            <div className="text-center font-display font-bold leading-none text-[18px]">{titleText}</div>
+            <div className="text-center font-display font-bold leading-none text-[1.125rem]">{titleText}</div>
             {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
             <Stagger className="flex w-full max-w-[260px] flex-col gap-3" stagger={0.08} delay={0.1}>
               {slotsData.map((s, i) => (
@@ -272,7 +272,7 @@ const Lobby: React.FC = () => {
   }
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <TopBar
         right={
           <div className="flex items-center gap-3">

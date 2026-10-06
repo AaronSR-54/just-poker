@@ -182,6 +182,26 @@
     }
   }
 
+  /* En pantallas muy estrechas (<300px, p. ej. Galaxy Fold) se reduce la
+     escala general para que todo quepa: al bajar la raíz a 14px encogen
+     paddings, gaps, radios y cualquier valor en rem. La tipografía se fija en
+     px para no bajar nunca de 10px. */
+  @media (max-width: 299px) {
+    :root {
+      font-size: 87.5%;
+
+      --text-fs-100: 10px;
+      --text-fs-200: 11px;
+      --text-fs-300: 13px;
+      --text-fs-400: 14px;
+      --text-fs-500: 17px;
+      --text-fs-600: 21px;
+      --text-fs-700: 28px;
+      --text-fs-800: 42px;
+      --text-fs-900: 84px;
+    }
+  }
+
   input[type="range"] {
     accent-color: var(--color-bone);
   }
