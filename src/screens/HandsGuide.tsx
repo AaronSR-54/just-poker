@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { CardRank, Suit } from '../types';
+import type { CardRank, CardSize, Suit } from '../types';
 import Button from '../components/Button';
 import PokerCard from '../components/PokerCard';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { t } from '../animations/motion';
+import { container, fadeIn, slideSwap } from '../animations/motion';
+import { useI18n } from '../i18n';
 
 /* ------------------------------------------------------------------ *
- * Guía de manos — referencia de las diez combinaciones + práctica.
+ * Guía de manos — referencia de las diez combinaciones.
  * ------------------------------------------------------------------ */
 
 const Wordmark: React.FC<{ className?: string }> = ({ className }) => (
@@ -18,279 +19,115 @@ const Wordmark: React.FC<{ className?: string }> = ({ className }) => (
   </div>
 );
 
-/** Selector reutilizable: mismo patrón que las tarjetas de Local. */
-const OptionButton: React.FC<{
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}> = ({ active, onClick, children }) => (
-  <button
-    type="button"
-    aria-pressed={active}
-    onClick={onClick}
-    className={`cursor-pointer rounded-full border-[1.5px] px-3 py-1.5 font-display font-bold text-fs-100 uppercase tracking-[0.08em] transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-      active ? 'border-bone bg-bone text-ink' : 'border-bone/40 bg-ink text-bone'
-    }`}
-  >
-    {children}
-  </button>
-);
+const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { t } = useI18n();
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="min-h-0! p-0! text-fs-500! leading-none! text-bone!"
+      aria-label={t('common.back')}
+      onClick={onClick}
+    >
+      ←
+    </Button>
+  );
+};
+
+const Title: React.FC<{ className?: string }> = ({ className }) => {
+  const { t } = useI18n();
+  return (
+    <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${className ?? ''}`}>
+      {t('handsGuide.titleMain')} <em className="font-light italic tracking-normal">{t('handsGuide.titleEm')}</em>
+    </div>
+  );
+};
 
 interface HandExample {
-  name: string;
-  desc: string;
+  rank: number;
   cards: [CardRank, Suit][];
+  score: number[];
 }
 
 const HANDS: HandExample[] = [
-  { name: 'Escalera Real', desc: 'A, K, Q, J y 10 del mismo palo. La mejor mano posible.', cards: [['A', 's'], ['K', 's'], ['Q', 's'], ['J', 's'], ['10', 's']] },
-  { name: 'Escalera de Color', desc: 'Cinco cartas seguidas y del mismo palo.', cards: [['9', 'h'], ['8', 'h'], ['7', 'h'], ['6', 'h'], ['5', 'h']] },
-  { name: 'Póker', desc: 'Cuatro cartas del mismo valor.', cards: [['Q', 's'], ['Q', 'h'], ['Q', 'd'], ['Q', 'c'], ['7', 's']] },
-  { name: 'Full House', desc: 'Un trío más una pareja.', cards: [['J', 's'], ['J', 'h'], ['J', 'd'], ['4', 'c'], ['4', 's']] },
-  { name: 'Color', desc: 'Cinco cartas del mismo palo, sin importar el orden.', cards: [['A', 'd'], ['J', 'd'], ['8', 'd'], ['5', 'd'], ['2', 'd']] },
-  { name: 'Escalera', desc: 'Cinco cartas seguidas de palos distintos.', cards: [['10', 'c'], ['9', 'd'], ['8', 's'], ['7', 'h'], ['6', 'c']] },
-  { name: 'Trío', desc: 'Tres cartas del mismo valor.', cards: [['8', 's'], ['8', 'h'], ['8', 'd'], ['K', 'c'], ['3', 's']] },
-  { name: 'Doble Pareja', desc: 'Dos parejas distintas.', cards: [['K', 's'], ['K', 'h'], ['5', 'd'], ['5', 'c'], ['9', 's']] },
-  { name: 'Pareja', desc: 'Dos cartas del mismo valor.', cards: [['10', 's'], ['10', 'h'], ['A', 'd'], ['6', 'c'], ['2', 's']] },
-  { name: 'Carta Alta', desc: 'Sin ninguna combinación: manda la carta más alta.', cards: [['A', 's'], ['Q', 'd'], ['9', 'c'], ['5', 'h'], ['3', 's']] },
+  { rank: 9, cards: [['A', 's'], ['K', 's'], ['Q', 's'], ['J', 's'], ['10', 's']], score: [0, 1, 2, 3, 4] },
+  { rank: 8, cards: [['9', 'h'], ['8', 'h'], ['7', 'h'], ['6', 'h'], ['5', 'h']], score: [0, 1, 2, 3, 4] },
+  { rank: 7, cards: [['Q', 's'], ['Q', 'h'], ['Q', 'd'], ['Q', 'c'], ['7', 's']], score: [0, 1, 2, 3] },
+  { rank: 6, cards: [['J', 's'], ['J', 'h'], ['J', 'd'], ['4', 'c'], ['4', 's']], score: [0, 1, 2, 3, 4] },
+  { rank: 5, cards: [['A', 'd'], ['J', 'd'], ['8', 'd'], ['5', 'd'], ['2', 'd']], score: [0, 1, 2, 3, 4] },
+  { rank: 4, cards: [['10', 'c'], ['9', 'd'], ['8', 's'], ['7', 'h'], ['6', 'c']], score: [0, 1, 2, 3, 4] },
+  { rank: 3, cards: [['8', 's'], ['8', 'h'], ['8', 'd'], ['K', 'c'], ['3', 's']], score: [0, 1, 2] },
+  { rank: 2, cards: [['K', 's'], ['K', 'h'], ['5', 'd'], ['5', 'c'], ['9', 's']], score: [0, 1, 2, 3] },
+  { rank: 1, cards: [['10', 's'], ['10', 'h'], ['A', 'd'], ['6', 'c'], ['2', 's']], score: [0, 1] },
+  { rank: 0, cards: [['A', 's'], ['Q', 'd'], ['9', 'c'], ['5', 'h'], ['3', 's']], score: [0] },
 ];
 
-const HandsExplorer: React.FC = () => {
-  const [selected, setSelected] = useState(0);
-  const hand = HANDS[selected];
+const DEFAULT_HAND = HANDS.findIndex((h) => h.rank === 0);
 
+const detailSizes = {
+  sm: { root: 'gap-2 px-4 py-4', cards: 'sm', name: 'text-fs-400', desc: 'max-w-[300px] text-fs-100' },
+  md: { root: 'gap-3 p-6', cards: 'md', name: 'text-fs-600', desc: 'max-w-[340px] text-fs-200 leading-[1.45]' },
+  lg: { root: 'gap-4 p-8', cards: 'lg', name: 'text-fs-700', desc: 'max-w-[380px] text-fs-300 leading-[1.45]' },
+} as const satisfies Record<string, { root: string; cards: CardSize; name: string; desc: string }>;
+
+const HandDetail: React.FC<{ hand: HandExample; size?: keyof typeof detailSizes; fill?: boolean }> = ({ hand, size = 'sm', fill = false }) => {
+  const { t } = useI18n();
+  const s = detailSizes[size];
   return (
-    <div className="flex w-full max-w-[420px] flex-col gap-3">
-      <div className="flex flex-col items-center gap-2 rounded-[14px] bg-ink-900 px-4 py-4">
-        <div className="flex gap-1.5">
-          {hand.cards.map(([rank, suit], i) => <PokerCard key={i} rank={rank} suit={suit} size="sm" />)}
-        </div>
-        <div className="font-display font-bold leading-none text-fs-400">{hand.name}</div>
-        <div className="max-w-[300px] text-center font-body text-fs-100 tracking-[0.04em] opacity-70">{hand.desc}</div>
+    <div className={`flex w-full flex-col items-center justify-center rounded-[14px] bg-ink-900 text-center ${fill ? 'flex-1' : ''} ${s.root}`}>
+      <div className={`font-display font-bold leading-none ${s.name}`}>
+        {t(`handName.${hand.rank}`)}
       </div>
-      <div className="flex flex-col gap-1">
-        {HANDS.map((h, i) => (
-          <button
-            key={h.name}
-            type="button"
-            onClick={() => setSelected(i)}
-            className={`flex cursor-pointer items-center gap-3 rounded-full border-[1.5px] px-3 py-1.5 text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-              i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] bg-ink text-bone'
-            }`}
-          >
-            <span className="w-[18px] font-display font-bold text-fs-200 opacity-70">{10 - i}</span>
-            <span className="flex-1 font-display font-bold text-fs-200">{h.name}</span>
-          </button>
+      <div className="flex gap-1.5">
+        {hand.cards.map(([rank, suit], i) => (
+          <PokerCard key={i} rank={rank} suit={suit} size={s.cards} dimmed={!hand.score.includes(i)} />
         ))}
       </div>
+      <div className={`font-body tracking-[0.04em] opacity-70 ${s.desc}`}>
+        {t(`handDesc.${hand.rank}`)}
+      </div>
     </div>
   );
 };
 
-interface QuizHand {
-  name: string;
-  cards: [CardRank, Suit][];
-}
-
-interface QuizQuestion {
-  a: QuizHand;
-  b: QuizHand;
-  winner: 'a' | 'b';
-  why: string;
-}
-
-const QUIZ: QuizQuestion[] = [
-  {
-    a: { name: 'Full House', cards: [['J', 's'], ['J', 'h'], ['J', 'd'], ['4', 'c'], ['4', 's']] },
-    b: { name: 'Color', cards: [['A', 'd'], ['J', 'd'], ['8', 'd'], ['5', 'd'], ['2', 'd']] },
-    winner: 'a',
-    why: 'Un full house supera siempre a un color.',
-  },
-  {
-    a: { name: 'Escalera', cards: [['10', 'c'], ['9', 'd'], ['8', 's'], ['7', 'h'], ['6', 'c']] },
-    b: { name: 'Trío', cards: [['8', 's'], ['8', 'h'], ['8', 'd'], ['K', 'c'], ['3', 's']] },
-    winner: 'a',
-    why: 'Una escalera gana a un trío, aunque el trío tenga cartas altas.',
-  },
-  {
-    a: { name: 'Doble Pareja', cards: [['K', 's'], ['K', 'h'], ['5', 'd'], ['5', 'c'], ['9', 's']] },
-    b: { name: 'Pareja', cards: [['A', 's'], ['A', 'h'], ['6', 'd'], ['2', 'c'], ['3', 's']] },
-    winner: 'a',
-    why: 'Doble pareja gana a cualquier pareja, incluso si es de ases.',
-  },
-  {
-    a: { name: 'Color', cards: [['A', 'd'], ['J', 'd'], ['8', 'd'], ['5', 'd'], ['2', 'd']] },
-    b: { name: 'Escalera', cards: [['10', 'c'], ['9', 'd'], ['8', 's'], ['7', 'h'], ['6', 'c']] },
-    winner: 'a',
-    why: 'Un color gana a una escalera.',
-  },
-  {
-    a: { name: 'Carta Alta', cards: [['A', 's'], ['Q', 'd'], ['9', 'c'], ['5', 'h'], ['3', 's']] },
-    b: { name: 'Pareja', cards: [['2', 's'], ['2', 'h'], ['7', 'd'], ['9', 'c'], ['J', 's']] },
-    winner: 'b',
-    why: 'Cualquier pareja supera a la carta alta, por alta que sea.',
-  },
-  {
-    a: { name: 'Escalera de Color', cards: [['9', 'h'], ['8', 'h'], ['7', 'h'], ['6', 'h'], ['5', 'h']] },
-    b: { name: 'Póker', cards: [['Q', 's'], ['Q', 'h'], ['Q', 'd'], ['Q', 'c'], ['7', 's']] },
-    winner: 'a',
-    why: 'La escalera de color solo pierde ante la escalera real.',
-  },
-];
-
-const QuizHandRow: React.FC<{
-  side: 'A' | 'B';
-  hand: QuizHand;
-  revealed: boolean;
-  picked: boolean;
-  isWinner: boolean;
-  disabled: boolean;
-  onPick: () => void;
-}> = ({ side, hand, revealed, picked, isWinner, disabled, onPick }) => {
-  const stateCls = !revealed
-    ? 'border-bone/[0.18] bg-ink enabled:hover:border-bone enabled:hover:-translate-y-0.5'
-    : isWinner
-      ? 'border-success/70 bg-ink'
-      : picked
-        ? 'border-danger/70 bg-ink'
-        : 'border-bone/[0.18] bg-ink opacity-50';
-
+const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; size?: 'sm' | 'lg'; fill?: boolean }> = ({ selected, onSelect, size = 'sm', fill = false }) => {
+  const { t } = useI18n();
+  const large = size === 'lg';
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onPick}
-      aria-label={`Mano ${side}`}
-      className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-full border-[1.5px] px-3 py-3 transition-[transform,border-color,background-color,opacity] duration-[240ms] ease-brand active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone disabled:cursor-default ${stateCls}`}
+    <motion.div
+      variants={container(0.04)}
+      initial="hidden"
+      animate="visible"
+      className={`flex flex-col gap-1 ${fill ? 'h-full' : ''}`}
     >
-      <span className="flex gap-1">
-        {hand.cards.map(([rank, suit], i) => <PokerCard key={i} rank={rank} suit={suit} size="sm" />)}
-      </span>
-      <span className="flex items-center gap-2">
-        <span className={`inline-flex items-center rounded-pill px-1.5 py-px font-display font-bold text-fs-100 leading-none tracking-[0.08em] uppercase ${revealed && isWinner ? 'bg-success text-ink' : 'bg-bone/15 text-bone'}`}>
-          {side}
-        </span>
-        <span className="font-display font-bold text-fs-300">
-          {revealed ? hand.name : `Mano ${side}`}
-        </span>
-      </span>
-    </button>
-  );
-};
-
-const HandQuiz: React.FC = () => {
-  const [index, setIndex] = useState(0);
-  const [picked, setPicked] = useState<'a' | 'b' | null>(null);
-  const [score, setScore] = useState(0);
-  const [done, setDone] = useState(false);
-  const question = QUIZ[index];
-  const revealed = picked !== null;
-
-  const pick = (side: 'a' | 'b') => {
-    if (picked) return;
-    setPicked(side);
-    if (side === question.winner) setScore((s) => s + 1);
-  };
-
-  const next = () => {
-    if (index < QUIZ.length - 1) {
-      setIndex(index + 1);
-      setPicked(null);
-    } else {
-      setDone(true);
-    }
-  };
-
-  const restart = () => {
-    setIndex(0);
-    setPicked(null);
-    setScore(0);
-    setDone(false);
-  };
-
-  if (done) {
-    return (
-      <div className="flex w-full max-w-[420px] flex-col items-center gap-4 rounded-[14px] bg-ink-900 px-5 py-6 text-center">
-        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Resultado</div>
-        <div className="font-display font-bold leading-none text-fs-700">
-          {score} de {QUIZ.length}
-        </div>
-        <div className="font-body text-fs-100 leading-[1.45] tracking-[0.04em] opacity-70">
-          {score === QUIZ.length
-            ? 'Perfecto: dominas el orden de las combinaciones.'
-            : 'Repasa el orden en «Las diez manos» y vuelve a intentarlo.'}
-        </div>
-        <Button size="sm" variant={score === QUIZ.length ? 'outline' : 'primary'} onClick={restart}>
-          Repetir
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex w-full max-w-[420px] flex-col items-center gap-3">
-      <div className="flex w-full items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5" aria-hidden="true">
-          {QUIZ.map((_, i) => (
-            <span key={i} className={`h-1 rounded-pill transition-[width,background-color] duration-[240ms] ease-brand ${i === index ? 'w-6 bg-bone' : i < index ? 'w-3 bg-bone/60' : 'w-3 bg-bone/25'}`} />
-          ))}
-        </div>
-        <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">
-          Aciertos {score}
-        </span>
-      </div>
-
-      <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">
-        ¿Cuál de las dos manos es más alta?
-      </div>
-
-      <QuizHandRow
-        side="A"
-        hand={question.a}
-        revealed={revealed}
-        picked={picked === 'a'}
-        isWinner={question.winner === 'a'}
-        disabled={revealed}
-        onPick={() => pick('a')}
-      />
-      <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-50">vs</div>
-      <QuizHandRow
-        side="B"
-        hand={question.b}
-        revealed={revealed}
-        picked={picked === 'b'}
-        isWinner={question.winner === 'b'}
-        disabled={revealed}
-        onPick={() => pick('b')}
-      />
-
-      <div className="flex min-h-12 flex-col items-center justify-center gap-2">
-        {revealed ? (
-          <>
-            <span className={`font-display font-bold text-fs-300 ${picked === question.winner ? 'text-success' : 'text-danger'}`}>
-              {picked === question.winner ? '¡Correcto!' : 'Casi…'}
-            </span>
-            <span className="max-w-[340px] text-center font-body text-fs-100 leading-[1.45] tracking-[0.04em] opacity-70">{question.why}</span>
-          </>
-        ) : (
-          <span className="font-body text-fs-100 tracking-[0.04em] opacity-50">Toca una mano para responder.</span>
-        )}
-      </div>
-
-      {revealed && (
-        <Button size="sm" variant="primary" onClick={next}>
-          {index < QUIZ.length - 1 ? 'Siguiente pregunta' : 'Ver resultado'}
-        </Button>
-      )}
-    </div>
+      {HANDS.map((h, i) => (
+        <motion.button
+          key={h.rank}
+          variants={fadeIn}
+          type="button"
+          onClick={() => onSelect(i)}
+          className={`flex w-full cursor-pointer items-center gap-3 rounded-full border-[1.5px] text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+            large ? 'px-4 py-2.5' : 'px-3 py-1.5'
+          } ${fill ? 'flex-1' : ''} ${i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] bg-ink text-bone'}`}
+        >
+          <span className={`font-display font-bold opacity-70 ${large ? 'w-6 text-fs-300' : 'w-[18px] text-fs-200'}`}>{10 - i}</span>
+          <span className={`flex-1 font-display font-bold ${large ? 'text-fs-300' : 'text-fs-200'}`}>{t(`handName.${h.rank}`)}</span>
+        </motion.button>
+      ))}
+    </motion.div>
   );
 };
 
 const HandsGuide: React.FC = () => {
-  const [mode, setMode] = useState<'explore' | 'quiz'>('explore');
+  const [selected, setSelected] = useState(DEFAULT_HAND);
+  const [dir, setDir] = useState(1);
   const navigate = useNavigate();
   const location = useLocation();
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isWide = useMediaQuery('(min-width: 1280px)');
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const { t } = useI18n();
+  const hand = HANDS[selected];
 
   const from = (location.state as { from?: string } | null)?.from;
   const back = () => {
@@ -298,49 +135,88 @@ const HandsGuide: React.FC = () => {
     else navigate('/');
   };
 
+  const selectHand = (i: number) => {
+    if (i === selected) return;
+    setDir(i >= selected ? 1 : -1);
+    setSelected(i);
+  };
+
+  const detail = (size: keyof typeof detailSizes, fill = false) => (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={hand.rank}
+        variants={slideSwap(dir, 28)}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        className={fill ? 'flex min-h-0 flex-1' : undefined}
+      >
+        <HandDetail hand={hand} size={size} fill={fill} />
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  const header = (
+    <div className="flex w-full items-start justify-between gap-4">
+      <BackButton onClick={back} />
+      <Wordmark className={isDesktop ? undefined : 'text-fs-600'} />
+    </div>
+  );
+
+  if (!isDesktop) {
+    return (
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-[1.375rem] pb-7 pt-8">
+          {header}
+          <motion.div
+            variants={container(0.07, 0.05)}
+            initial="hidden"
+            animate="visible"
+            className="mx-auto mt-5 flex min-h-0 w-full max-w-[540px] flex-1 flex-col gap-4"
+          >
+            <motion.div variants={fadeIn} className="flex shrink-0 flex-col items-center gap-2 text-center">
+              <Title className="text-fs-700" />
+              <p className="max-w-[440px] font-body leading-[1.45] opacity-70">{t('handsGuide.intro')}</p>
+            </motion.div>
+            <motion.div variants={fadeIn} className="shrink-0">{detail(isMobile ? 'sm' : 'md')}</motion.div>
+            <motion.div variants={fadeIn} className="flex min-h-0 flex-1 flex-col">
+              <HandList selected={selected} onSelect={selectHand} fill />
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-      <header className="relative z-10 mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-[1.375rem] pt-7 lg:px-20">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="min-h-0! p-0! text-fs-500! leading-none! text-bone!"
-          aria-label="Volver"
-          onClick={back}
-        >
-          ←
-        </Button>
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <header className="relative z-10 mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-10 pt-7 lg:px-20">
+        <BackButton onClick={back} />
         <Wordmark />
       </header>
-
-      <div className="relative z-10 mx-auto flex w-full max-w-[87.5rem] min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-[1.375rem] pb-9 pt-6 lg:px-20 lg:pt-8">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Guía de manos</div>
-          <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${isMobile ? 'text-fs-700' : 'text-fs-800'}`}>
-            De la carta alta a la <em className="font-light italic tracking-normal">escalera real</em>
-          </div>
-          <p className="max-w-[440px] font-body leading-[1.45] opacity-70">
-            Diez combinaciones ordenadas de menor a mayor. Tócalas para verlas y pásate a «Practica» para comprobar si las distingues.
-          </p>
-        </div>
-
-        <div className="flex gap-1.5">
-          <OptionButton active={mode === 'explore'} onClick={() => setMode('explore')}>Las diez manos</OptionButton>
-          <OptionButton active={mode === 'quiz'} onClick={() => setMode('quiz')}>Practica</OptionButton>
-        </div>
-
-        <AnimatePresence mode="wait" initial={false}>
+      <div className="relative z-10 mx-auto flex w-full max-w-[87.5rem] min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-10 pb-10 pt-4 lg:px-20">
+        <div className="my-auto grid w-full grid-cols-2 gap-8 lg:gap-12">
           <motion.div
-            key={mode}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={t(0.22)}
-            className="flex w-full flex-col items-center"
+            variants={container(0.07, 0.05)}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col gap-6"
           >
-            {mode === 'explore' ? <HandsExplorer /> : <HandQuiz />}
+            <motion.div variants={fadeIn} className="flex flex-col gap-2">
+              <Title className="text-[clamp(2rem,4.5vw,3.25rem)]" />
+              <p className="max-w-[440px] font-body leading-[1.45] opacity-70">{t('handsGuide.intro')}</p>
+            </motion.div>
+            <HandList selected={selected} onSelect={selectHand} size="lg" />
           </motion.div>
-        </AnimatePresence>
+          <motion.div
+            variants={fadeIn}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col overflow-hidden"
+          >
+            {detail(isWide ? 'lg' : 'md', true)}
+          </motion.div>
+        </div>
       </div>
     </div>
   );
