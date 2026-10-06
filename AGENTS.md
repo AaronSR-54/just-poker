@@ -89,7 +89,7 @@ Prefiere estos componentes antes de replicar utilidades:
 
 | Componente | Props clave |
 |------------|-------------|
-| `Button` | `variant` (`outline`/`primary`/`ghost`), `size` (`sm`/`''`/`lg`), `block`, `glow` |
+| `Button` | `variant` (`outline`/`primary`/`ghost`), `size` (`sm`/`''`/`lg`), `block`, `as` (p. ej. `as="a"` para enlaces) |
 | `Avatar` | `name`, `size` (24–120), `ring`, `muted` |
 | `PokerCard` | `rank`, `suit`, `size` (`xs`–`xxl`), `back`, `dimmed` |
 | `Badge` | `variant` (`neutral`/`warning`/`info`/`turn`) |
@@ -146,9 +146,94 @@ Estados con clases condicionales: `border-bone shadow-[…]` (activo), `opacity-
 - No uses `fontFamily`, `letterSpacing` ni `textTransform` inline: usa `font-display`/`font-body`, `tracking-[…]`, `uppercase`.
 - No añadas estilos de componente en `index.css`; si se repite, haz un componente React.
 
+## Internacionalización (i18n)
+
+Soporte **español (es)** e **inglés (en)** con un módulo propio, sin dependencias.
+
+- Diccionarios: `src/i18n/translations.ts` (`es` define el tipo `Dict`; `en` debe cubrir las mismas claves).
+- API: `useI18n()` devuelve `{ locale, setLocale, t }`; `t('clave.con.puntos', { param })` interpola `{param}`. Usa `t` de `src/i18n` **fuera** de componentes.
+- Store persistido: `useLocaleStore` (clave `just-poker-language`); idioma inicial autodetectado del navegador (el primer idioma soportado de `navigator.languages`; `en` si no encuentra ninguno).
+- Selector de idioma en `GameSettings` (sección «Idioma»).
+
+### Reglas
+- **Nunca escribas texto visible hardcodeado**: usa `t(...)`. Aplica también a `aria-label`, `title` y placeholders.
+- Los nombres de combinaciones se resuelven por rango: `t(\`handName.${rank}\`)` (`HAND_RANKS`); no traduzcas `HandResult.name` del motor.
+- Falta puntuación/orden distinto entre idiomas: compón desde claves pequeñas en lugar de concatenar.
+- Mantén los marcadores `**negrita**` que renderiza `renderRich`.
+- Al añadir una clave en `es`, añádela también en `en` (el tipo `Dict` lo exige).
+
 ## Tooling
 
 - **Lint:** `npx oxlint src/`
 - **Type check:** `npx tsc --noEmit`
 - **Dev server:** `npm run dev`
 - **Build:** `npm run build`
+
+## Android (Capacitor / Google Play)
+
+La app Android es la web de Vite empaquetada con **Capacitor 8** (WebView). Es 100 % offline: no necesita servidor.
+
+### Generar el APK/AAB
+
+```bash
+npm run android          # release firmado -> just-poker.apk (+ AAB)
+npm run android:debug    # APK de debug
+```
+
+Equivale a ejecutar `scripts/build-android.sh`, que hace:
+
+```bash
+npm run build            # web -> dist/
+npx cap sync android     # copia dist/ y plugins al proyecto nativo
+cd android && ./gradlew assembleRelease bundleRelease
+```
+
+Artefactos:
+
+- `just-poker.apk` (raíz, release firmado)
+- `android/app/build/outputs/apk/release/app-release.apk`
+- `android/app/build/outputs/bundle/release/app-release.aab` (**subir este a Play**)
+
+### Toolchain (instalación sin root)
+
+- **JDK 21:** `mise use -g java@21.0.2` (o exporta `JAVA_HOME`).
+- **Android SDK 36** en `~/android-sdk` (o exporta `ANDROID_HOME`); `android/local.properties` ya apunta con `sdk.dir`.
+
+```bash
+sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+```
+
+El script autodetecta `JAVA_HOME`/`ANDROID_HOME`; si faltan, usa mise y `~/android-sdk`.
+
+### Firma
+
+- Keystore: `android/keystore/just-poker-release.jks`; credenciales en `android/keystore.properties` (ambos **gitignored**).
+- Config en `signingConfigs.release` de `android/app/build.gradle`.
+- ⚠️ La contraseña actual es `justpoker` (placeholder). Cámbiala y guarda el keystore: sin él no se pueden publicar actualizaciones.
+
+### Iconos y splash
+
+Fuente: `assets/logo.svg` (diamante bone sobre `#22201F`). Regenerar con:
+
+```bash
+npx capacitor-assets generate --android \
+  --iconBackgroundColor '#22201f' --iconBackgroundColorDark '#22201f' \
+  --splashBackgroundColor '#22201f' --splashBackgroundColorDark '#22201f'
+```
+
+### Configuración nativa (decisiones ya tomadas)
+
+- `capacitor.config.ts`: `appId com.justpoker.app`, `webDir dist`.
+- **No fullscreen:** `index.html` va **sin** `viewport-fit=cover`, para que Capacitor 8 (SystemBars) aplique padding nativo y el contenido no quede bajo la barra de estado.
+- **Barra de estado clara** (iconos claros sobre fondo oscuro): `StatusBar.style` y `SystemBars.style` = `DARK` en `capacitor.config.ts`.
+- **Splash con el fondo del icono:** `windowSplashScreenBackground` en `android/app/src/main/res/values/styles.xml` usa `@color/jp_background` (`#22201F`, definido en `values/colors.xml`). El `windowBackground` del tema también es ese color.
+- Orientación vertical bloqueada en `AndroidManifest.xml`.
+- Botón atrás de Android conectado al router: `src/hooks/useAndroidBackButton.ts`.
+
+### Assets de tienda y publicación
+
+- `npm run store:assets` genera `store/icon-512.png` y `store/feature-graphic-1024x500.png` (Satoshi, fondo `#22201F`).
+- `store/privacy-policy.html` — borrador de política de privacidad (sustituir `<TU NOMBRE>`/`<TU_CORREO>` y publicar en una URL).
+- La app **no declara permisos de red** (se quitó `INTERNET` del manifest): es 100 % offline. En Data safety, declarar que **no se recogen datos**.
+
+Para publicar en Play (fuera del repo) hace falta: cuenta de desarrollador (25 USD), subir el AAB, listing (capturas, descripción, feature graphic), política de privacidad pública, Data safety y content rating. Declarar **"poker de práctica, sin dinero real"** y marcar *simulated gambling*.
