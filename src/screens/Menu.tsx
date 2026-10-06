@@ -6,13 +6,7 @@ import { loadSavedGame } from '../game/saveGame';
 import SettingsButton from '../components/SettingsButton';
 import GameSettings from '../components/GameSettings';
 import { container, fadeUp } from '../animations/motion';
-import type { TableDifficulty } from '../types';
-
-const DIFFICULTY_LABELS: Record<TableDifficulty, string> = {
-  easy: 'Fácil',
-  medium: 'Media',
-  hard: 'Difícil',
-};
+import { useI18n } from '../i18n';
 
 interface CtaCardProps {
   solid?: boolean;
@@ -31,7 +25,7 @@ const CtaCard: React.FC<CtaCardProps> = ({ solid = false, stacked = false, fill 
     'hover:border-bone hover:translate-x-2 active:translate-x-0',
     'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone',
     stacked
-      ? 'h-32 rounded-[0.875rem] px-7 py-6'
+      ? 'min-h-32 rounded-[0.875rem] px-7 py-6'
       : 'h-full rounded-[clamp(0.75rem,3cqw,1rem)] px-[7.6cqw] py-[6.8cqw]',
     solid
       ? 'bg-bone text-ink border-bone hover:brightness-[1.06]'
@@ -54,7 +48,7 @@ const CtaCard: React.FC<CtaCardProps> = ({ solid = false, stacked = false, fill 
 };
 
 const CtaTitle: React.FC<{ fixed?: boolean; children: React.ReactNode }> = ({ fixed = false, children }) => (
-  <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${fixed ? 'text-[2rem]' : 'text-[clamp(1.75rem,10.5cqw,3.75rem)]'}`}>
+  <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${fixed ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,10.5cqw,3.75rem)]'}`}>
     {children}
   </div>
 );
@@ -62,17 +56,20 @@ const CtaTitle: React.FC<{ fixed?: boolean; children: React.ReactNode }> = ({ fi
 const CtaFoot: React.FC<{ fixed?: boolean; children: React.ReactNode }> = ({ fixed = false, children }) => (
   <div className="flex items-end justify-between">
     {children}
-    <span className={`font-display font-bold leading-none ${fixed ? 'text-[2rem]' : 'text-[clamp(1.75rem,7.2cqw,2.5rem)]'}`}>→</span>
+    <span className={`font-display font-bold leading-none ${fixed ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,7.2cqw,2.5rem)]'}`}>→</span>
   </div>
 );
 
 const Menu: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const { t } = useI18n();
   const [saved] = useState(() => loadSavedGame());
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const paragraph = '¿Quieres jugar al póker, pero todos los juegos están llenos de anuncios y botones que solo sirven para marearte y acaben haciéndote gastar dinero?';
+  const paragraph = t('menu.paragraph');
+  const continueHint = (difficulty: string, hand: number) =>
+    t('menu.continueHint', { difficulty: t(`difficulty.${difficulty}`), hand });
 
   const settingsOverlay = (
     <AnimatePresence>
@@ -89,9 +86,9 @@ const Menu: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <SettingsButton onClick={() => setSettingsOpen(true)} />
-        <div className="flex flex-1 flex-col justify-between gap-5 px-[1.375rem] pb-7 pt-8">
+        <div className="flex min-h-0 flex-1 flex-col justify-between gap-5 overflow-y-auto px-[1.375rem] pb-7 pt-8">
           <motion.div
             variants={container(0.09, 0.05)}
             initial="hidden"
@@ -100,13 +97,13 @@ const Menu: React.FC = () => {
           >
             <motion.div
               variants={fadeUp}
-              className="flex flex-col font-display font-bold uppercase text-[clamp(3rem,30vw,12rem)] leading-[0.86] tracking-[-0.015em]"
+              className="flex flex-col font-display font-bold uppercase text-[clamp(2.5rem,min(30vw,14vh),12rem)] leading-[0.86] tracking-[-0.015em]"
             >
               <div className="pl-[0.4rem] text-[0.85em]">Just</div>
               <div className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></div>
             </motion.div>
             <motion.p variants={fadeUp} className="font-body leading-[1.45] mb-0 mt-1.5 text-left opacity-70">{paragraph}</motion.p>
-            <motion.div variants={fadeUp} className="font-body leading-[1.45]">Relájate y juega.</motion.div>
+            <motion.div variants={fadeUp} className="font-body leading-[1.45]">{t('menu.tagline')}</motion.div>
           </motion.div>
           <motion.div
             variants={container(0.1, 0.35)}
@@ -116,19 +113,19 @@ const Menu: React.FC = () => {
           >
             {saved && (
               <CtaCard solid stacked onClick={() => navigate(`/game/${saved.gameId}?continue=1`)}>
-                <CtaTitle fixed>Continuar <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+                <CtaTitle fixed>{t('menu.continue')} <em className="font-light italic tracking-normal">{t('menu.continueEm')}</em></CtaTitle>
                 <CtaFoot fixed>
                   <div className="font-body leading-[1.45] text-fs-300 opacity-75">
-                    Dificultad {DIFFICULTY_LABELS[saved.difficulty]} - {saved.state.handNumber}ª mano
+                    {continueHint(saved.difficulty, saved.state.handNumber)}
                   </div>
                 </CtaFoot>
               </CtaCard>
             )}
             <CtaCard solid={!saved} stacked dataTour="new-game" onClick={() => navigate('/local')}>
-              <CtaTitle fixed>Nueva <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+              <CtaTitle fixed>{t('menu.new')} <em className="font-light italic tracking-normal">{t('menu.newEm')}</em></CtaTitle>
               <CtaFoot fixed>
                 <div className="font-body leading-[1.45] text-fs-300 opacity-75">
-                  Elige dificultad y siéntate a una mesa contra la IA.
+                  {t('menu.newHint')}
                 </div>
               </CtaFoot>
             </CtaCard>
@@ -140,7 +137,7 @@ const Menu: React.FC = () => {
   }
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <SettingsButton onClick={() => setSettingsOpen(true)} />
       <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[4.375rem] pt-15 lg:px-20">
         <div className="flex w-full items-stretch justify-center gap-12 lg:gap-32">
@@ -158,7 +155,7 @@ const Menu: React.FC = () => {
               <div className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></div>
             </motion.div>
             <motion.p variants={fadeUp} className="font-body leading-[1.45] mb-0 mt-1.5 w-0 min-w-full text-left opacity-70">{paragraph}</motion.p>
-            <motion.div variants={fadeUp} className="font-body leading-[1.45]">Relájate y juega.</motion.div>
+            <motion.div variants={fadeUp} className="font-body leading-[1.45]">{t('menu.tagline')}</motion.div>
           </motion.div>
           <motion.div
             variants={container(0.1, 0.35)}
@@ -168,19 +165,19 @@ const Menu: React.FC = () => {
           >
             {saved && (
               <CtaCard solid fill onClick={() => navigate(`/game/${saved.gameId}?continue=1`)}>
-                <CtaTitle>Continuar <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+                <CtaTitle>{t('menu.continue')} <em className="font-light italic tracking-normal">{t('menu.continueEm')}</em></CtaTitle>
                 <CtaFoot>
                   <div className="font-body leading-[1.45] max-w-[65cqw] text-[clamp(0.8125rem,3.3cqw,1rem)] opacity-75">
-                    Dificultad {DIFFICULTY_LABELS[saved.difficulty]} - {saved.state.handNumber}ª mano
+                    {continueHint(saved.difficulty, saved.state.handNumber)}
                   </div>
                 </CtaFoot>
               </CtaCard>
             )}
             <CtaCard solid={!saved} fill={!!saved} half={!saved} dataTour="new-game" onClick={() => navigate('/local')}>
-              <CtaTitle>Nueva <em className="font-light italic tracking-normal">partida</em></CtaTitle>
+              <CtaTitle>{t('menu.new')} <em className="font-light italic tracking-normal">{t('menu.newEm')}</em></CtaTitle>
               <CtaFoot>
                 <div className="font-body leading-[1.45] max-w-[65cqw] text-[clamp(0.8125rem,3.3cqw,1rem)] opacity-75">
-                  Elige dificultad y siéntate a una mesa contra la IA.
+                  {t('menu.newHint')}
                 </div>
               </CtaFoot>
             </CtaCard>

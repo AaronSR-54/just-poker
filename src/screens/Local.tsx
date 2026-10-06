@@ -3,25 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { loadSavedGame } from '../game/saveGame';
-import { rivalAvatar, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
+import { rivalAvatar, rivalAliasKey, rivalSlug, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
 import { container, fadeUp, slideSwap } from '../animations/motion';
+import { useI18n } from '../i18n';
 import { useUserStore } from '../store/userStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 
 interface Rival {
   n: string;
-  alias: string;
-  t: string;
 }
 
 interface Table {
-  id: string;
-  diff: string;
+  id: 'easy' | 'medium' | 'hard';
   roman: string;
-  title: string;
-  blurb: string;
   tone: string;
   imgClassName: string;
   rivals: Rival[];
@@ -29,37 +26,19 @@ interface Table {
 
 const TABLES: Table[] = [
   {
-    id: 'easy', diff: 'Fácil', roman: 'I',
-    title: 'El Remanso',
-    blurb: 'Sin prisa ni presión.',
+    id: 'easy', roman: 'I',
     ...DIFFICULTY_AVATAR_TONE.easy,
-    rivals: [
-      { n: 'Mia', alias: 'la Impulsiva', t: 'Juega demasiadas manos, se retira bajo presión.' },
-      { n: 'Dan', alias: 'Papel de Fumar', t: 'Farolea al azar, sin lógica.' },
-      { n: 'Sam', alias: 'Perfil Bajo', t: 'Imita a los demás, sin estrategia.' },
-    ],
+    rivals: [{ n: 'Mia' }, { n: 'Dan' }, { n: 'Sam' }],
   },
   {
-    id: 'medium', diff: 'Media', roman: 'II',
-    title: 'La Guarida',
-    blurb: 'El equilibrio justo.',
+    id: 'medium', roman: 'II',
     ...DIFFICULTY_AVATAR_TONE.medium,
-    rivals: [
-      { n: 'Leo', alias: 'El Libro', t: 'Agresivo-prudente, juega por el libro.' },
-      { n: 'Nora', alias: 'la Lectora', t: 'Lee patrones de apuesta, muy paciente.' },
-      { n: 'Kai', alias: 'Dos Caras', t: 'Semi-farolea, difícil de leer.' },
-    ],
+    rivals: [{ n: 'Leo' }, { n: 'Nora' }, { n: 'Kai' }],
   },
   {
-    id: 'hard', diff: 'Difícil', roman: 'III',
-    title: 'La Fosa',
-    blurb: 'Solo para quien sabe lo que hace.',
+    id: 'hard', roman: 'III',
     ...DIFFICULTY_AVATAR_TONE.hard,
-    rivals: [
-      { n: 'Víctor', alias: 'La Calculadora', t: 'Frío, calcula probabilidades constantemente.' },
-      { n: 'Elena', alias: 'La Trampa', t: 'Tiende trampas con manos fuertes, casi nunca se retira.' },
-      { n: 'Rex', alias: 'Todo o Nada', t: 'Hiperagresivo, sube en cada ronda.' },
-    ],
+    rivals: [{ n: 'Víctor' }, { n: 'Elena' }, { n: 'Rex' }],
   },
 ];
 
@@ -76,6 +55,7 @@ const DifficultyCard: React.FC<{
   dataTour?: string;
   onClick: () => void;
 }> = ({ table, selected, size = 'sm', dataTour, onClick }) => {
+  const { t } = useI18n();
   const s = difficultyCardSizes[size];
   return (
     <motion.div
@@ -96,7 +76,7 @@ const DifficultyCard: React.FC<{
           selected ? 'border-bone bg-bone text-ink' : 'border-bone/40 bg-ink text-bone',
         ].join(' ')}
       >
-        <div className={`font-display font-bold leading-none ${s.label}`}>{table.diff}</div>
+        <div className={`font-display font-bold leading-none ${s.label}`}>{t(`difficulty.${table.id}`)}</div>
         <div className={`shrink-0 text-right font-body tracking-[0.04em] opacity-70 ${s.rivals}`}>
           {table.rivals.map(r => r.n).join(' · ')}
         </div>
@@ -105,57 +85,67 @@ const DifficultyCard: React.FC<{
   );
 };
 
-const RivalCard: React.FC<{ rival: Rival; tone: string; imgClassName: string }> = ({ rival, tone, imgClassName }) => (
-  <div className="flex items-center gap-4">
-    <Avatar name={rival.n} src={rivalAvatar(rival.n)} size={56} tone={tone} imgClassName={imgClassName} />
-    <div className="flex flex-col gap-1">
-      <div className="font-display font-bold leading-none text-fs-300">
-        {rival.n} <em className="font-light italic opacity-80">"{rival.alias}"</em>
+const RivalCard: React.FC<{ rival: Rival; tone: string; imgClassName: string; compact?: boolean }> = ({ rival, tone, imgClassName, compact = false }) => {
+  const { t } = useI18n();
+  const slug = rivalSlug(rival.n);
+  return (
+    <div className={`flex items-center ${compact ? 'gap-3' : 'gap-4'}`}>
+      <Avatar name={rival.n} src={rivalAvatar(rival.n)} size={compact ? 48 : 56} tone={tone} imgClassName={imgClassName} />
+      <div className="flex flex-col gap-1">
+        <div className="font-display font-bold leading-none text-fs-300">
+          {rival.n} <em className="font-light italic opacity-80">“{t(rivalAliasKey(rival.n) ?? '')}”</em>
+        </div>
+        <div className="font-body text-fs-100 leading-[1.35] tracking-[0.04em] opacity-70">{t(`local.rival.${slug}.trait`)}</div>
       </div>
-      <div className="font-body text-fs-100 leading-[1.35] tracking-[0.04em] opacity-70">{rival.t}</div>
     </div>
-  </div>
-);
+  );
+};
 
 // Detalle de la mesa seleccionada + CTA. Mismo componente en ambos layouts.
-const TableDetail: React.FC<{ table: Table; onStart: () => void }> = ({ table, onStart }) => (
-  <div className="flex flex-col gap-8 rounded-[14px] bg-ink-900 p-9">
+const TableDetail: React.FC<{ table: Table; onStart: () => void; compact?: boolean }> = ({ table, onStart, compact = false }) => {
+  const { t } = useI18n();
+  return (
+  <div className={`flex flex-col bg-ink-900 ${compact ? 'gap-4 rounded-[12px] p-5' : 'gap-6 rounded-[14px] p-6 sm:gap-8 sm:p-9'}`}>
     <div className="flex flex-col gap-1">
-      <div className="font-display font-bold leading-none text-fs-700">{table.title}</div>
-      <div className="font-body leading-[1.45] mt-1 opacity-70">
-        <strong className="font-bold">Dificultad {table.diff}.</strong> {table.blurb}
+      <div className="font-display font-bold leading-none text-fs-700">{t(`local.table.${table.id}.title`)}</div>
+      <div className={`font-body leading-[1.45] mt-1 opacity-70 ${compact ? 'text-fs-200' : ''}`}>
+        <strong className="font-bold">{t('local.difficultyLine', { difficulty: t(`difficulty.${table.id}`) })}</strong> {t(`local.table.${table.id}.blurb`)}
       </div>
     </div>
     <motion.div
       variants={container(0.07)}
       initial="hidden"
       animate="visible"
-      className="flex flex-col gap-5"
+      className={`flex flex-col ${compact ? 'gap-4' : 'gap-5'}`}
     >
       {table.rivals.map(r => (
         <motion.div key={r.n} variants={fadeUp}>
-          <RivalCard rival={r} tone={table.tone} imgClassName={table.imgClassName} />
+          <RivalCard rival={r} tone={table.tone} imgClassName={table.imgClassName} compact={compact} />
         </motion.div>
       ))}
     </motion.div>
-    <Button variant="primary" data-tour="start-game" onClick={onStart} className="justify-between! rounded-[14px]! min-h-14!">
-      <span>Jugar</span>
-      <span className="font-display font-bold leading-none text-fs-500">→</span>
+    <Button variant="primary" data-tour="start-game" onClick={onStart} className={`justify-between! rounded-[14px]! ${compact ? 'min-h-12!' : 'min-h-14!'}`}>
+      <span>{t('local.play')}</span>
+      <span className={`font-display font-bold leading-none ${compact ? 'text-fs-400' : 'text-fs-500'}`}>→</span>
     </Button>
   </div>
-);
+  );
+};
 
-const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { t } = useI18n();
+  return (
   <Button
     size="sm"
     variant="ghost"
     className="min-h-0! p-0! text-fs-500! leading-none! text-bone!"
-    aria-label="Volver al menú"
+    aria-label={t('common.backToMenu')}
     onClick={onClick}
   >
     ←
   </Button>
-);
+  );
+};
 
 const Wordmark: React.FC<{ className?: string }> = ({ className }) => (
   <div className={`flex flex-col items-end font-display font-bold uppercase leading-[0.86] tracking-[-0.015em] ${className ?? 'text-fs-800'}`}>
@@ -164,17 +154,24 @@ const Wordmark: React.FC<{ className?: string }> = ({ className }) => (
   </div>
 );
 
-const Title: React.FC<{ className?: string }> = ({ className }) => (
+const Title: React.FC<{ className?: string }> = ({ className }) => {
+  const { t } = useI18n();
+  return (
   <div className={`font-display font-bold leading-[0.94] tracking-[-0.015em] ${className ?? ''}`}>
-    <span className="whitespace-nowrap"><em className="font-light italic tracking-normal">Elige la</em> dificultad</span>
+    <span className="whitespace-nowrap"><em className="font-light italic tracking-normal">{t('local.titleEm')}</em> {t('local.titleRest')}</span>
   </div>
-);
+  );
+};
 
 const Local: React.FC = () => {
   const [selectedId, setSelectedId] = useState('medium');
   const [dir, setDir] = useState(1);
+  const [confirmNew, setConfirmNew] = useState(false);
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
+  /** Pantallas muy estrechas (<300px): se compacta todo para que no haya scroll. */
+  const isTiny = useMediaQuery('(max-width: 299px)');
+  const { t } = useI18n();
   const onboardingCompleted = useUserStore(s => s.onboardingCompleted);
   const setDifficulty = useOnboardingStore(s => s.setDifficulty);
   const selected = TABLES.find(t => t.id === selectedId)!;
@@ -194,9 +191,15 @@ const Local: React.FC = () => {
       navigate('/game/guide');
       return;
     }
-    if (loadSavedGame() && !window.confirm('Tienes una partida en curso. Si empiezas una nueva, se descartará. ¿Continuar?')) {
+    if (loadSavedGame()) {
+      setConfirmNew(true);
       return;
     }
+    navigate(`/game/local-${selectedId}`);
+  };
+
+  const confirmStartGame = () => {
+    setConfirmNew(false);
     navigate(`/game/local-${selectedId}`);
   };
 
@@ -206,28 +209,38 @@ const Local: React.FC = () => {
     ));
 
   const shell = (children: React.ReactNode) => (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-      <div className="relative z-10 flex flex-1 flex-col">{children}</div>
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">{children}</div>
+      <ConfirmDialog
+        open={confirmNew}
+        title={t('local.confirm.title')}
+        message={t('local.confirm.message')}
+        confirmLabel={t('local.confirm.confirm')}
+        cancelLabel={t('local.confirm.cancel')}
+        danger
+        onConfirm={confirmStartGame}
+        onCancel={() => setConfirmNew(false)}
+      />
     </div>
   );
 
   if (isMobile) {
     return shell(
-      <div className="flex flex-1 flex-col px-[1.375rem] pb-7 pt-8">
+      <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] ${isTiny ? 'pb-5 pt-5' : 'pb-7 pt-8'}`}>
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-4">
             <BackButton onClick={() => navigate('/')} />
-            <Wordmark className="text-fs-600" />
+            <Wordmark className={isTiny ? 'text-fs-500' : 'text-fs-600'} />
           </div>
         </div>
         <motion.div
           variants={container(0.07, 0.05)}
           initial="hidden"
           animate="visible"
-          className="mt-auto flex flex-col gap-4 pt-5"
+          className={isTiny ? 'mt-auto flex flex-col gap-3 pt-3' : 'mt-auto flex flex-col gap-4 pt-5'}
         >
           <motion.div variants={fadeUp}>
-            <Title className="text-[clamp(2rem,8.5vw,2.75rem)]" />
+            <Title className={isTiny ? 'text-fs-600' : 'text-[clamp(2rem,8.5vw,2.75rem)]'} />
           </motion.div>
           <motion.div variants={container(0.06)} data-tour="difficulty-list" className="flex flex-col gap-2">{renderCards('sm')}</motion.div>
           <motion.div variants={fadeUp}>
@@ -239,7 +252,7 @@ const Local: React.FC = () => {
                 animate="visible"
                 exit="exit"
               >
-                <TableDetail table={selected} onStart={startGame} />
+                <TableDetail table={selected} onStart={startGame} compact={isTiny} />
               </motion.div>
             </AnimatePresence>
           </motion.div>

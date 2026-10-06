@@ -17,18 +17,19 @@ function slug(name: string): string {
   return name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+/** Slug estable de un rival, usado en las claves i18n y los avatares. */
+export function rivalSlug(name: string): string {
+  return slug(name);
+}
+
 /** Ruta del avatar de un rival por su nombre, o undefined si no existe. */
 export function rivalAvatar(name: string): string | undefined {
   return rivalAvatars[`../assets/rivals/${slug(name)}.webp`]?.default;
 }
 
-const ALIASES: Record<string, string> = Object.fromEntries(
-  Object.values(PERSONALITIES)
-    .flat()
-    .map(p => [p.name, p.alias]),
-);
+const KNOWN_RIVALS = new Set(Object.values(PERSONALITIES).flat().map(p => p.name));
 
-/** Apodo de un rival por su nombre, o undefined si no se conoce. */
-export function rivalAlias(name: string): string | undefined {
-  return ALIASES[name];
+/** Clave i18n del apodo de un rival, o undefined si no se conoce. */
+export function rivalAliasKey(name: string): string | undefined {
+  return KNOWN_RIVALS.has(name) ? `local.rival.${slug(name)}.alias` : undefined;
 }

@@ -31,10 +31,11 @@ export function createLocalGame(playerCount: number, difficulty: string, names?:
   };
 }
 
-export const PHASE_LABELS: Record<GamePhase, string> = {
-  'pre-flop': 'Pre-flop',
-  'flop': 'Flop',
-  'turn': 'Turn',
-  'river': 'River',
-  'showdown': 'Showdown',
+/** Claves i18n de las fases, resueltas en la UI con `t()`. */
+export const PHASE_LABEL_KEYS: Record<GamePhase, string> = {
+  'pre-flop': 'phase.pre-flop',
+  'flop': 'phase.flop',
+  'turn': 'phase.turn',
+  'river': 'phase.river',
+  'showdown': 'phase.showdown',
 };

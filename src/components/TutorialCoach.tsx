@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Button from './Button';
 import type { PokerState } from '../game/poker';
 import { evaluateHand } from '../game/hands';
-import { t } from '../animations/motion';
+import { t as motionT } from '../animations/motion';
+import { useI18n, type I18n } from '../i18n';
 import { renderRich } from './RichText';
 
 /* ------------------------------------------------------------------ *
@@ -19,8 +20,6 @@ interface CoachStep {
   kind: 'info' | 'act' | 'gate' | 'watch' | 'finish';
   /** Valor del atributo `data-tour` que hay que iluminar. */
   target?: string;
-  title?: string;
-  body?: string;
   when?: (s: PokerState) => boolean;
   /** Duración (ms) de una pausa de observación (`watch`). */
   duration?: number;
@@ -28,41 +27,42 @@ interface CoachStep {
   waitsForRaise?: boolean;
 }
 
+/** El texto de cada paso vive en `tutorial.step.<id>` de los diccionarios. */
 const STEP_SEQUENCE: CoachStep[] = [
-  { id: 'rules-welcome', kind: 'info', title: 'Cómo se juega', body: 'Estás en una mesa de **Texas Hold’em** contra otros tres rivales y vamos a jugar tu primera mano juntos, paso a paso. En resumen: el bote de cada mano se lo lleva la **mejor combinación** y gana quien termina con todas las fichas.' },
-  { id: 'welcome', kind: 'info', target: 'human-seat', title: 'Tu asiento', body: 'Tú te sientas abajo: aquí ves tus **fichas** y tus **cartas**. Los otros tres asientos son rivales controlados por la IA.' },
-  { id: 'cards', kind: 'info', target: 'human-cards', title: 'Tus cartas', body: 'Solo tú ves estas dos **cartas**. Con ellas y las cinco comunitarias formarás tu mejor mano de cinco cartas.' },
-  { id: 'actions', kind: 'info', target: 'actions', title: 'Tus acciones', body: 'Estos son los cuatro botones del turno: **«Pasar»** (seguir sin apostar), **«Igualar»** (poner lo mismo que la apuesta mayor), **«Subir»** (apostar más) y **«Retirarse»** (abandonar la mano). Te iré diciendo cuál pulsar.' },
-  { id: 'board', kind: 'info', target: 'board', title: 'El centro de la mesa', body: 'Aquí aparecerán las cinco **cartas comunitarias**. El número del centro es el **bote**: todas las fichas apostadas en la mano.' },
-  { id: 'rivals', kind: 'info', target: 'rivals', title: 'Tres rivales', body: 'Cada rival empieza con 1.000 fichas y juega a su manera. En esta mesa son **Mia, Dan y Sam**.' },
-  { id: 'dealer', kind: 'info', target: 'dealer', title: 'La ficha de dealer', body: 'La ficha «D» marca quién reparte y dónde empiezan las posiciones. Rota una casilla en cada mano; esta primera mano **repartes tú**.' },
-  { id: 'small-blind', kind: 'info', target: 'small-blind', title: 'La ciega pequeña (SB)', body: 'Antes de repartir, el jugador a la izquierda del dealer pone la **ciega pequeña**: 10 fichas obligatorias. Aquí las pone Mia.' },
-  { id: 'big-blind', kind: 'info', target: 'big-blind', title: 'La ciega grande (BB)', body: 'El siguiente jugador pone la **ciega grande**: 20 fichas. Las dos ciegas ya están en el bote (30) y abren la ronda de apuestas.' },
-  { id: 'info-preflop', kind: 'info', target: 'phase', title: 'El preflop', body: 'Es la primera ronda de apuestas: cada jugador decide con solo sus dos **cartas privadas**, antes de que aparezca ninguna comunitaria. Las ciegas ya dejaron 30 fichas en el bote.' },
+  { id: 'rules-welcome', kind: 'info' },
+  { id: 'welcome', kind: 'info', target: 'human-seat' },
+  { id: 'cards', kind: 'info', target: 'human-cards' },
+  { id: 'actions', kind: 'info', target: 'actions' },
+  { id: 'board', kind: 'info', target: 'board' },
+  { id: 'rivals', kind: 'info', target: 'rivals' },
+  { id: 'dealer', kind: 'info', target: 'dealer' },
+  { id: 'small-blind', kind: 'info', target: 'small-blind' },
+  { id: 'big-blind', kind: 'info', target: 'big-blind' },
+  { id: 'info-preflop', kind: 'info', target: 'phase' },
   { id: 'gate-preflop', kind: 'gate', when: s => s.phase === 'pre-flop' && s.currentPlayer === 0 && !s.handOver },
-  { id: 'sam-called', kind: 'info', target: 'rival-3', title: 'Sam ha igualado', body: 'Sam, el primero en hablar, ha puesto las mismas 20 fichas que la ciega grande para seguir en la mano. Eso es **«igualar»**. Ahora te toca a ti.' },
-  { id: 'act-preflop', kind: 'act', target: 'btn-call', title: 'Tu turno (preflop)', body: 'Tienes 20 fichas por igualar para ver el flop. Pulsa **«Igualar 20»**.' },
+  { id: 'sam-called', kind: 'info', target: 'rival-3' },
+  { id: 'act-preflop', kind: 'act', target: 'btn-call' },
   { id: 'gate-flop', kind: 'gate', when: s => s.phase === 'flop' && !s.handOver },
-  { id: 'info-flop', kind: 'info', target: 'phase', title: 'El flop', body: 'Se destapan tres **cartas comunitarias** y empieza otra ronda de apuestas.' },
+  { id: 'info-flop', kind: 'info', target: 'phase' },
   { id: 'watch-flop', kind: 'watch', duration: 1600 },
   { id: 'gate-flop-turn', kind: 'gate', when: s => s.phase === 'flop' && s.currentPlayer === 0 && !s.handOver },
-  { id: 'act-flop', kind: 'act', target: 'btn-pass', title: 'Habla el flop', body: 'Nadie ha apostado todavía: pasa gratis con **«Pasar»**.' },
+  { id: 'act-flop', kind: 'act', target: 'btn-pass' },
   { id: 'gate-turn', kind: 'gate', when: s => s.phase === 'turn' && !s.handOver },
-  { id: 'info-turn', kind: 'info', target: 'phase', title: 'El turn', body: 'Llega la **cuarta carta comunitaria**. Otra ronda de apuestas.' },
+  { id: 'info-turn', kind: 'info', target: 'phase' },
   { id: 'watch-turn', kind: 'watch', duration: 1600 },
   { id: 'gate-turn-turn', kind: 'gate', when: s => s.phase === 'turn' && s.currentPlayer === 0 && !s.handOver },
-  { id: 'act-raise', kind: 'act', target: 'btn-raise', waitsForRaise: true, title: 'Tu turno (turn)', body: 'Es tu turno y tienes el **trío de ases**. Pulsa **«Subir»** para abrir las opciones de apuesta.' },
-  { id: 'raise-panel', kind: 'info', target: 'raise-panel', title: 'Atajos y deslizador', body: 'Los **atajos** fijan la apuesta de un toque: **Min** (el mínimo), **½** (medio bote), **Bote** y **All-in**. Con el **deslizador** la ajustas con precisión entre el mínimo y el máximo.' },
-  { id: 'raise-choice', kind: 'act', target: 'raise-panel', title: 'Elige y sube', body: 'Pulsa un **atajo** o mueve el **deslizador**, y luego pulsa el botón **«Subir»** para confirmar la apuesta.' },
+  { id: 'act-raise', kind: 'act', target: 'btn-raise', waitsForRaise: true },
+  { id: 'raise-panel', kind: 'info', target: 'raise-panel' },
+  { id: 'raise-choice', kind: 'act', target: 'raise-panel' },
   { id: 'gate-river', kind: 'gate', when: s => s.phase === 'river' && !s.handOver },
-  { id: 'info-river', kind: 'info', target: 'phase', title: 'El river', body: 'La **quinta y última carta comunitaria**. Después de esta ronda ya no quedan más cartas.' },
+  { id: 'info-river', kind: 'info', target: 'phase' },
   { id: 'watch-river', kind: 'watch', duration: 1600 },
   { id: 'gate-river-turn', kind: 'gate', when: s => s.phase === 'river' && s.currentPlayer === 0 && !s.handOver },
-  { id: 'act-river', kind: 'act', target: 'btn-pass', title: 'Habla el river', body: 'Pasa una vez más y llegamos al **final de la mano**.' },
+  { id: 'act-river', kind: 'act', target: 'btn-pass' },
   { id: 'gate-showdown', kind: 'gate', when: s => s.handOver },
   { id: 'watch-showdown', kind: 'watch', duration: 1800 },
-  { id: 'info-showdown', kind: 'info', target: 'phase', title: 'El showdown', body: 'Se comparan las manos. Quien forme la **mejor combinación de cinco cartas** se lleva el bote. Puedes repasar todas las combinaciones en la **guía de manos**, disponible en el menú del juego.' },
-  { id: 'info-winner', kind: 'info', target: 'human-seat', title: 'Resultado' },
+  { id: 'info-showdown', kind: 'info', target: 'phase' },
+  { id: 'info-winner', kind: 'info', target: 'human-seat' },
   { id: 'finish', kind: 'finish' },
 ];
 
@@ -75,16 +75,17 @@ const RESUME_STEP_ID = 'gate-preflop';
 const RAISE_STEP_IDS = new Set(['raise-panel', 'raise-choice']);
 
 /** Frase que describe el desenlace de la mano. */
-function resultSentence(state: PokerState): string {
+function resultSentence(state: PokerState, t: I18n['t']): string {
   const winners = state.winner ?? [];
-  if (winners.length === 0) return 'La mano ha terminado.';
+  if (winners.length === 0) return t('tutorial.resultEmpty');
   const winner = state.players[winners[0]];
   const humanWon = winners.includes(0);
-  const hand = winner.cards.length >= 2 ? evaluateHand(winner.cards, state.community).name : '';
+  const hand = winner.cards.length >= 2 ? t(`handName.${evaluateHand(winner.cards, state.community).rank}`) : '';
   if (humanWon) {
-    return `¡Has ganado el bote con **${hand}**! Tus dos ases más el as del flop forman un trío: fíjate cómo se iluminan las cartas ganadoras.`;
+    return t('tutorial.resultWon', { hand });
   }
-  return `${winner.name} se lleva el bote${hand ? ` con **${hand}**` : ''}. La próxima será tuya.`;
+  const name = winner.id === 0 ? t('common.you') : winner.name;
+  return hand ? t('tutorial.resultOtherWith', { name, hand }) : t('tutorial.resultOther', { name });
 }
 
 interface TutorialCoachProps {
@@ -104,6 +105,7 @@ interface TutorialCoachProps {
 }
 
 const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestart, onResume, onRaisePanel, onExpectedAction, raiseOpen, onPause }) => {
+  const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [panelSize, setPanelSize] = useState({ width: 0, height: 0 });
@@ -261,7 +263,8 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
   const placeBelow = panelPosition?.placeBelow ?? (rect ? rect.top + rect.height / 2 < window.innerHeight / 2 : false);
   const isInfo = step.kind === 'info';
   const hideForRaise = step.kind === 'act' && !!step.waitsForRaise && !!raiseOpen;
-  const body = step.id === 'info-winner' ? resultSentence(state) : (step.body ?? '');
+  const stepText = (field: 'title' | 'body') => t(`tutorial.step.${step.id}.${field}`);
+  const body = step.id === 'info-winner' ? resultSentence(state, t) : stepText('body');
 
   return (
     <>
@@ -280,7 +283,7 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
             initial={false}
             animate={{ left: rect.left - 6, top: rect.top - 6, width: rect.width + 12, height: rect.height + 12, opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={t(0.3)}
+            transition={motionT(0.3)}
             style={{
               boxShadow: '0 0 0 9999px rgba(13,12,12,0.82), inset 0 0 0 2px rgba(205,197,183,0.85)',
             }}
@@ -291,7 +294,7 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
       {/* Aviso mientras hablan los rivales. */}
       {(step.kind === 'gate' || step.kind === 'watch') && (
         <div className="pointer-events-none fixed left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[400] -translate-x-1/2 rounded-pill border border-bone/[0.18] bg-ink-900/85 px-4 py-1.5 font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-bone">
-          Observa la mesa…
+          {t('tutorial.watch')}
         </div>
       )}
 
@@ -303,19 +306,19 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
             key={step.id}
             initial={{ opacity: 0, y: placeBelow ? -8 : 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, transition: t(0.14) }}
-            transition={t(0.26)}
+            exit={{ opacity: 0, transition: motionT(0.14) }}
+            transition={motionT(0.26)}
             role="dialog"
             aria-live="polite"
             style={panelPosition ? { top: panelPosition.top, left: panelPosition.left } : { top: EDGE, left: EDGE }}
             className="fixed z-[402] max-h-[calc(100dvh-1.5rem)] w-[calc(100%-2rem)] max-w-[26rem] overflow-y-auto rounded-[14px] border border-bone/[0.18] bg-ink px-5 py-4 shadow-[0_0.5rem_1.5rem_rgba(0,0,0,0.3)]"
           >
-            <div className="font-display font-bold leading-none text-fs-500">{step.title}</div>
+            <div className="font-display font-bold leading-none text-fs-500">{stepText('title')}</div>
             <p className="mt-2 font-body text-fs-200 leading-[1.45] opacity-80">{renderRich(body)}</p>
             <div className="mt-3 flex items-center justify-between gap-3">
               {step.kind === 'act' ? (
                 <p className="font-display font-bold text-fs-100 tracking-[0.12em] uppercase text-bone/70">
-                  Pulsa el botón iluminado.
+                  {t('common.pressHighlighted')}
                 </p>
               ) : (
                 <span />
@@ -326,11 +329,11 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
                   onClick={onFinish}
                   className="cursor-pointer font-display font-bold text-fs-100 uppercase tracking-[0.12em] text-bone/60 underline underline-offset-2 transition-colors duration-[160ms] ease-brand hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bone"
                 >
-                  Omitir
+                  {t('common.skip')}
                 </button>
                 {step.kind !== 'act' && (
                   <Button size="sm" variant="primary" onClick={() => setIndex(i => i + 1)}>
-                    {step.id === 'info-winner' ? 'Terminar' : 'Siguiente'}
+                    {step.id === 'info-winner' ? t('common.finish') : t('common.next')}
                   </Button>
                 )}
               </div>
@@ -352,14 +355,13 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
               className="flex w-full max-w-[26rem] flex-col items-center gap-4 rounded-[14px] border border-bone/[0.18] bg-ink px-8 py-8 text-center"
               initial={{ scale: 0.94, y: 12 }}
               animate={{ scale: 1, y: 0 }}
-              transition={t(0.36)}
+              transition={motionT(0.36)}
             >
-              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Mano guiada completada</div>
-              <div className="font-display font-bold leading-[0.98] text-fs-600">Ya sabes jugar una mano</div>
-              <p className="font-body text-fs-200 leading-[1.5] opacity-75">{renderRich(resultSentence(state))}</p>
+              <div className="font-display font-bold leading-[0.98] text-fs-600">{t('tutorial.finishTitle')}</div>
+              <p className="font-body text-fs-200 leading-[1.5] opacity-75">{renderRich(resultSentence(state, t))}</p>
               <div className="flex w-full flex-col gap-2 pt-1">
-                <Button variant="primary" block onClick={onFinish}>Elegir mesa y jugar</Button>
-                <Button variant="outline" block onClick={onRestart}>Repetir la mano</Button>
+                <Button variant="primary" block onClick={onFinish}>{t('tutorial.chooseTable')}</Button>
+                <Button variant="outline" block onClick={onRestart}>{t('tutorial.replay')}</Button>
               </div>
             </motion.div>
           </motion.div>

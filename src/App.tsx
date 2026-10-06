@@ -12,6 +12,7 @@ import { page } from './animations/motion';
 import { playSfx, preloadSounds } from './audio/sfx';
 import { initMusic } from './audio/music';
 import { useSettingsStore } from './store/settingsStore';
+import { useLocaleStore } from './i18n';
 import { crtSupported } from './utils/crtSupport';
 import { useAndroidBackButton } from './hooks/useAndroidBackButton';
 
@@ -43,7 +44,12 @@ function AnimatedRoutes() {
 
 function App() {
   const crtAmount = useSettingsStore((s) => s.crtAmount);
+  const locale = useLocaleStore((s) => s.locale);
   const crtOn = crtSupported && crtAmount > 0;
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   useEffect(() => {
     preloadSounds();

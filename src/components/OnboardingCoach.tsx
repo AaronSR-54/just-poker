@@ -5,7 +5,8 @@ import Button from './Button';
 import { renderRich } from './RichText';
 import { useUserStore } from '../store/userStore';
 import { useOnboardingStore } from '../store/onboardingStore';
-import { t } from '../animations/motion';
+import { t as motionT } from '../animations/motion';
+import { useI18n } from '../i18n';
 
 /* ------------------------------------------------------------------ *
  * Tour de bienvenida
@@ -23,50 +24,15 @@ interface OnboardingStep {
   kind: 'info' | 'act';
   /** Valor del atributo `data-tour` que hay que iluminar. */
   target?: string;
-  title: string;
-  body: string;
 }
 
+/** El texto de cada paso vive en `onboarding.steps.<índice>` de los diccionarios. */
 const STEPS: OnboardingStep[] = [
-  {
-    id: 'welcome',
-    path: '/',
-    kind: 'info',
-    title: 'Te damos la bienvenida',
-    body: 'Antes de jugar, te enseño en un minuto cómo **crear una partida**. Después empezaremos con una mano guiada.',
-  },
-  {
-    id: 'new-game',
-    path: '/',
-    kind: 'act',
-    target: 'new-game',
-    title: 'Crear una partida',
-    body: 'Pulsa **«Nueva partida»** para elegir mesa y rivales.',
-  },
-  {
-    id: 'difficulty',
-    path: '/local',
-    kind: 'info',
-    target: 'difficulty-list',
-    title: 'Los niveles',
-    body: 'Cada nivel cambia lo listos que son los rivales: **Fácil**, **Media** y **Difícil**. Cuanto más alto, más cuesta ganar.',
-  },
-  {
-    id: 'choose-easy',
-    path: '/local',
-    kind: 'act',
-    target: 'difficulty-easy',
-    title: 'Elige Fácil',
-    body: 'Empecemos por **Fácil**, la mesa más relajada (Mia, Dan y Sam). Pulsa su tarjeta para seleccionarla.',
-  },
-  {
-    id: 'start',
-    path: '/local',
-    kind: 'act',
-    target: 'start-game',
-    title: 'A jugar',
-    body: 'Pulsa **«Jugar»** y te llevo a tu primera mano guiada.',
-  },
+  { id: 'welcome', path: '/', kind: 'info' },
+  { id: 'new-game', path: '/', kind: 'act', target: 'new-game' },
+  { id: 'difficulty', path: '/local', kind: 'info', target: 'difficulty-list' },
+  { id: 'choose-easy', path: '/local', kind: 'act', target: 'difficulty-easy' },
+  { id: 'start', path: '/local', kind: 'act', target: 'start-game' },
 ];
 
 const NEW_GAME_INDEX = STEPS.findIndex(s => s.id === 'new-game');
@@ -79,6 +45,7 @@ const OnboardingCoach: React.FC = () => {
   const completed = useUserStore(s => s.onboardingCompleted);
   const completeOnboarding = useUserStore(s => s.completeOnboarding);
   const difficulty = useOnboardingStore(s => s.difficulty);
+  const { t } = useI18n();
 
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -88,7 +55,8 @@ const OnboardingCoach: React.FC = () => {
 
   const path = location.pathname;
   const visible = !completed && (path === '/' || path === '/local');
-  const step = STEPS[Math.min(index, STEPS.length - 1)];
+  const stepIdx = Math.min(index, STEPS.length - 1);
+  const step = STEPS[stepIdx];
 
   // Avanza según la pantalla y las acciones del usuario, y recoloca el tour al cambiar de ruta.
   useEffect(() => {
@@ -204,7 +172,7 @@ const OnboardingCoach: React.FC = () => {
             initial={false}
             animate={{ left: rect.left - 6, top: rect.top - 6, width: rect.width + 12, height: rect.height + 12, opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={t(0.3)}
+            transition={motionT(0.3)}
             style={{ boxShadow: '0 0 0 9999px rgba(13,12,12,0.82), inset 0 0 0 2px rgba(205,197,183,0.85)' }}
           />
         )}
@@ -217,19 +185,19 @@ const OnboardingCoach: React.FC = () => {
           key={step.id}
           initial={{ opacity: 0, y: placeBelow ? -8 : 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, transition: t(0.14) }}
-          transition={t(0.26)}
+          exit={{ opacity: 0, transition: motionT(0.14) }}
+          transition={motionT(0.26)}
           role="dialog"
           aria-live="polite"
           style={panelPosition ? { top: panelPosition.top, left: panelPosition.left } : { top: EDGE, left: EDGE }}
           className="fixed z-[402] max-h-[calc(100dvh-1.5rem)] w-[calc(100%-2rem)] max-w-[26rem] overflow-y-auto rounded-[14px] border border-bone/[0.18] bg-ink px-5 py-4 shadow-[0_0.5rem_1.5rem_rgba(0,0,0,0.3)]"
         >
-          <div className="font-display font-bold leading-none text-fs-500">{step.title}</div>
-          <p className="mt-2 font-body text-fs-200 leading-[1.45] opacity-80">{renderRich(step.body)}</p>
+          <div className="font-display font-bold leading-none text-fs-500">{t(`onboarding.steps.${stepIdx}.title`)}</div>
+          <p className="mt-2 font-body text-fs-200 leading-[1.45] opacity-80">{renderRich(t(`onboarding.steps.${stepIdx}.body`))}</p>
           <div className="mt-3 flex items-center justify-between gap-3">
             {step.kind === 'act' ? (
               <p className="font-display font-bold text-fs-100 tracking-[0.12em] uppercase text-bone/70">
-                Pulsa el botón iluminado.
+                {t('common.pressHighlighted')}
               </p>
             ) : (
               <span />
@@ -240,11 +208,11 @@ const OnboardingCoach: React.FC = () => {
                 onClick={completeOnboarding}
                 className="cursor-pointer font-display font-bold text-fs-100 uppercase tracking-[0.12em] text-bone/60 underline underline-offset-2 transition-colors duration-[160ms] ease-brand hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bone"
               >
-                Omitir
+                {t('common.skip')}
               </button>
               {step.kind !== 'act' && (
                 <Button size="sm" variant="primary" onClick={() => setIndex(i => i + 1)}>
-                  Siguiente
+                  {t('common.next')}
                 </Button>
               )}
             </div>

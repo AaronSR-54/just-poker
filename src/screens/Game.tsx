@@ -6,23 +6,25 @@ import Avatar from '../components/Avatar';
 import PokerCard from '../components/PokerCard';
 import type { GamePhase, CardRank, Suit, ButtonSize } from '../types';
 import { PokerGame, type PokerState } from '../game/poker';
-import { PHASE_LABELS } from '../game/gameState';
-import { evaluateHand, getRelevantCards } from '../game/hands';
+import { PHASE_LABEL_KEYS } from '../game/gameState';
+import { evaluateHand, getRelevantCards, HAND_RANKS } from '../game/hands';
 import { PERSONALITIES, getActionDelay } from '../ai/personalities';
 import { createAIPlayer, getAIAction, type AIPlayer } from '../ai/aiPlayer';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore } from '../store/userStore';
 import { saveGame, loadSavedGame, clearSavedGame } from '../game/saveGame';
-import { rivalAvatar, rivalAlias, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
+import { rivalAvatar, rivalAliasKey, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
 import ChipIcon from '../components/ChipIcon';
-import PotAward, { POT_AWARD_HOLD, type PotAwardData } from '../components/PotAward';
+import PotAward, { type PotAwardData } from '../components/PotAward';
 import PositionChip from '../components/PositionChip';
 import TutorialCoach from '../components/TutorialCoach';
 import { buildTutorialDeck, tutorialAIAction } from '../game/tutorial';
 import GameSettings from '../components/GameSettings';
+import ConfirmDialog from '../components/ConfirmDialog';
 import SettingsButton from '../components/SettingsButton';
 import { useSettingsStore, speedFactor } from '../store/settingsStore';
-import { container, fadeUp, popIn, t, setMotionScale } from '../animations/motion';
+import { container, fadeUp, popIn, t as motionT, setMotionScale } from '../animations/motion';
+import { useI18n } from '../i18n';
 import { playSfx } from '../audio/sfx';
 import { useGameSounds } from '../hooks/useGameSounds';
 
@@ -67,13 +69,13 @@ const DeltaLine: React.FC<{ amount: number; filled?: boolean; className?: string
     ? (filled ? 'text-success-bone' : 'text-success')
     : (filled ? 'text-danger-bone' : 'text-danger');
   return (
-    <div className={`flex h-4 items-center justify-center ${className}`}>
+    <div className={`flex items-center justify-center leading-none ${className}`}>
       {amount !== 0 && (
         <motion.span
           key={amount}
           initial={{ opacity: 0, y: amount > 0 ? 6 : -6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={t(0.24)}
+          transition={motionT(0.24)}
           className={`font-display font-bold text-fs-100 ${color}`}
         >
           {amount > 0 ? `+${amount}` : `−${Math.abs(amount)}`}
@@ -136,6 +138,8 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
   enterDelay = 0,
   dataTour,
 }) => {
+  const { t } = useI18n();
+  const aliasKey = rivalAliasKey(name);
   const filled = isWinner;
   const dimmed = eliminated || folded;
   // En all-in se muestra la etiqueta en lugar del total, que quedaría a 0.
@@ -146,10 +150,10 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
       data-tour={dataTour}
       initial={{ opacity: 0, y: 14, scale: 0.96 }}
       animate={{ opacity: dimmed ? 0.32 : 1, y: 0, scale: isWinner ? 1.03 : 1 }}
-      transition={t(0.35, enterDelay)}
+      transition={motionT(0.35, enterDelay)}
       className={[
         'relative flex flex-col items-center rounded-slot border text-center',
-        compact ? 'w-[104px] gap-2 rounded-[10px] px-3 py-3' : 'w-[150px] gap-3.5 px-6 py-5',
+        compact ? 'w-[min(104px,28vw)] gap-2 rounded-[10px] px-3 py-3' : 'w-[150px] gap-3.5 px-6 py-5',
         filled
           ? 'border-bone bg-bone text-ink'
           : isActive && !handOver
@@ -177,7 +181,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
             </span>
           )}
         </div>
-        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70">{rivalAlias(name) ? `“${rivalAlias(name)}”` : ''}</div>
+        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
       </div>
 
       <div className="relative flex w-full items-center justify-center gap-0.5 pb-2">
@@ -188,7 +192,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
           {showAllIn ? (
             <span className={`flex h-5 items-center font-display font-bold text-fs-200 ${filled ? 'text-danger-bone' : 'text-danger'}`}>ALL-IN</span>
           ) : (
-            <span className={`flex h-5 items-center whitespace-nowrap font-display font-bold tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
+            <span className={`flex items-center whitespace-nowrap font-display font-bold leading-none tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
           )}
           <div className="absolute left-1/2 top-full -translate-x-1/2">
             <DeltaLine amount={showAllIn ? 0 : delta} filled={filled} className="whitespace-nowrap" />
@@ -250,11 +254,14 @@ const CommunityRow: React.FC<{
   phase: GamePhase;
   community: { rank: CardRank; suit: Suit }[];
   pot: number;
-  /** El bote ya se ha repartido: se desvanece mientras las fichas vuelan. */
+  /** El bote se ha agotado (0): se desvanece tras terminar de repartirse. */
   potAwarded?: boolean;
+  /** La mano ha terminado: el bote se resta sin rebotar en cada tick. */
+  potLocked?: boolean;
   cardSize?: 'md' | 'xxl';
   isDimmed?: (card: { rank: CardRank; suit: Suit }) => boolean;
-}> = ({ phase, community, pot, potAwarded = false, cardSize = 'xxl', isDimmed }) => {
+}> = ({ phase, community, pot, potAwarded = false, potLocked = false, cardSize = 'xxl', isDimmed }) => {
+  const { t } = useI18n();
   const visibleCount = phase === 'pre-flop' ? 0 : phase === 'flop' ? 3 : phase === 'turn' ? 4 : 5;
   const slot = COMMUNITY_SLOT[cardSize];
   // Índice de la primera carta de la calle actual: el escalonado solo reparte
@@ -270,10 +277,10 @@ const CommunityRow: React.FC<{
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
-            transition={t(0.24)}
+            transition={motionT(0.24)}
             className="inline-flex rounded-pill border border-bone/[0.18] bg-ink px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5"
           >
-            {PHASE_LABELS[phase] || phase}
+            {t(PHASE_LABEL_KEYS[phase]) || phase}
           </motion.span>
         </AnimatePresence>
       </div>
@@ -287,7 +294,7 @@ const CommunityRow: React.FC<{
                 key={`${card.rank}${card.suit}`}
                 initial={{ opacity: 0, scale: 0.85, rotateY: 60 }}
                 animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                transition={t(0.35, (i - streetStart) * 0.1)}
+                transition={motionT(0.35, (i - streetStart) * 0.1)}
               >
                 <PokerCard
                   size={cardSize}
@@ -298,19 +305,19 @@ const CommunityRow: React.FC<{
               </motion.div>
             );
           }
-          return <div key={i} className={`rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14] bg-ink ${slot.w} ${slot.h}`} />;
+          return <div key={i} className={`rounded-[0.625rem] border-[1.5px] border-dashed border-bone/[0.14] bg-ink/40 ${slot.w} ${slot.h}`} />;
         })}
       </div>
 
       <motion.div
         data-tour="pot"
         className="flex items-center gap-1.5 font-display font-bold text-fs-200 tracking-[0.06em]"
-        key={pot}
+        key={potLocked ? 'pot' : pot}
         initial={{ scale: 1.1 }}
         animate={{ scale: potAwarded ? 0.9 : 1, opacity: potAwarded ? 0 : 1 }}
-        transition={t(0.3, potAwarded ? POT_AWARD_HOLD : 0)}
+        transition={motionT(0.3)}
       >
-        <span className="opacity-50">Bote:</span>
+        <span className="opacity-50">{t('game.pot')}</span>
         <span data-chips className="inline-flex">
           <ChipIcon className="size-5 text-bone" />
         </span>
@@ -322,12 +329,12 @@ const CommunityRow: React.FC<{
 
 // ---------- Log de acciones ----------
 
-const ACTION_VERBS: Record<string, { third: string; second: string }> = {
-  fold: { third: 'se ha retirado', second: 'te has retirado' },
-  check: { third: 'ha pasado', second: 'has pasado' },
-  call: { third: 'ha igualado', second: 'has igualado' },
-  raise: { third: 'ha subido', second: 'has subido' },
-  blind: { third: 'ha puesto la ciega', second: 'has puesto la ciega' },
+const ACTION_VERB_KEYS: Record<string, { third: string; second: string }> = {
+  fold: { third: 'game.log.foldThird', second: 'game.log.foldSecond' },
+  check: { third: 'game.log.checkThird', second: 'game.log.checkSecond' },
+  call: { third: 'game.log.callThird', second: 'game.log.callSecond' },
+  raise: { third: 'game.log.raiseThird', second: 'game.log.raiseSecond' },
+  blind: { third: 'game.log.blindThird', second: 'game.log.blindSecond' },
 };
 
 const ActionLog: React.FC<{ state: PokerState; winnerName?: string; winnerHand?: string; winnerIsHuman?: boolean; compact?: boolean }> = ({
@@ -337,18 +344,19 @@ const ActionLog: React.FC<{ state: PokerState; winnerName?: string; winnerHand?:
   winnerIsHuman = false,
   compact = false,
 }) => {
+  const { t } = useI18n();
   const entries = state.actions.slice(-4).map(a => {
     const p = state.players[a.playerIndex];
-    const verb = ACTION_VERBS[a.type];
+    const verb = ACTION_VERB_KEYS[a.type];
     const isHuman = a.playerIndex === 0;
-    const text = `${isHuman ? verb?.second ?? a.type : verb?.third ?? a.type}${a.amount ? ` ${a.amount}` : ''}`;
-    return { name: isHuman ? 'Tú' : p?.name ?? '?', text };
+    const text = `${verb ? t(isHuman ? verb.second : verb.third) : a.type}${a.amount ? ` ${a.amount}` : ''}`;
+    return { name: isHuman ? t('common.you') : p?.name ?? '?', text };
   });
   if (winnerName) {
     if (winnerIsHuman) {
-      entries.push({ name: 'Tú', text: winnerHand ? `has ganado con ${winnerHand}` : 'has ganado' });
+      entries.push({ name: t('common.you'), text: winnerHand ? t('game.log.wonYouWith', { hand: winnerHand }) : t('game.log.wonYou') });
     } else {
-      entries.push({ name: winnerName, text: winnerHand ? `ha ganado con ${winnerHand}` : 'ha ganado' });
+      entries.push({ name: winnerName, text: winnerHand ? t('game.log.wonWith', { hand: winnerHand }) : t('game.log.won') });
     }
   }
 
@@ -358,7 +366,7 @@ const ActionLog: React.FC<{ state: PokerState; winnerName?: string; winnerHand?:
     const line = entries[entries.length - 1];
     return (
       <div className="flex flex-col items-start gap-0.5 text-left">
-        <div className="font-body text-fs-100 tracking-[0.04em] opacity-50">Mano #{state.handNumber}</div>
+        <div className="font-body text-fs-100 tracking-[0.04em] opacity-50">{t('game.handNumber', { n: state.handNumber })}</div>
         <div className="flex h-4 w-full items-center">
           <AnimatePresence mode="wait">
             {line && (
@@ -367,7 +375,7 @@ const ActionLog: React.FC<{ state: PokerState; winnerName?: string; winnerHand?:
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={t(0.2)}
+                transition={motionT(0.2)}
                 className="min-w-0 truncate whitespace-nowrap font-body text-fs-100 text-bone"
               >
                 {line.name ? <><strong>{line.name}</strong> {line.text}</> : line.text}
@@ -383,13 +391,13 @@ const ActionLog: React.FC<{ state: PokerState; winnerName?: string; winnerHand?:
   const lines = entries.slice(-4);
   return (
     <div className="flex flex-col items-start gap-0.5 text-left">
-      <div className="mb-0.5 font-body text-fs-100 tracking-[0.04em] opacity-50">Mano #{state.handNumber}</div>
+      <div className="mb-0.5 font-body text-fs-100 tracking-[0.04em] opacity-50">{t('game.handNumber', { n: state.handNumber })}</div>
       {lines.map((line, i) => (
         <motion.div
           key={`${line.name}-${line.text}-${i}`}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 0.35 + (0.65 * (i + 1)) / lines.length, x: 0 }}
-          transition={t(0.24)}
+          transition={motionT(0.24)}
           className="font-body text-fs-100 text-bone"
         >
           {line.name ? <><strong>{line.name}</strong> {line.text}</> : line.text}
@@ -419,13 +427,14 @@ interface RaisePanelProps {
 const RaiseControls: React.FC<RaisePanelProps> = ({
   raiseAmount, onRaiseChange, onRaise, minRaise, maxRaise, potSize, playerChips, callAmount, confirmDisabled, fill = false,
 }) => {
+  const { t } = useI18n();
   const halfPot = Math.floor(potSize / 2);
   const allInAmount = Math.max(minRaise, playerChips - callAmount);
   const quickAmounts = [
-    { label: 'Min', value: minRaise },
-    { label: '½', value: Math.max(minRaise, halfPot) },
-    { label: 'Bote', value: Math.max(minRaise, potSize) },
-    { label: 'All-in', value: allInAmount },
+    { label: t('game.quickMin'), value: minRaise },
+    { label: t('game.quickHalf'), value: Math.max(minRaise, halfPot) },
+    { label: t('game.quickPot'), value: Math.max(minRaise, potSize) },
+    { label: t('game.quickAllIn'), value: allInAmount },
   ];
 
   return (
@@ -468,7 +477,7 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
       </div>
 
       <Button data-tour="raise-confirm" variant="primary" size="sm" block onClick={onRaise} disabled={confirmDisabled}>
-        {raiseAmount >= allInAmount ? `All-in ${playerChips}` : `Subir ${raiseAmount}`}
+        {raiseAmount >= allInAmount ? t('game.allInAmount', { amount: playerChips }) : t('game.raiseAmount', { amount: raiseAmount })}
       </Button>
     </div>
   );
@@ -478,7 +487,7 @@ const RaisePanel: React.FC<RaisePanelProps> = (props) => (
   <motion.div
     initial={{ opacity: 0, y: 8, scale: 0.97 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
-    transition={t(0.2)}
+    transition={motionT(0.2)}
     className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 min-w-[12.5rem] max-w-72 origin-bottom-right rounded-[14px] border border-bone/[0.18] bg-ink p-4 shadow-[0_0.25rem_1rem_rgba(0,0,0,0.25)]"
   >
     <RaiseControls {...props} />
@@ -492,7 +501,7 @@ const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = ({ onClo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={t(0.2)}
+      transition={motionT(0.2)}
       onClick={onClose}
     >
       <motion.div
@@ -500,7 +509,7 @@ const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = ({ onClo
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={t(0.32)}
+        transition={motionT(0.32)}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-1 w-9 self-center rounded-sm bg-bone/20" />
@@ -517,6 +526,7 @@ const GameOverOverlay: React.FC<{
   onSelectDifficulty: () => void;
   onHome: () => void;
 }> = ({ state, onRestart, onSelectDifficulty, onHome }) => {
+  const { t } = useI18n();
   const standings = [...state.players]
     .sort((a, b) => {
       if (a.id === state.gameWinner) return -1;
@@ -530,19 +540,19 @@ const GameOverOverlay: React.FC<{
       className="fixed inset-0 z-300 flex items-center justify-center bg-ink-900/85"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: t(0.2) }}
-      transition={t(0.35)}
+      exit={{ opacity: 0, transition: motionT(0.2) }}
+      transition={motionT(0.35)}
     >
       <motion.div
         className="flex w-[calc(100%-3rem)] max-w-[26.25rem] flex-col items-center gap-5 rounded-[14px] border border-bone/[0.18] bg-ink px-10 py-9 text-center"
         initial={{ scale: 0.92, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: 12, transition: t(0.2) }}
-        transition={t(0.42, 0.1)}
+        exit={{ scale: 0.96, y: 12, transition: motionT(0.2) }}
+        transition={motionT(0.42, 0.1)}
       >
-        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Fin de la partida · {state.handNumber} manos</div>
+        <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">{t('game.overEyebrow', { n: state.handNumber })}</div>
         <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">
-          {humanWon ? 'Has ganado' : 'Has perdido'}
+          {humanWon ? t('game.overWon') : t('game.overLost')}
         </div>
 
         <motion.div
@@ -560,8 +570,8 @@ const GameOverOverlay: React.FC<{
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{i + 1}.º</span>
-                <span className={`font-body leading-[1.45] text-fs-300${p.id === 0 ? ' font-bold' : ''}`}>{p.name}</span>
+                <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{t('game.place', { n: i + 1 })}</span>
+                <span className={`font-body leading-[1.45] text-fs-300${p.id === 0 ? ' font-bold' : ''}`}>{p.id === 0 ? t('common.you') : p.name}</span>
               </div>
               <span className="inline-flex items-center gap-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase">
                 <ChipIcon className={`size-5 ${p.id === 0 ? 'text-ink' : 'text-bone'}`} /> {p.chips}
@@ -577,13 +587,13 @@ const GameOverOverlay: React.FC<{
           className="flex w-full flex-col gap-2 border-t border-bone/[0.18] pt-5"
         >
           <motion.div variants={fadeUp}>
-            <Button variant="primary" block onClick={onRestart}>Nueva partida</Button>
+            <Button variant="primary" block onClick={onRestart}>{t('game.newGame')}</Button>
           </motion.div>
           <motion.div variants={fadeUp}>
-            <Button variant="outline" block onClick={onSelectDifficulty}>Seleccionar dificultad</Button>
+            <Button variant="outline" block onClick={onSelectDifficulty}>{t('game.selectDifficulty')}</Button>
           </motion.div>
           <motion.div variants={fadeUp}>
-            <Button variant="ghost" size="sm" block onClick={onHome}>Volver a inicio</Button>
+            <Button variant="ghost" size="sm" block onClick={onHome}>{t('game.backHome')}</Button>
           </motion.div>
         </motion.div>
       </motion.div>
@@ -599,8 +609,11 @@ const LocalGame: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+  /** Pantallas bajas (tablet apaisada o ventanas compactas): comprime la mesa para que quepa de alto. */
+  const isShort = useMediaQuery('(max-height: 720px)');
   const user = useUserStore(s => s.user);
   const completeOnboarding = useUserStore(s => s.completeOnboarding);
+  const { t } = useI18n();
 
   const gameRef = useRef<PokerGame | null>(null);
   const [gameState, setGameState] = useState<PokerState | null>(null);
@@ -619,8 +632,11 @@ const LocalGame: React.FC = () => {
   const [coachPaused, setCoachPaused] = useState(false);
   const [gameOverModal, setGameOverModal] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [potAward, setPotAward] = useState<PotAwardData | null>(null);
   const [awardProgress, setAwardProgress] = useState<Record<number, number>>({});
+  /** Bote que queda por repartir: se resta conforme aterrizan las fichas. */
+  const [potRemaining, setPotRemaining] = useState<number | null>(null);
   const awardedHandRef = useRef<number | null>(null);
   const gameOverTimerRef = useRef<number | null>(null);
   const streetTimerRef = useRef<number | null>(null);
@@ -750,6 +766,7 @@ const LocalGame: React.FC = () => {
     if (awardedHandRef.current === handNumber) return;
     awardedHandRef.current = handNumber;
     setAwardProgress({});
+    setPotRemaining(pot);
     setPotAward({
       handNumber,
       pot,
@@ -1011,6 +1028,7 @@ const LocalGame: React.FC = () => {
     if (!g) return;
     setPotAward(null);
     setAwardProgress({});
+    setPotRemaining(null);
     g.reset();
     g.startHand();
     updateState();
@@ -1018,6 +1036,7 @@ const LocalGame: React.FC = () => {
 
   const handlePotAwardLanded = useCallback((winnerId: number, value: number) => {
     setAwardProgress(prev => ({ ...prev, [winnerId]: (prev[winnerId] ?? 0) + value }));
+    setPotRemaining(prev => (prev === null ? null : Math.max(0, prev - value)));
     playSfx('chips_stack');
   }, []);
 
@@ -1027,6 +1046,7 @@ const LocalGame: React.FC = () => {
       for (const w of potAward?.winners ?? []) next[w.id] = w.amount;
       return next;
     });
+    setPotRemaining(0);
     setPotAward(null);
   }, [potAward]);
 
@@ -1044,10 +1064,12 @@ const LocalGame: React.FC = () => {
   const openSettings = () => setSettingsOpen(true);
 
   const leaveGame = () => {
-    if (window.confirm('¿Seguro que quieres salir de la partida? Se perderá el progreso.')) {
-      clearSavedGame();
-      navigate('/');
-    }
+    setLeaveConfirmOpen(true);
+  };
+
+  const confirmLeaveGame = () => {
+    clearSavedGame();
+    navigate('/');
   };
 
   const settingsOverlay = (
@@ -1063,18 +1085,31 @@ const LocalGame: React.FC = () => {
     </AnimatePresence>
   );
 
+  const confirmDialog = (
+    <ConfirmDialog
+      open={leaveConfirmOpen}
+      title={t('game.leaveTitle')}
+      message={t('game.leaveMessage')}
+      confirmLabel={t('game.leaveConfirm')}
+      cancelLabel={t('game.leaveCancel')}
+      danger
+      onConfirm={confirmLeaveGame}
+      onCancel={() => setLeaveConfirmOpen(false)}
+    />
+  );
+
   // ---- Guards de render ----
 
   if (!isLocal) {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Juego no disponible</div>
+          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">{t('game.unavailableTitle')}</div>
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">
-            Esta sala aún no está lista. Vuelve al lobby.
+            {t('game.unavailableBody')}
           </div>
           <Button variant="outline" className="rounded-[0.875rem]!" onClick={() => navigate('/')}>
-            ← Volver al menú
+            ← {t('common.backToMenu')}
           </Button>
         </div>
       </div>
@@ -1085,7 +1120,7 @@ const LocalGame: React.FC = () => {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <div className="flex flex-1 flex-col items-center justify-center">
-          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Cargando partida...</div>
+          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">{t('game.loading')}</div>
         </div>
       </div>
     );
@@ -1102,6 +1137,8 @@ const LocalGame: React.FC = () => {
   const human = state.players[0];
   // En showdown se muestran todos los rivales (también los retirados).
   const rivals = state.players.slice(1);
+  // Los rivales eliminados (sin fichas) desaparecen de la mesa.
+  const visibleRivals = rivals.filter(r => !r.eliminated);
 
   const difficulty = getDifficulty(gameId ?? '');
   const avatarTone = DIFFICULTY_AVATAR_TONE[difficulty];
@@ -1128,24 +1165,25 @@ const LocalGame: React.FC = () => {
 
   const humanRole = blindRoleFor(0);
 
-  const evaluateVisibleHand = (cards: { rank: CardRank; suit: Suit }[]): string => {
-    if (cards.length < 2) return '';
-    if (state.community.length >= 3) return evaluateHand(cards, state.community).name;
+  const visibleHandRank = (cards: { rank: CardRank; suit: Suit }[]): number | null => {
+    if (cards.length < 2) return null;
+    if (state.community.length >= 3) return evaluateHand(cards, state.community).rank;
     // Sin cartas comunitarias: la mano es la de las dos cartas propias.
-    return cards[0].rank === cards[1].rank ? 'Pareja' : 'Carta Alta';
+    return cards[0].rank === cards[1].rank ? HAND_RANKS.ONE_PAIR : HAND_RANKS.HIGH_CARD;
   };
+  const handLabel = (rank: number | null): string => (rank === null ? '' : t(`handName.${rank}`));
 
-  const humanHandName = evaluateVisibleHand(human.cards);
+  const humanHandName = handLabel(visibleHandRank(human.cards));
 
   const winningHandName = winner && winner.length > 0
-    ? evaluateVisibleHand(state.players[winner[0]].cards)
+    ? handLabel(visibleHandRank(state.players[winner[0]].cards))
     : '';
 
-  const handNameFor = evaluateVisibleHand;
+  const handNameFor = (cards: { rank: CardRank; suit: Suit }[]) => handLabel(visibleHandRank(cards));
 
   const winnerLog = handOver && winner && winner.length > 0
     ? {
-        name: winner.map(w => state.players[w].name).join(' e '),
+        name: winner.map(w => state.players[w].name).join(t('game.and')),
         hand: winner.includes(0) ? humanHandName : winningHandName,
         isHuman: winner.includes(0),
       }
@@ -1163,8 +1201,11 @@ const LocalGame: React.FC = () => {
 
   const humanIsWinner = winner !== null && winner.includes(0);
   const humanAllIn = human.isAllIn && !handOver;
-  // El bote ya repartido se desvanece del centro mientras vuela a los ganadores.
+  // Reparto en curso: las fichas vuelan del bote a los ganadores.
   const potAwarded = handOver && winner !== null && winner.length > 0;
+  // El bote mostrado se resta conforme aterrizan las fichas; a 0 se desvanece.
+  const displayedPot = handOver && potRemaining !== null ? potRemaining : pot;
+  const potEmpty = potAwarded && displayedPot === 0;
   // Fichas del ganador que aún no han aterrizado: se restan del total para que
   // el contador crezca en tiempo real conforme llegan las fichas.
   const awardRemainingFor = (id: number): number => {
@@ -1192,7 +1233,7 @@ const LocalGame: React.FC = () => {
       ].join(' ')}
     >
       <div className="flex items-center gap-1.5">
-        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{human.name}</span>
+        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{human.name === 'Tú' ? t('common.you') : human.name}</span>
         {humanRole && (
           <span className="shrink-0" data-tour={humanRole === 'dealer' ? 'dealer' : undefined}>
             <PositionChip role={humanRole} filled={humanIsWinner} />
@@ -1223,10 +1264,10 @@ const LocalGame: React.FC = () => {
               key={`${state.handNumber}-${i}`}
               initial={{ opacity: 0, y: -28, rotate: -7 }}
               animate={{ opacity: 1, y: 0, rotate: 0 }}
-              transition={t(0.42, 0.08 * i)}
+              transition={motionT(0.42, 0.08 * i)}
             >
               <PokerCard
-                size={isMobile ? 'md' : 'lg'}
+                size={isMobile || isShort ? 'md' : 'lg'}
                 rank={c.rank}
                 suit={c.suit}
                 dimmed={humanCardsDimmed || isDimmed({ rank: c.rank, suit: c.suit })}
@@ -1243,28 +1284,33 @@ const LocalGame: React.FC = () => {
       return (
         <div className={`flex flex-col items-center gap-2 ${fill ? 'w-full' : ''}`}>
           {!state.gameOver && (
-            <Button variant="primary" size={size} block={fill} className={fill ? 'min-h-11' : ''} onClick={startNewHand}>
-              Nueva Mano
+            <Button variant="primary" size={size} block={fill} className={fill ? 'min-h-11 px-1.5! py-1! tracking-[0.04em]!' : ''} onClick={startNewHand}>
+              {t('game.newHand')}
             </Button>
           )}
         </div>
       );
     }
 
-    const raiseButton = (
+    const raiseButtonInner = (
+      <Button
+        data-tour="btn-raise"
+        variant="primary"
+        size={size}
+        block={fill}
+        className={fill ? 'w-auto! flex-auto min-h-11 px-2! py-1! tracking-[0.02em]!' : ''}
+        onClick={() => setShowRaise(!showRaise)}
+        disabled={activePlayer !== 0 || streetPending || !canRaise || (isTutorial && expectedAction !== 'raise')}
+      >
+        {t('game.raise')}
+      </Button>
+    );
+
+    // En móvil el botón va suelto (sin wrapper) para que flex-auto mida por su texto.
+    const raiseButton = fill ? raiseButtonInner : (
       <div className="relative">
-        <Button
-          data-tour="btn-raise"
-          variant="primary"
-          size={size}
-          block={fill}
-          className={fill ? 'flex-1 min-h-11' : ''}
-          onClick={() => setShowRaise(!showRaise)}
-          disabled={activePlayer !== 0 || streetPending || !canRaise || (isTutorial && expectedAction !== 'raise')}
-        >
-          Subir
-        </Button>
-        {!fill && showRaise && activePlayer === 0 && (
+        {raiseButtonInner}
+        {showRaise && activePlayer === 0 && (
           <RaisePanel
             raiseAmount={raiseAmount}
             onRaiseChange={handleRaiseChange}
@@ -1286,11 +1332,11 @@ const LocalGame: React.FC = () => {
         variant="outline"
         size={size}
         block={fill}
-        className={fill ? 'flex-1 min-h-11' : ''}
+        className={fill ? 'w-auto! flex-auto min-h-11 px-2! py-1! tracking-[0.02em]!' : ''}
         onClick={() => handleAction(canCheck ? 'check' : 'fold')}
         disabled={activePlayer !== 0 || streetPending || (isTutorial && (expectedAction !== 'check' || !canCheck))}
       >
-        {canCheck ? 'Pasar' : 'Retirarse'}
+        {canCheck ? t('game.check') : t('game.fold')}
       </Button>
     );
 
@@ -1300,15 +1346,15 @@ const LocalGame: React.FC = () => {
         variant="outline"
         size={size}
         block={fill}
-        className={fill ? 'flex-1 min-h-11' : ''}
+        className={fill ? 'w-auto! flex-auto min-h-11 px-2! py-1! tracking-[0.02em]!' : ''}
         onClick={() => handleAction('call')}
         disabled={activePlayer !== 0 || streetPending || callAmount === 0 || (isTutorial && expectedAction !== 'call')}
       >
         {callAmount > 0
           ? callAmount >= human.chips
-            ? `All-in ${human.chips}`
-            : `Igualar ${callAmount}`
-          : 'Igualar'}
+            ? t('game.allInAmount', { amount: human.chips })
+            : t('game.callAmount', { amount: callAmount })
+          : t('game.call')}
       </Button>
     );
 
@@ -1316,7 +1362,7 @@ const LocalGame: React.FC = () => {
     // (Pasar/Retirarse) a la derecha, lo más cerca posible del pulgar.
     if (fill) {
       return (
-        <div className="flex w-full gap-2">
+        <div className="flex w-full gap-1.5">
           {raiseButton}
           {callButton}
           {passButton}
@@ -1361,8 +1407,14 @@ const LocalGame: React.FC = () => {
             </div>
 
             <div data-tour="rivals" className="flex flex-wrap justify-center gap-2 pt-2">
-            {rivals.map((r, i) => (
-              <div key={r.id} className="flex flex-col items-center gap-1.5">
+            <AnimatePresence initial={false}>
+            {visibleRivals.map((r, i) => (
+              <motion.div
+                key={r.id}
+                layout
+                exit={{ opacity: 0, scale: 0.85, transition: motionT(0.25) }}
+                className="flex flex-col items-center gap-1.5"
+              >
                 <RivalSlot
                   compact
                   enterDelay={i * 0.08}
@@ -1390,8 +1442,9 @@ const LocalGame: React.FC = () => {
                     </>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
+            </AnimatePresence>
             </div>
           </div>
 
@@ -1399,8 +1452,9 @@ const LocalGame: React.FC = () => {
             <CommunityRow
               phase={phase}
               community={state.community}
-              pot={pot}
-              potAwarded={potAwarded}
+              pot={displayedPot}
+              potAwarded={potEmpty}
+              potLocked={potAwarded}
               cardSize="md"
               isDimmed={isDimmed}
             />
@@ -1458,6 +1512,8 @@ const LocalGame: React.FC = () => {
 
         {settingsOverlay}
 
+        {confirmDialog}
+
         {isTutorial && (
           <TutorialCoach
             key={tutorialRun}
@@ -1483,7 +1539,7 @@ const LocalGame: React.FC = () => {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto_1fr] px-6 lg:px-12">
-        <div className="flex flex-col self-start pt-4">
+        <div className={`flex flex-col self-start ${isShort ? 'pt-1' : 'pt-4'}`}>
           <div className="flex shrink-0 items-start justify-between gap-3 xl:hidden">
             <div className="pointer-events-none min-w-0 flex-1">
               <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
@@ -1491,10 +1547,17 @@ const LocalGame: React.FC = () => {
             <SettingsButton onClick={openSettings} inline />
           </div>
 
-          <div data-tour="rivals" className="mt-3 flex justify-center gap-3 lg:mt-4 lg:gap-4">
-          {rivals.map((r, i) => (
-            <div key={r.id} className="flex flex-col items-center gap-2">
+          <div data-tour="rivals" className={`flex justify-center ${isShort ? 'mt-1 gap-2' : 'mt-3 gap-3 lg:mt-4 lg:gap-4'}`}>
+          <AnimatePresence initial={false}>
+          {visibleRivals.map((r, i) => (
+            <motion.div
+              key={r.id}
+              layout
+              exit={{ opacity: 0, scale: 0.85, transition: motionT(0.25) }}
+              className="flex flex-col items-center gap-2"
+            >
               <RivalSlot
+                compact={isShort}
                 enterDelay={i * 0.08}
                 name={r.name}
                 folded={r.folded}
@@ -1512,30 +1575,33 @@ const LocalGame: React.FC = () => {
                 timerDuration={aiTurn?.playerIndex === r.id ? aiTurn.duration : undefined}
                 timerKey={`${state.handNumber}-${phase}-${r.id}`}
               />
-              <div className={`flex flex-col items-center gap-2 ${showdown ? 'min-h-[7.1875rem]' : ''}`}>
+              <div className={`flex flex-col items-center gap-2 ${showdown ? (isShort ? 'min-h-[3.75rem]' : 'min-h-[7.1875rem]') : ''}`}>
                 {showdown && !r.folded && r.cards.length > 0 && (
                   <>
-                    <ShowdownCards cards={r.cards} size="md" isDimmed={isDimmed} />
+                    <ShowdownCards cards={r.cards} size={isShort ? 'sm' : 'md'} isDimmed={isDimmed} />
                     <HandLabel name={handNameFor(r.cards)} winner={winner !== null && winner.includes(r.id)} />
                   </>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
           </div>
         </div>
 
-        <div className="py-4 lg:py-6">
+        <div className={isShort ? 'py-1' : 'py-4 lg:py-6'}>
           <CommunityRow
             phase={phase}
             community={state.community}
-            pot={pot}
-            potAwarded={potAwarded}
+            pot={displayedPot}
+            potAwarded={potEmpty}
+            potLocked={potAwarded}
+            cardSize={isShort ? 'md' : 'xxl'}
             isDimmed={isDimmed}
           />
         </div>
 
-        <div className="flex flex-col gap-4 self-end pb-6">
+        <div className={`flex flex-col self-end ${isShort ? 'gap-2 pb-2' : 'gap-4 pb-6'}`}>
           <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-4">
             <div className="justify-self-start">{humanInfo}</div>
 
@@ -1570,6 +1636,8 @@ const LocalGame: React.FC = () => {
       )}
 
       {settingsOverlay}
+
+      {confirmDialog}
 
       {isTutorial && (
         <TutorialCoach
