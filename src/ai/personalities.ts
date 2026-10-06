@@ -81,7 +81,12 @@ function estimateEquity(playerIndex: number, state: PokerState): number {
   return (result.winPct + result.tiePct / 2) / 100;
 }
 
-/** Tamaño de apuesta según personalidad y contexto (en fichas, sobre el maxBet). */
+/**
+ * Tamaño de la subida (incremento sobre igualar, en fichas).
+ * Preflop abre 2.5–4.5 BB; postflop apuesta 35–75% del bote según agresión y
+ * fuerza. Si el incremento compromete casi todo el stack, empuja all-in en vez
+ * de dejar migajas. Ya no usa una base fija en BB que sobre-apostaba el bote.
+ */
 function sizeRaise(
   personality: Personality,
   state: PokerState,
@@ -95,15 +100,23 @@ function sizeRaise(
   if (maxRaise <= 0) return 0;
   // Si el stack no llega para una subida mínima, ir all-in con lo disponible
   if (maxRaise <= state.minRaise) return maxRaise;
-  // Base por ciegas: escala con la agresión y no colapsa al mínimo en botes
-  // pequeños (el bug de la fracción de bote original).
-  const bbBase = state.bigBlind * (1 + aggro * 4);
-  const potBase = state.pot * (0.2 + aggro * 0.5);
-  let amount = Math.round(Math.max(bbBase, potBase));
-  // Con mano muy fuerte los agresivos cargan más el bote.
-  if (equity > 0.8) amount = Math.round(amount * (1 + aggro * 0.4));
-  amount = Math.min(Math.max(amount, state.minRaise), maxRaise);
-  return amount;
+
+  let increment: number;
+  if (state.community.length === 0) {
+    // Preflop: subida estándar (~2.5–4.5 BB), algo más cara con limpers.
+    const entered = state.players.filter(p => !p.folded && !p.eliminated && p.bet > 0).length;
+    increment = state.bigBlind * (1.4 + aggro * 2 + Math.min(0.8, entered * 0.2));
+  } else {
+    // Postflop: fracción de bote (35–75%) según agresión y fuerza de la mano.
+    const potAfterCall = state.pot + callAmount;
+    const potFraction = 0.35 + aggro * 0.4 + (equity > 0.8 ? 0.12 : 0);
+    increment = Math.round(potAfterCall * potFraction);
+  }
+
+  let amount = Math.max(state.minRaise, Math.round(increment));
+  // Si la subida deja al jugador con migajas, es mejor empujar all-in.
+  if (amount >= maxRaise * 0.7) amount = maxRaise;
+  return Math.min(amount, maxRaise);
 }
 
 /**
@@ -138,6 +151,8 @@ export interface DecisionInfo {
   pot: number;
   potOdds: number;
   opponents: number;
+  /** Fracción del stack que habría que arriesgar para igualar (0..1). */
+  stackRisk: number;
   /** Nº de cartas comunitarias (0 = preflop). */
   street: number;
   bluffRoll: boolean;
@@ -158,6 +173,12 @@ export function decideAction(
   const canCheck = callAmount === 0;
   const canRaise = player.chips > callAmount;
 
+  // Riesgo de stack: fracción del stack total que hay que poner para igualar.
+  const totalStack = player.chips + player.bet;
+  const stackRisk = callAmount > 0 && totalStack > 0
+    ? Math.min(1, callAmount / totalStack)
+    : 0;
+
   const rawEquity = estimateEquity(playerIndex, state);
   const { error, looseness } = DIFFICULTY[personality.difficulty];
   // Los rivales fáciles juzgan mal: ruido simétrico sobre la equity estimada.
@@ -169,6 +190,11 @@ export function decideAction(
   const potOdds = callAmount > 0 ? callAmount / potAfterCall : 0;
 
   const { tightness, aggression, bluffFrequency } = personality.traits;
+
+  // Prima de supervivencia: si igualar compromete más de la mitad del stack,
+  // exigimos superar el precio del bote con un pequeño margen extra para no
+  // stackearse con manos justas. Es suave para no volver la IA demasiado tight.
+  const riskPremium = Math.max(0, stackRisk - 0.6) * 0.125;
 
   // Umbrales por personalidad: tight pide más equity, loose menos.
   // La dificultad fácil los relaja (`looseness`) → juegan peor.
@@ -195,6 +221,7 @@ export function decideAction(
       pot: state.pot,
       potOdds,
       opponents,
+      stackRisk,
       street: state.community.length,
       bluffRoll,
       canCheck,
@@ -204,26 +231,33 @@ export function decideAction(
     return decision;
   };
 
-  // 1) Mano muy fuerte o farol: subir
+  // 1) Mano muy fuerte o farol: subir. Nunca se empuja all-in con faroles ni
+  //    con manos que no llegan al umbral de subida.
   if (canRaise && (equity >= raiseThreshold || (bluffRoll && equity >= 0.25))) {
     const amount = sizeRaise(personality, state, playerIndex, equity);
-    if (amount > 0) return finish({ type: 'raise', amount });
+    const maxRaise = Math.max(0, player.chips - callAmount);
+    const commitsStack = amount > 0 && amount >= maxRaise;
+    if (amount > 0 && !(commitsStack && equity < raiseThreshold)) {
+      return finish({ type: 'raise', amount });
+    }
   }
 
   // 2) Igualar
   if (callAmount > 0) {
     // Preflop: entrar o no al bote lo decide tightness (VPIP), no el pot odds.
+    // Si igualar compromete el stack, se exige además la prima de supervivencia.
     if (preflop) {
-      if (equity >= entryThreshold) return finish({ type: 'call' });
+      if (equity >= entryThreshold + riskPremium) return finish({ type: 'call' });
       return finish({ type: 'fold' });
     }
-    // Postflop: la equity debe justificar el precio (pot odds)
+    // Postflop: la equity debe justificar el precio (pot odds) y el riesgo.
     const margin = equity - potOdds;
-    if (equity >= callThreshold && margin > -0.05) {
+    if (equity >= callThreshold && margin > -0.05 + riskPremium) {
       return finish({ type: 'call' });
     }
-    // Calls baratos con mano especulativa (personalidades loose)
-    if (equity >= callThreshold * 0.7 && potOdds < 0.12 && tightness < 0.55) {
+    // Calls baratos con mano especulativa (personalidades loose), sin arriesgar
+    // una parte importante del stack.
+    if (equity >= callThreshold * 0.7 && potOdds < 0.12 && tightness < 0.55 && stackRisk < 0.5) {
       return finish({ type: 'call' });
     }
     return finish({ type: 'fold' });
@@ -246,7 +280,7 @@ export function decideAction(
 
 export const MIA: Personality = {
   name: 'Mia',
-  alias: 'la Impulsiva',
+  alias: 'La Chispa',
   difficulty: 'easy',
   points: 45,
   traits: { tightness: 0.2, aggression: 0.3, bluffFrequency: 0.1 },
@@ -254,7 +288,7 @@ export const MIA: Personality = {
 
 export const DAN: Personality = {
   name: 'Dan',
-  alias: 'Papel de Fumar',
+  alias: 'Ruleta Rusa',
   difficulty: 'easy',
   points: 80,
   traits: { tightness: 0.5, aggression: 0.6, bluffFrequency: 0.4 },
@@ -262,7 +296,7 @@ export const DAN: Personality = {
 
 export const SAM: Personality = {
   name: 'Sam',
-  alias: 'Perfil Bajo',
+  alias: 'Camaleón',
   difficulty: 'easy',
   points: 60,
   traits: { tightness: 0.5, aggression: 0.5, bluffFrequency: 0.2 },
@@ -270,7 +304,7 @@ export const SAM: Personality = {
 
 export const LEO: Personality = {
   name: 'Leo',
-  alias: 'El Libro',
+  alias: 'El Protocolo',
   difficulty: 'medium',
   points: 210,
   traits: { tightness: 0.6, aggression: 0.6, bluffFrequency: 0.2 },
@@ -278,7 +312,7 @@ export const LEO: Personality = {
 
 export const NORA: Personality = {
   name: 'Nora',
-  alias: 'la Lectora',
+  alias: 'Ojo Clínico',
   difficulty: 'medium',
   points: 340,
   traits: { tightness: 0.7, aggression: 0.4, bluffFrequency: 0.15 },
@@ -286,7 +320,7 @@ export const NORA: Personality = {
 
 export const KAI: Personality = {
   name: 'Kai',
-  alias: 'Dos Caras',
+  alias: 'Doble Fondo',
   difficulty: 'medium',
   points: 260,
   traits: { tightness: 0.5, aggression: 0.5, bluffFrequency: 0.35 },
@@ -294,7 +328,7 @@ export const KAI: Personality = {
 
 export const VICTOR: Personality = {
   name: 'Víctor',
-  alias: 'La Calculadora',
+  alias: 'Yo, Robot',
   difficulty: 'hard',
   points: 720,
   traits: { tightness: 0.65, aggression: 0.6, bluffFrequency: 0.25 },
@@ -302,7 +336,7 @@ export const VICTOR: Personality = {
 
 export const ELENA: Personality = {
   name: 'Elena',
-  alias: 'La Trampa',
+  alias: 'Viuda Negra',
   difficulty: 'hard',
   points: 900,
   traits: { tightness: 0.6, aggression: 0.5, bluffFrequency: 0.2 },
@@ -310,7 +344,7 @@ export const ELENA: Personality = {
 
 export const REX: Personality = {
   name: 'Rex',
-  alias: 'Todo o Nada',
+  alias: 'Toro Salvaje',
   difficulty: 'hard',
   points: 1050,
   traits: { tightness: 0.4, aggression: 0.9, bluffFrequency: 0.4 },

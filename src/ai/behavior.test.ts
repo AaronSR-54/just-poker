@@ -324,13 +324,13 @@ describe.skipIf(!RUN)('IA — comportamiento por rival', () => {
 
   it('reporta contradicciones con el copy de Local.tsx', () => {
     const notes: string[] = [];
-    if (by('Mia').aggression < 0.5) notes.push('Mia "la Impulsiva": aggression baja (0.3) pese al copy.');
+    if (by('Mia').aggression < 0.5) notes.push('Mia "La Chispa": aggression baja (0.3) pese al copy.');
     if (by('Rex').raises / Math.max(1, by('Rex').raises + by('Rex').calls) < 0.5)
-      notes.push('Rex "Todo o Nada": AF < 50% pese a "sube en cada ronda".');
+      notes.push('Rex "Toro Salvaje": AF < 50% pese a "sube en cada ronda".');
     if (by('Elena').tightness > 0.4)
-      notes.push('Elena "La Trampa": tightness alta pese a "casi nunca se retira".');
-    notes.push('Víctor "La Calculadora": usa el mismo estimateEquity que el resto, no calcula más.');
-    notes.push('Sam "Perfil Bajo" / Nora "la Lectora": no existe lógica de imitación ni lectura de patrones.');
+      notes.push('Elena "Viuda Negra": tightness alta pese a "casi nunca se retira".');
+    notes.push('Víctor "Yo, Robot": usa el mismo estimateEquity que el resto, no calcula más.');
+    notes.push('Sam "Camaleón" / Nora "Ojo Clínico": no existe lógica de imitación ni lectura de patrones.');
     // eslint-disable-next-line no-console
     console.log('\nContradicciones copy↔motor:\n- ' + notes.join('\n- '));
     expect(profiles.length).toBe(9);
