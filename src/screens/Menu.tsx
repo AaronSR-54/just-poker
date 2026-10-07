@@ -5,6 +5,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { loadSavedGame } from '../game/saveGame';
 import SettingsButton from '../components/SettingsButton';
 import GameSettings from '../components/GameSettings';
+import Hero from '../components/Hero';
 import { container, fadeUp } from '../animations/motion';
 import { useI18n } from '../i18n';
 
@@ -67,7 +68,6 @@ const Menu: React.FC = () => {
   const [saved] = useState(() => loadSavedGame());
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const paragraph = t('menu.paragraph');
   const continueHint = (difficulty: string, hand: number) =>
     t('menu.continueHint', { difficulty: t(`difficulty.${difficulty}`), hand });
 
@@ -89,22 +89,7 @@ const Menu: React.FC = () => {
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
         <SettingsButton onClick={() => setSettingsOpen(true)} />
         <div className="flex min-h-0 flex-1 flex-col justify-between gap-5 overflow-y-auto px-[1.375rem] pb-7 pt-8">
-          <motion.div
-            variants={container(0.09, 0.05)}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-col gap-3"
-          >
-            <motion.div
-              variants={fadeUp}
-              className="flex flex-col font-display font-bold uppercase text-[clamp(2.5rem,min(30vw,14vh),12rem)] leading-[0.86] tracking-[-0.015em]"
-            >
-              <div className="pl-[0.4rem] text-[0.85em]">Just</div>
-              <div className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></div>
-            </motion.div>
-            <motion.p variants={fadeUp} className="font-body leading-[1.45] mb-0 mt-1.5 text-left opacity-70">{paragraph}</motion.p>
-            <motion.div variants={fadeUp} className="font-body leading-[1.45]">{t('menu.tagline')}</motion.div>
-          </motion.div>
+          <Hero size="mobile" />
           <motion.div
             variants={container(0.1, 0.35)}
             initial="hidden"
@@ -141,22 +126,7 @@ const Menu: React.FC = () => {
       <SettingsButton onClick={() => setSettingsOpen(true)} />
       <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[4.375rem] pt-15 lg:px-20">
         <div className="flex w-full items-stretch justify-center gap-12 lg:gap-32">
-          <motion.div
-            variants={container(0.09, 0.05)}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-[55] flex-col justify-center gap-3"
-          >
-            <motion.div
-              variants={fadeUp}
-              className="flex flex-col font-display font-bold uppercase text-[clamp(6rem,18vw,15rem)] leading-[0.825] tracking-[-0.015em]"
-            >
-              <div className="pl-[0.4rem] text-[0.85em]">Just</div>
-              <div className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></div>
-            </motion.div>
-            <motion.p variants={fadeUp} className="font-body leading-[1.45] mb-0 mt-1.5 w-0 min-w-full text-left opacity-70">{paragraph}</motion.p>
-            <motion.div variants={fadeUp} className="font-body leading-[1.45]">{t('menu.tagline')}</motion.div>
-          </motion.div>
+          <Hero size="desktop" />
           <motion.div
             variants={container(0.1, 0.35)}
             initial="hidden"
