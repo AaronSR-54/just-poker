@@ -232,12 +232,11 @@ npx capacitor-assets generate --android \
 
 ### Web (Vercel)
 
-La misma web de Vite se despliega en Vercel vía **GitHub Actions** (`.github/workflows/deploy.yml`), disparado en cada push a `main`.
+La misma web de Vite se despliega en Vercel con la **integración Git**: cada push a `main` lanza un deploy automático.
 
 - `vercel.json` fija el framework (`vite`), `npm run build` y `dist`, con un *rewrite* SPA a `index.html` para el `BrowserRouter`.
 - La política de privacidad queda servida en `https://<app>.vercel.app/privacy-policy.html`.
-- Secretos del repo (Settings → Secrets → Actions): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (los dos últimos salen de `.vercel/project.json`, que está gitignored).
-- El proyecto de Vercel se crea con `vercel link` (sin integración Git), para que **solo** despliegue el workflow.
+- No hace falta ningún workflow ni secretos: Vercel detecta el repo y despliega solo.
 
 ### Assets de tienda y publicación
 
