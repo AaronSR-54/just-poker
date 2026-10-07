@@ -1,11 +1,14 @@
 // Genera los assets estáticos de Google Play en store/.
 //   - store/icon-512.png            512x512  (icono de tienda)
 //   - store/feature-graphic-1024x500.png
+// Reutiliza los SVG reales de la app para que el gráfico sea coherente con la
+// marca y el fondo: el rombo de public/logo-mark.svg y el patrón de palos de
+// public/suits/pattern.svg (el mismo que enmascara Background.tsx).
 // Usa la tipografía Satoshi del proyecto (public/fonts) vía fontconfig.
 //
 //   node scripts/generate-store-assets.mjs
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -33,6 +36,11 @@ const sharp = (await import('sharp')).default;
 const INK = '#22201f';
 const BONE = '#cdc5b7';
 
+// SVG reales que ya usa la app.
+const logoMark = readFileSync(join(root, 'public', 'logo-mark.svg'), 'utf8');
+const suitsPattern = readFileSync(join(root, 'public', 'suits', 'pattern.svg'), 'utf8');
+const dataUri = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+
 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <rect width="512" height="512" fill="${INK}"/>
   <path d="M256 104 L376 256 L256 408 L136 256 Z" fill="${BONE}"/>
@@ -40,20 +48,29 @@ const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512
 
 const featureSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
   <defs>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="${BONE}" stop-opacity="0.16"/>
-      <stop offset="100%" stop-color="${BONE}" stop-opacity="0"/>
-    </radialGradient>
+    <pattern id="suits" width="180" height="180" patternUnits="userSpaceOnUse">
+      <image href="${dataUri(suitsPattern)}" width="180" height="180"/>
+    </pattern>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="55"/>
+    </filter>
+    <filter id="grain" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="1.1"/>
+    </filter>
+    <mask id="diamondMask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="500">
+      <rect width="1024" height="500" fill="#000"/>
+      <path d="M512 60 L880 250 L512 440 L144 250 Z" fill="#fff" filter="url(#soft)"/>
+    </mask>
   </defs>
   <rect width="1024" height="500" fill="${INK}"/>
-  <circle cx="200" cy="250" r="190" fill="url(#glow)"/>
-  <path d="M200 100 L310 250 L200 400 L90 250 Z" fill="${BONE}"/>
-  <text x="392" y="232" font-family="Satoshi Variable" font-weight="900" font-size="80"
-        letter-spacing="4" fill="${BONE}">JUST POKER</text>
-  <text x="396" y="292" font-family="Satoshi Variable" font-weight="500" font-size="24"
-        letter-spacing="4" fill="${BONE}" opacity="0.72">P&#211;KER DE PR&#193;CTICA</text>
-  <text x="396" y="330" font-family="Satoshi Variable" font-weight="500" font-size="24"
-        letter-spacing="4" fill="${BONE}" opacity="0.72">SIN DINERO REAL</text>
+  <rect width="1024" height="500" fill="url(#suits)" mask="url(#diamondMask)" filter="url(#grain)" opacity="0.035"/>
+
+  <image href="${dataUri(logoMark)}" x="132" y="118" width="216" height="264" preserveAspectRatio="xMidYMid meet"/>
+
+  <text x="438" y="234" font-family="Satoshi Variable" font-weight="700" font-size="130"
+        letter-spacing="-2" fill="${BONE}">JUST</text>
+  <text x="430" y="356" font-family="Satoshi Variable" font-style="italic" font-weight="300"
+        font-size="146" fill="${BONE}">POKER</text>
 </svg>`;
 
 const targets = [
