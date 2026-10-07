@@ -129,7 +129,9 @@ function simulate(personality: Personality, hands: number, seed: number): Profil
       g.startHand();
       if (g.getState().handOver) break;
 
-      const chipsBefore = g.getState().players[0].chips;
+      const start = g.getState();
+      const dealt = !start.players[0].eliminated;
+      const chipsBefore = start.players[0].chips;
       let vpip = false;
       let pfr = false;
 
@@ -167,9 +169,13 @@ function simulate(personality: Personality, hands: number, seed: number): Profil
 
       const end = g.getState();
       p.netChips += end.players[0].chips - chipsBefore;
-      p.hands++;
-      if (vpip) p.vpipHands++;
-      if (pfr) p.pfrHands++;
+      // Solo cuentan las manos en las que el jugador repartió: si queda
+      // eliminado, deja de actuar y no debe diluir su VPIP/PFR.
+      if (dealt) {
+        p.hands++;
+        if (vpip) p.vpipHands++;
+        if (pfr) p.pfrHands++;
+      }
 
       const contenders = end.players.filter(pl => !pl.folded && !pl.eliminated).length;
       if (contenders > 1) {
@@ -329,8 +335,9 @@ describe.skipIf(!RUN)('IA — comportamiento por rival', () => {
       notes.push('Rex "Toro Salvaje": AF < 50% pese a "sube en cada ronda".');
     if (by('Elena').tightness > 0.4)
       notes.push('Elena "Viuda Negra": tightness alta pese a "casi nunca se retira".');
-    notes.push('Víctor "Yo, Robot": usa el mismo estimateEquity que el resto, no calcula más.');
-    notes.push('Sam "Camaleón" / Nora "Ojo Clínico": no existe lógica de imitación ni lectura de patrones.');
+    notes.push('Rivales no adaptativos y sin memoria entre manos: fieles a Pluribus, no leen tendencias del jugador.');
+    notes.push('La dificultad es fidelidad del motor: easy añade ruido y baja disciplina; hard usa equity exacta sin ruido y razona rangos/posición.');
+    notes.push('El estado de ánimo (tilt/confianza) solo depende de los resultados propios, nunca del rival.');
     // eslint-disable-next-line no-console
     console.log('\nContradicciones copy↔motor:\n- ' + notes.join('\n- '));
     expect(profiles.length).toBe(9);
