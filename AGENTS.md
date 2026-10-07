@@ -230,10 +230,19 @@ npx capacitor-assets generate --android \
 - Orientación vertical bloqueada en `AndroidManifest.xml`.
 - Botón atrás de Android conectado al router: `src/hooks/useAndroidBackButton.ts`.
 
+### Web (Vercel)
+
+La misma web de Vite se despliega en Vercel vía **GitHub Actions** (`.github/workflows/deploy.yml`), disparado en cada push a `main`.
+
+- `vercel.json` fija el framework (`vite`), `npm run build` y `dist`, con un *rewrite* SPA a `index.html` para el `BrowserRouter`.
+- La política de privacidad queda servida en `https://<app>.vercel.app/privacy-policy.html`.
+- Secretos del repo (Settings → Secrets → Actions): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (los dos últimos salen de `.vercel/project.json`, que está gitignored).
+- El proyecto de Vercel se crea con `vercel link` (sin integración Git), para que **solo** despliegue el workflow.
+
 ### Assets de tienda y publicación
 
 - `npm run store:assets` genera `store/icon-512.png` y `store/feature-graphic-1024x500.png` (Satoshi, fondo `#22201F`).
-- `store/privacy-policy.html` — borrador de política de privacidad (sustituir `<TU NOMBRE>`/`<TU_CORREO>` y publicar en una URL).
+- `public/privacy-policy.html` — política de privacidad (es/en). Se sirve en `https://<app>.vercel.app/privacy-policy.html` y es la URL que se declara en Play.
 - La app **no declara permisos de red** (se quitó `INTERNET` del manifest): es 100 % offline. En Data safety, declarar que **no se recogen datos**.
 
 Para publicar en Play (fuera del repo) hace falta: cuenta de desarrollador (25 USD), subir el AAB, listing (capturas, descripción, feature graphic), política de privacidad pública, Data safety y content rating. Declarar **"poker de práctica, sin dinero real"** y marcar *simulated gambling*.
