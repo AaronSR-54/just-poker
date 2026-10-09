@@ -20,40 +20,58 @@ Cuando el humano abre la pantalla de juego con amigos y existe una sesión onlin
 - **THEN** ve las opciones de crear partida y unirse con código
 
 ### Requirement: Pantalla única de juego con amigos
-El sistema SHALL ofrecer crear y unirse a partidas privadas desde una única pantalla: en escritorio, dos columnas con los botones de crear/unirse en la izquierda y el paso activo en la derecha; en móvil, una sola columna con esos botones sobre el contenido.
+El sistema SHALL ofrecer crear y unirse a partidas privadas desde una única pantalla: en escritorio, dos columnas con el titular y las tarjetas seleccionables de crear/unirse en la izquierda y el paso activo en la derecha; en móvil, una sola columna con el titular y esas tarjetas sobre el contenido.
 
 #### Scenario: Disposición en escritorio
 - **WHEN** el humano abre la pantalla de juego con amigos en escritorio
-- **THEN** ve los botones crear/unirse en la columna izquierda y el paso activo en la derecha
+- **THEN** ve el titular y las tarjetas de crear/unirse en la columna izquierda y el paso activo en la derecha
 
 #### Scenario: Disposición en móvil
 - **WHEN** el humano abre la pantalla de juego con amigos en móvil
-- **THEN** ve los botones crear/unirse sobre el contenido, en una sola columna
+- **THEN** ve el titular y las tarjetas de crear/unirse sobre el contenido, en una sola columna
 
-### Requirement: Botones de crear o unirse
-La columna izquierda SHALL ofrecer dos botones —crear partida y unirse con código— y SHALL mantenerlos visibles, marcando cuál es el modo activo, también mientras se está en la sala.
+### Requirement: Titular de la pantalla
+La pantalla de juego con amigos SHALL mostrar un titular con la misma receta tipográfica que la preparación local (una palabra en cursiva y el resto en énfasis), de modo que la columna izquierda no quede vacía.
+
+#### Scenario: Titular visible
+- **WHEN** el humano abre la pantalla de juego con amigos
+- **THEN** ve un titular con la receta de la preparación local encabezando la columna izquierda
+
+### Requirement: Selección de crear o unirse
+La columna izquierda SHALL ofrecer dos tarjetas seleccionables —crear partida y unirse con código—, cada una con una descripción corta, y SHALL mantenerlas visibles marcando la activa. Mientras el humano está dentro de una sala, las dos tarjetas SHALL permanecer visibles pero deshabilitadas, con la activa marcada.
 
 #### Scenario: Modo activo marcado
-- **WHEN** el humano elige crear o unirse y permanece en la sala
-- **THEN** el botón del modo elegido sigue visible y marcado, y el otro sigue disponible
+- **WHEN** el humano está dentro de una sala
+- **THEN** ambas tarjetas siguen visibles, la del modo elegido está marcada y las dos quedan deshabilitadas
 
-### Requirement: Nombre mediante diálogo
-Al crear o unirse, el sistema SHALL solicitar el nombre del jugador en un diálogo modal con un nombre genérico pre-rellenado y una acción para generar otro nombre; confirmar SHALL continuar la acción elegida.
+#### Scenario: Tamaño estable
+- **WHEN** el humano alterna entre crear y unirse
+- **THEN** las tarjetas mantienen su tamaño, sin crecer ni encogerse
 
-#### Scenario: Nombre pre-rellenado
-- **WHEN** el humano elige crear o unirse
-- **THEN** se abre un diálogo con un nombre genérico ya escrito y editable
+### Requirement: Nombre en el paso activo
+Al crear o unirse, el sistema SHALL ofrecer un campo de nombre dentro del panel del paso activo que muestre un nombre genérico como placeholder; si el humano no escribe otro nombre, SHALL usar el nombre genérico. Confirmar SHALL continuar la acción elegida.
 
-#### Scenario: Generar otro nombre
-- **WHEN** el humano pulsa la acción de generar otro nombre
-- **THEN** el diálogo muestra un nombre genérico distinto
+#### Scenario: Nombre sugerido
+- **WHEN** el humano abre el paso de crear o de unirse
+- **THEN** ve un campo de nombre vacío cuyo placeholder es un nombre genérico
+
+#### Scenario: Usar el nombre sugerido
+- **WHEN** el humano confirma sin escribir un nombre
+- **THEN** se usa el nombre genérico mostrado como placeholder
+
+### Requirement: Entrada de código
+Para unirse, el sistema SHALL ofrecer cuatro casillas de dígito que el humano rellena con el teclado de su dispositivo —sin teclado numérico en pantalla— y SHALL habilitar la acción de unirse cuando las cuatro casillas estén completas.
+
+#### Scenario: Escribir el código
+- **WHEN** el humano escribe el código de la sala en las casillas con su teclado
+- **THEN** puede unirse cuando las cuatro casillas están completas, sin usar un teclado en pantalla
 
 ### Requirement: Vista de lobby del anfitrión
-Tras crear la partida, el anfitrión SHALL ver el lobby con el código de 4 dígitos copiable, los jugadores que se incorporan en vivo, una acción para empezar la partida (disponible con al menos 2 jugadores) y una acción para mostrar el código QR en grande.
+Tras crear la partida, el anfitrión SHALL ver el lobby con el código de 4 dígitos copiable, el contexto de la sala (código y número de jugadores), los jugadores que se incorporan en vivo, una acción para empezar la partida (disponible con al menos 2 jugadores), una acción para mostrar el código QR en grande y una acción para abandonar la sala.
 
 #### Scenario: Lobby del anfitrión
 - **WHEN** el anfitrión crea la partida
-- **THEN** ve su sala, el código copiable, los jugadores que entran, la acción de empezar y la de ver el QR en grande
+- **THEN** ve su sala, el código y el número de jugadores, los jugadores que entran, la acción de empezar, la de ver el QR en grande y la de abandonar
 
 #### Scenario: Empezar con pocos jugadores
 - **WHEN** el anfitrión está solo en la sala
@@ -66,6 +84,13 @@ Al unirse, el invitado SHALL ver el mismo lobby que el anfitrión pero sin la ac
 - **WHEN** el invitado se une a una partida
 - **THEN** ve la sala, el código y los jugadores, sin acción de empezar, y un aviso de espera al anfitrión
 
+### Requirement: Abandonar la sala
+El lobby SHALL ofrecer una acción explícita para salir de la sala que devuelva al humano al selector de crear o unirse y libere su plaza.
+
+#### Scenario: Salir de la sala
+- **WHEN** el humano pulsa la acción de abandonar la sala
+- **THEN** vuelve al selector de crear o unirse y su plaza deja de aparecer para el resto
+
 ### Requirement: Entrada por enlace o QR
 El enlace y el QR de invitación SHALL codificar la pantalla de juego con amigos con el código de la sala; al abrirla, el sistema SHALL iniciar el flujo de unirse con ese código ya rellenado.
 
@@ -74,8 +99,8 @@ El enlace y el QR de invitación SHALL codificar la pantalla de juego con amigos
 - **THEN** llega a la pantalla de juego con amigos con el código rellenado y el flujo de unirse preparado
 
 ### Requirement: Estilo coherente con la preparación local
-La pantalla de juego con amigos SHALL presentarse con el mismo lenguaje visual que la preparación de partida local —cabecera de marca, escala tipográfica, contenedor de dos columnas, panel de fondo y tarjetas de jugador— de modo que ambas se perciban idénticas.
+La pantalla de juego con amigos SHALL presentarse con el mismo lenguaje visual que la preparación de partida local —cabecera de marca, titular, escala tipográfica, contenedor de dos columnas, panel de fondo, tarjetas de jugador, tarjetas seleccionables y CTA con flecha— de modo que ambas se perciban idénticas.
 
 #### Scenario: Comparación visual con la preparación local
 - **WHEN** el humano compara la pantalla de juego con amigos con la preparación de partida local
-- **THEN** la cabecera, los títulos, el contenedor, los paneles y las tarjetas de jugador coinciden en estilo
+- **THEN** la cabecera, los titulares, el contenedor, los paneles, las tarjetas de jugador, las tarjetas seleccionables y el CTA coinciden en estilo
