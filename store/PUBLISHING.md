@@ -19,8 +19,12 @@ Checklist para dejar la ficha y la app publicadas. Web/Política:
 
 - Icono: `store/icon-512.png` (512×512).
 - Gráfico destacado: `store/feature-graphic-1024x500.png` (1024×500).
-- Capturas: `store/screenshots/*.png` (1080×1920; subir mínimo 2, hay 4).
+- Capturas (1080×1920, subir mínimo 2): `store/screenshots/en/*.png` para la
+  ficha inglesa y `store/screenshots/es/*.png` para la española. Las de la raíz
+  (`store/screenshots/*.png`) son las antiguas y muestran el modo online ya oculto.
 - Regenerar icono + gráfico: `npm run store:assets`.
+- Regenerar capturas: `npm run store:screenshots` (inglés) o
+  `npm run store:screenshots es` (español). Requiere `npx playwright install chromium`.
 - Política de privacidad: `public/privacy-policy.html` (se sirve en la URL web).
 
 ## 2. Crear la app (una sola vez)
@@ -38,9 +42,14 @@ Checklist para dejar la ficha y la app publicadas. Web/Política:
 - **Política de privacidad**: `https://just-poker-delta.vercel.app/privacy-policy.html`
 - **Anuncios**: No.
 - **Acceso a la app**: todas las funciones disponibles sin restricciones (no login).
-- **Clasificación de contenido**: cuestionario, marcando **simulated gambling**
-  (apuestas simuladas, sin dinero real).
-- **Público objetivo**: 13+.
+- **Datos de inicio de sesión** (antes «Acceso a la app»): ¿alguna parte
+  restringida? → **No** (sin login ni contenido de pago).
+- **Clasificación de contenido**: cuestionario marcando **Temas de apuestas** y
+  **Juegos de casino, loterías o apuestas en carreras**, y «los temas de apuestas
+  son el foco del producto» → **Sí**. Resultado: **18+ / PEGI 18** (simulated
+  gambling; sin dinero real, sin moneda de cambio). Corea del Sur queda fuera
+  salvo revisión posterior de GRAC.
+- **Público objetivo**: **18+** (coherente con la clasificación; «para familias» → No).
 - **Seguridad de los datos**: **no se recogen ni comparten datos** (`No` en todo).
 - **Apps gubernamentales / Noticias / COVID**: No.
 - **Funciones financieras**: ninguna (es juego simulado, sin dinero real).
@@ -122,7 +131,11 @@ npm run android
 
 - Artefacto: `android/app/build/outputs/bundle/release/app-release.aab`
 - Sube `versionCode` en `android/app/build.gradle` **antes de cada subida**; el
-  `versionName` puede repetirse.
+  `versionName` puede repetirse. Versión actual: **versionCode 2**, `versionName 1.0`
+  (el `versionCode 1` ya se consumió al subir el primer bundle).
+- La app se distribuye **100 % offline**: el multijugador privado está oculto tras
+  `ONLINE_ENABLED = false` (`src/config/features.ts`). No reactivar sin actualizar
+  las declaraciones de datos y la política de privacidad.
 
 ## 6. Subir y probar
 

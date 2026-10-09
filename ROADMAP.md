@@ -1,6 +1,6 @@
 # Just Poker — Roadmap
 
-Estado de planificación del proyecto. Las fases 2, 3 y siguientes están **pausadas** de momento.
+Estado de planificación del proyecto. La fase 3 (online privado) está **implementada**; la fase 2 y la de progresión/perfil siguen **pausadas**.
 
 ## Decisiones de producto
 
@@ -49,15 +49,18 @@ Objetivo: dar profundidad a la experiencia "solo poker" sin tocar online.
 - [ ] **Ajustes**: velocidad del turno/IA, ciegas, ocultar equity por defecto; persistir preferencias en `localStorage`.
 - [ ] **Accesibilidad y responsive**: revisar teclado/foco, contraste, tamaños táctiles (`--jp-tap`).
 
-## Fase 3 — Online (PAUSADA)
+## Fase 3 — Online (IMPLEMENTADA)
 
-Objetivo: reactivar el multijugador ya escrito.
+Objetivo: multijugador privado anónimo (2–4 jugadores reales), mismo dominio en Vercel.
 
-- [ ] Reponer rutas `/online` y `/lobby/:roomId` en `src/App.tsx`.
-- [ ] Restaurar `OnlineGame` desde `parked/OnlineGame.snapshot.tsx` (o `git log`) e integrarlo en `Game.tsx`.
-- [ ] Verificar `src/net/`, `src/screens/Online.tsx`, `src/screens/Lobby.tsx`, `server/` y `scripts/online-smoke.mjs`.
-- [ ] Robustez: reconexión, timeouts, estados de partida, validación server-side.
-- [ ] Despliegue del servidor.
+- [x] Rutas `/online`, `/lobby/:roomId` y `/join/:code` en `src/App.tsx`, con CTA en `Menu`.
+- [x] `OnlineGame` (desde el snapshot) integrado en `Game.tsx` reutilizando los layouts de la mesa.
+- [x] Identidad anónima (`playerId`), código de 4 dígitos, invitación por enlace/QR, nombre temporal editable.
+- [x] Servidor socket.io como Vercel Function (`api/socket-io.ts`) + Redis (`@socket.io/redis-adapter`) como `RoomRepository`.
+- [x] Robustez: reconexión con backoff, `game:sync`, snapshots y failover de anfitrión.
+- [x] Retirada de auth JWT, Prisma, salas públicas, puntos/ranking y relleno con IA.
+- [ ] Verificación en dos dispositivos/redes reales y deploy de Preview con Redis.
+- [ ] Publicar el AAB con `INTERNET` y actualizar Data safety en Play.
 
 ## Futuro — Progresión y perfil (PAUSADA)
 

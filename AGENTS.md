@@ -260,10 +260,21 @@ La misma web de Vite se despliega en Vercel con la **integración Git**: cada pu
 - La política de privacidad queda servida en `https://just-poker-delta.vercel.app/privacy-policy.html`.
 - No hace falta ningún workflow ni secretos: Vercel detecta el repo y despliega solo.
 
+#### Online (Vercel Functions WebSockets + Redis)
+
+El multijugador privado anónimo se sirve desde el **mismo dominio**: una Function de WebSockets + Redis para compartir salas y fan-out entre instancias.
+
+- **Endpoint**: `api/socket-io.ts` exporta por defecto un `http.Server` con socket.io; la ruta pública es `/api/socket-io/socket.io`. El cliente (`src/net/socket.ts`) usa `path: '/api/socket-io/socket.io'` y `transports: ['websocket']` en producción; en desarrollo usa `/socket.io` a través del proxy de Vite.
+- **Servidor de desarrollo**: `npm run dev:server` (levanta `server/index.ts` en `:3001`). El proxy de Vite (`/socket.io` con `ws: true`) hace el resto.
+- **Redis**: define `REDIS_URL` (Marketplace de Vercel / Upstash) en Preview y Production. Sin `REDIS_URL`, el servidor cae a un registro en memoria válido solo para una única instancia (desarrollo).
+- **Duración de conexión**: las conexiones WebSocket se cierran al alcanzar `maxDuration` (configurado a 300 s en `vercel.json`); el cliente reconecta con backoff y re-emite `room:join`/`game:sync`.
+- **Identidad**: anónima. El servidor asigna un `playerId` por conexión (el cliente lo guarda en `sessionStorage` para reconectar). No hay JWT, Prisma ni salas públicas.
+- **Smoke test**: `npm run test:online` (con `dev:server` en marcha).
+
 ### Assets de tienda y publicación
 
 - `npm run store:assets` genera `store/icon-512.png` y `store/feature-graphic-1024x500.png` (Satoshi, fondo `#22201F`).
 - `public/privacy-policy.html` — política de privacidad (es/en). Se sirve en `https://just-poker-delta.vercel.app/privacy-policy.html` y es la URL que se declara en Play.
-- La app **no declara permisos de red** (se quitó `INTERNET` del manifest): es 100 % offline. En Data safety, declarar que **no se recogen datos**.
+- La app declara el permiso `INTERNET` (necesario para el multijugador online). En Data safety, declarar que **no se recogen datos de usuario**: las salas online son anónimas y efímeras.
 
 Para publicar en Play (fuera del repo) hace falta: cuenta de desarrollador (25 USD), subir el AAB, listing (capturas, descripción, feature graphic), política de privacidad pública, Data safety y content rating. Declarar **"poker de práctica, sin dinero real"** y marcar *simulated gambling*.
