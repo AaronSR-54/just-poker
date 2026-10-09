@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import Avatar from '../components/Avatar';
 import Button from '../components/Button';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PageHeader from '../components/PageHeader';
+import Panel from '../components/Panel';
+import PersonCard from '../components/PersonCard';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { loadSavedGame } from '../game/saveGame';
 import { rivalAvatar, rivalAliasKey, rivalSlug, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
@@ -92,15 +93,15 @@ const RivalCard: React.FC<{ rival: Rival; tone: string; imgClassName: string; co
   const { t } = useI18n();
   const slug = rivalSlug(rival.n);
   return (
-    <div className={`flex items-center ${compact ? 'gap-3' : 'gap-4'}`}>
-      <Avatar name={rival.n} src={rivalAvatar(rival.n)} size={compact ? 40 : 56} tone={tone} imgClassName={imgClassName} />
-      <div className="flex flex-col gap-1">
-        <div className="font-display font-bold leading-none text-fs-300">
-          {rival.n} <em className="font-light italic opacity-80">“{t(rivalAliasKey(rival.n) ?? '')}”</em>
-        </div>
-        <div className="font-body text-fs-100 leading-[1.35] tracking-[0.04em] opacity-70">{t(`local.rival.${slug}.trait`)}</div>
-      </div>
-    </div>
+    <PersonCard
+      name={rival.n}
+      quip={t(rivalAliasKey(rival.n) ?? '')}
+      secondary={t(`local.rival.${slug}.trait`)}
+      avatarSrc={rivalAvatar(rival.n)}
+      avatarTone={tone}
+      avatarImgClassName={imgClassName}
+      compact={compact}
+    />
   );
 };
 
@@ -108,7 +109,7 @@ const RivalCard: React.FC<{ rival: Rival; tone: string; imgClassName: string; co
 const TableDetail: React.FC<{ table: Table; onStart: () => void; compact?: boolean }> = ({ table, onStart, compact = false }) => {
   const { t } = useI18n();
   return (
-  <div className={`flex flex-col bg-ink-900 ${compact ? 'gap-4 rounded-[12px] p-5' : 'gap-6 rounded-[14px] p-6 sm:gap-8 sm:p-9'}`}>
+  <Panel compact={compact}>
     <div className="flex flex-col gap-1">
       <div className="font-display font-bold leading-none text-fs-700">{t(`local.table.${table.id}.title`)}</div>
       <div className={`font-body leading-[1.45] mt-1 opacity-70 ${compact ? 'text-fs-200' : ''}`}>
@@ -131,7 +132,7 @@ const TableDetail: React.FC<{ table: Table; onStart: () => void; compact?: boole
       <span>{t('local.play')}</span>
       <span className={`font-display font-bold leading-none ${compact ? 'text-fs-400' : 'text-fs-500'}`}>→</span>
     </Button>
-  </div>
+  </Panel>
   );
 };
 
