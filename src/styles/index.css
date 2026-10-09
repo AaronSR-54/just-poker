@@ -59,6 +59,11 @@
   --color-blind-sb: rgb(56 74 132);
   --color-blind-bb: rgb(214 174 70);
 
+  /* Scrollbar (coherente con el tema oscuro) */
+  --color-scrollbar-thumb: rgb(205 197 183 / 0.30);
+  --color-scrollbar-thumb-hover: rgb(205 197 183 / 0.50);
+  --color-scrollbar-track: rgb(0 0 0 / 0);
+
   /* Typography */
   --font-display: "Satoshi Variable", "Satoshi", "Inter", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -161,10 +166,40 @@
  * Base
  * ------------------------------------------------------------------ */
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   html {
     font-family: var(--font-body);
     color: var(--color-fg);
     background: var(--color-bg);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-scrollbar-track);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-scrollbar-thumb);
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-scrollbar-thumb-hover);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   body {
