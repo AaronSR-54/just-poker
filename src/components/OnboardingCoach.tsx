@@ -29,7 +29,7 @@ interface OnboardingStep {
 /** El texto de cada paso vive en `onboarding.steps.<índice>` de los diccionarios. */
 const STEPS: OnboardingStep[] = [
   { id: 'welcome', path: '/', kind: 'info' },
-  { id: 'new-game', path: '/', kind: 'act', target: 'new-game' },
+  { id: 'new-game', path: '/', kind: 'act', target: 'play-local' },
   { id: 'difficulty', path: '/local', kind: 'info', target: 'difficulty-list' },
   { id: 'choose-easy', path: '/local', kind: 'act', target: 'difficulty-easy' },
   { id: 'start', path: '/local', kind: 'act', target: 'start-game' },
