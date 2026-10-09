@@ -2,6 +2,7 @@ const common = {
   you: 'You',
   back: 'Back',
   cancel: 'Cancel',
+  close: 'Close',
   confirm: 'Confirm',
   next: 'Next',
   skip: 'Skip',

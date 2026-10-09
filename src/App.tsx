@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import Menu from './screens/Menu';
 import Local from './screens/Local';
 import Online from './screens/Online';
-import Lobby from './screens/Lobby';
 import { ONLINE_ENABLED } from './config/features';
 import Game from './screens/Game/Game';
 import HandsGuide from './screens/HandsGuide';
@@ -18,6 +17,12 @@ import { useSettingsStore } from './store/settingsStore';
 import { useLocaleStore } from './i18n';
 import { crtSupported } from './utils/crtSupport';
 import { useAndroidBackButton } from './hooks/useAndroidBackButton';
+
+/** Enlaces antiguos `/join/<code>` → pantalla única con el código rellenado. */
+function JoinRedirect() {
+  const { code } = useParams<{ code?: string }>();
+  return <Navigate to={code ? `/online?code=${code}` : '/online'} replace />;
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -37,8 +42,8 @@ function AnimatedRoutes() {
           <Route path="/" element={<Menu />} />
           <Route path="/local" element={<Local />} />
           {ONLINE_ENABLED && <Route path="/online" element={<Online />} />}
-          {ONLINE_ENABLED && <Route path="/lobby/:roomId" element={<Lobby />} />}
-          {ONLINE_ENABLED && <Route path="/join/:code" element={<Lobby />} />}
+          {ONLINE_ENABLED && <Route path="/join/:code" element={<JoinRedirect />} />}
+          {ONLINE_ENABLED && <Route path="/lobby/:roomId" element={<Navigate to="/online" replace />} />}
           <Route path="/hands" element={<HandsGuide />} />
           <Route path="/game/:gameId" element={<Game />} />
           <Route path="*" element={<Navigate to="/" replace />} />
