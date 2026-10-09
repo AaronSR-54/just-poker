@@ -4,20 +4,32 @@ schema: spec-driven
 # Add only constraints that should guide OpenSpec artifacts and workflows.
 # Include constraints an agent cannot infer by reading the code.
 # Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  Just Poker es una SPA React + TypeScript + Vite con Tailwind CSS v4 (CSS-first).
+  La maquetación se hace siempre con utilidades nativas de Tailwind en el JSX: no se
+  crean clases CSS propias, ni @utility, ni @apply. Colores, tamaños, radios y motion
+  usan los tokens del tema (bone, ink, danger, text-fs-*, rounded-*); nunca valores
+  crudos (rgba, #fff inline, text-[...] en px).
+  Reutiliza los componentes de src/components/ y los helpers compartidos de src/utils/
+  en lugar de recrearlos o duplicar markup/lógica. Si un patrón se repite, se extrae un
+  componente React (o helper) y se sustituyen todas las copias.
+  Todo texto visible pasa por t(...) (i18n es/en), incluidos aria-label, title y placeholder.
+  Convenciones de estilo: AGENTS.md. Deuda de reutilización y remediaciones: docs/code-reuse-audit.md.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - "Declara el impacto en reutilización: qué componentes de src/components/ o helpers de src/utils/ se reutilizan y si se introduce o extrae alguno."
+    - "Si el cambio no toca código de la app (solo docs o configuración), indícalo para justificar skip_specs."
+  specs:
+    - "No incluyas detalles de implementación (nombres de componentes, archivos o librerías); describe solo comportamiento observable."
+  design:
+    - "Nombra los componentes de src/components/ y helpers de src/utils/ que se reutilizan y los que se extraen."
+    - "Justifica explícitamente cualquier markup, lógica o helper que se repita y no se extraiga."
+  tasks:
+    - "Incluye una tarea de verificación de reutilización y ausencia de duplicación (revisar la checklist de AGENTS.md)."
+    - "Incluye ejecutar npx oxlint src/, npx tsc --noEmit y npm run build cuando se toque código."
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.

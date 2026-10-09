@@ -12,14 +12,14 @@
 
 ## 3. Aplicación de la norma vía OpenSpec
 
-- [ ] 3.1 Añadir el bloque `context` en `openspec/config.yaml` con las restricciones clave que un agente no infiere (Tailwind nativo sin clases propias, usar `src/components/`, tokens, i18n), sin duplicar documentación general. Verificar que `openspec instructions proposal --change <cualquier-change> --json` devuelve ese contexto.
-- [ ] 3.2 Añadir `rules` por artefacto en `openspec/config.yaml` accionables: `proposal` (declarar impacto en reutilización y si se extrae componente/helper), `specs` (sin detalles de implementación), `design` (nombrar componentes reutilizados/extraídos y justificar duplicación), `tasks` (incluir tarea de verificación de reutilización + lint/typecheck/build). Verificar que `openspec instructions design --change <cualquier-change> --json` incluye las reglas de `design`.
+- [x] 3.1 Añadir el bloque `context` en `openspec/config.yaml` con las restricciones clave que un agente no infiere (Tailwind nativo sin clases propias, usar `src/components/`, tokens, i18n), sin duplicar documentación general. Verificar que `openspec instructions proposal --change <cualquier-change> --json` devuelve ese contexto.
+- [x] 3.2 Añadir `rules` por artefacto en `openspec/config.yaml` accionables: `proposal` (declarar impacto en reutilización y si se extrae componente/helper), `specs` (sin detalles de implementación), `design` (nombrar componentes reutilizados/extraídos y justificar duplicación), `tasks` (incluir tarea de verificación de reutilización + lint/typecheck/build). Verificar que `openspec instructions design --change <cualquier-change> --json` incluye las reglas de `design`.
 
 ## 4. Verificación
 
-- [ ] 4.1 Ejecutar `openspec validate enforce-coding-standards` y confirmar que pasa con `skip_specs: true` (sin archivos bajo `specs/`). Verificar salida sin errores.
-- [ ] 4.2 Confirmar que `openspec/config.yaml` parsea y que el `context`/`rules` se inyectan en un change distinto al de este (p. ej. `openspec instructions tasks --change improve-music-playback --json`). Verificar que las reglas aparecen en la respuesta.
-- [ ] 4.3 Confirmar que no hay impacto en código: `npx oxlint src/`, `npx tsc --noEmit` y `npm run build` terminan sin errores. Verificar salida en verde.
+- [x] 4.1 Ejecutar `openspec validate enforce-coding-standards` y confirmar que pasa con `skip_specs: true` (sin archivos bajo `specs/`). Verificar salida sin errores.
+- [x] 4.2 Confirmar que `openspec/config.yaml` parsea y que el `context`/`rules` se inyectan en un change distinto al de este (p. ej. `openspec instructions tasks --change improve-music-playback --json`). Verificar que las reglas aparecen en la respuesta.
+- [x] 4.3 Confirmar que no hay impacto en código: `npx oxlint src/`, `npx tsc --noEmit` y `npm run build` terminan sin errores. Verificar salida en verde.
 
 ## Workflow follow-up
 
