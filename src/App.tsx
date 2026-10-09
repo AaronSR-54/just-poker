@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import Menu from './screens/Menu';
 import Local from './screens/Local';
-import Game from './screens/Game';
+import Game from './screens/Game/Game';
 import HandsGuide from './screens/HandsGuide';
 import OnboardingCoach from './components/OnboardingCoach';
 import Background from './components/Background';
