@@ -4,6 +4,7 @@ import { PokerGame, type PokerState } from '../../../game/poker';
 import { PERSONALITIES } from '../../../ai/personalities';
 import { createAIPlayer, type AIPlayer } from '../../../ai/aiPlayer';
 import { saveGame, loadSavedGame, clearSavedGame } from '../../../game/saveGame';
+import { markPlayed } from '../../../utils/lastPlayed';
 import { buildTutorialDeck } from '../../../game/tutorial';
 import { getDifficulty } from '../gameConfig';
 
@@ -105,6 +106,7 @@ export function useLocalGameInit({
       difficulty: getDifficulty(gameId),
       state: gameRef.current.serialize(),
     });
+    markPlayed('local');
   }, [gameState, isLocal, gameId, isTutorial]);
 
   return { gameRef, gameState, setGameState, aiPlayers, isTutorial, isLocal };
