@@ -1,3 +1,4 @@
+// PARKED (Fase 3 — ver ROADMAP.md): pantalla de perfil conservada, sin ruta activa.
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/TopBar';

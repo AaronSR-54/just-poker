@@ -1,3 +1,4 @@
+// PARKED (Fase 3 — ver ROADMAP.md): servidor online conservado, desplegable en una fase futura.
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';

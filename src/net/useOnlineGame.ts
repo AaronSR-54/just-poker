@@ -1,3 +1,4 @@
+// PARKED (Fase 3 — ver ROADMAP.md): código online conservado, fuera de las rutas activas.
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Card } from '../types';
 import { PokerGame, type PokerState } from '../game/poker';
@@ -7,62 +8,15 @@ import { connectSocket, getSocket } from './socket';
 import {
   getOnlineSession,
   clearOnlineSession,
-  mapIndexToRotated,
   mapRotatedToOriginal,
   type OnlineSession,
   type OnlineSeat,
 } from './onlineSession';
+import { sanitizeForBroadcast, rotateState } from './onlineGameState';
+import { registerRoomListeners } from './onlineRoom';
 import { POINTS_BY_PLACE, useUserStore } from '../store/userStore';
 
 const REMOTE_TIMEOUT_MS = 35000;
-
-function sanitizeForBroadcast(state: PokerState): PokerState {
-  if (state.showdown || state.handOver) {
-    return {
-      ...state,
-      players: state.players.map(p => ({ ...p, cards: [...p.cards] })),
-      community: [...state.community],
-      winner: state.winner ? [...state.winner] : null,
-      winAmounts: [...state.winAmounts],
-      actions: [...state.actions],
-    };
-  }
-  return {
-    ...state,
-    players: state.players.map(p => ({
-      ...p,
-      cards: p.cards.length > 0 ? [] : [], // ocultar cartas
-    })),
-    community: [...state.community],
-    winner: state.winner ? [...state.winner] : null,
-    winAmounts: [...state.winAmounts],
-    actions: [...state.actions],
-  };
-}
-
-function rotateState(state: PokerState, mySeat: number): PokerState {
-  const n = state.players.length;
-  const order = Array.from({ length: n }, (_, i) => (mySeat + i) % n);
-  const players = order.map(i => ({ ...state.players[i], cards: [...state.players[i].cards] }));
-  // Reasignar ids a posiciones rotadas para la UI (id = índice visual)
-  const playersUi = players.map((p, i) => ({ ...p, id: i }));
-  const map = (idx: number) => mapIndexToRotated(idx, mySeat, n);
-
-  return {
-    ...state,
-    players: playersUi,
-    currentPlayer: map(state.currentPlayer),
-    dealer: map(state.dealer),
-    winner: state.winner ? state.winner.map(map) : null,
-    winAmounts: order.map(i => state.winAmounts[i] ?? 0),
-    gameWinner: state.gameWinner !== null ? map(state.gameWinner) : null,
-    actions: state.actions.map(a => ({
-      ...a,
-      playerIndex: map(a.playerIndex),
-    })),
-    community: [...state.community],
-  };
-}
 
 export interface OnlineGameApi {
   state: PokerState | null;
@@ -314,96 +268,15 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
         }
 
         // Listeners
-        const onState = (data: { state: PokerState }) => {
-          if (sess.isHost) return; // el host ya tiene el suyo
-          applyRotated(data.state, sess.mySeat);
-        };
-
-        const onHole = (data: { cards: Card[] }) => {
-          holeCardsRef.current = data.cards ?? [];
-          setState(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              players: prev.players.map((p, i) =>
-                i === 0 ? { ...p, cards: holeCardsRef.current } : p
-              ),
-            };
-          });
-        };
-
-        const onPeerAction = (data: { userId: string; type: string; amount?: number }) => {
-          if (!sess.isHost) return;
-          const seat = seatsRef.current.find(s => s.userId === data.userId);
-          if (!seat) return;
-          hostApply(seat.seat, data.type, data.amount);
-        };
-
-        const onSyncRequest = (_data: { userId: string }) => {
-          if (!sess.isHost || !gameRef.current) return;
-          broadcast(gameRef.current, sess);
-        };
-
-        const onPeerLeft = (data: { userId: string }) => {
-          if (!sess.isHost) return;
-          const seat = seatsRef.current.find(s => s.userId === data.userId);
-          if (!seat) return;
-          // Convertir a IA
-          seat.isAI = true;
-          seat.userId = null;
-          const personalities = PERSONALITIES.medium;
-          const p = personalities[seat.seat % personalities.length];
-          aiRef.current.set(seat.seat, createAIPlayer(seat.seat, { ...p, name: seat.username }));
-          // Si era su turno, la IA actuará en el próximo efecto
-          hostPush();
-        };
-
-        const onResult = (data: { places: { userId: string; place: number; pts: number }[]; type: string }) => {
-          const me = useUserStore.getState().user;
-          const mine = data.places.find(p => p.userId === me.id);
-          if (!mine) return;
-          const rivals = data.places
-            .filter(p => p.userId !== me.id)
-            .map(p => {
-              const seat = seatsRef.current.find(s => s.userId === p.userId);
-              return seat?.username ?? 'Rival';
-            });
-          recordHand(mine.place === 1);
-          recordGame({
-            place: mine.place as 1 | 2 | 3 | 4,
-            pts: mine.pts,
-            rivals,
-            mode: 'online',
-          });
-        };
-
-        const onRestart = () => {
-          if (sess.isHost) return;
-          recordedGameRef.current = false;
-          recordedHandRef.current = 0;
-          holeCardsRef.current = [];
-          sock.emit('game:sync', { roomId: sess.roomId });
-        };
-
-        sock.on('game:state', onState);
-        sock.on('game:holecards', onHole);
-        sock.on('game:peer-action', onPeerAction);
-        sock.on('game:sync-request', onSyncRequest);
-        sock.on('game:peer-left', onPeerLeft);
-        sock.on('game:result', onResult);
-        sock.on('game:restart', onRestart);
+        const cleanup = registerRoomListeners({
+          sock, sess, seatsRef, aiRef, gameRef, holeCardsRef,
+          recordedGameRef, recordedHandRef, applyRotated, broadcast,
+          hostApply, hostPush, setState, recordHand, recordGame,
+        });
 
         setLoading(false);
 
-        return () => {
-          sock.off('game:state', onState);
-          sock.off('game:holecards', onHole);
-          sock.off('game:peer-action', onPeerAction);
-          sock.off('game:sync-request', onSyncRequest);
-          sock.off('game:peer-left', onPeerLeft);
-          sock.off('game:result', onResult);
-          sock.off('game:restart', onRestart);
-        };
+        return cleanup;
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Error de conexión');

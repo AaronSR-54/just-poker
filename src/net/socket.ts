@@ -1,3 +1,4 @@
+// PARKED (Fase 3 — ver ROADMAP.md): código online conservado, fuera de las rutas activas.
 import { io, type Socket } from 'socket.io-client';
 import { useUserStore } from '../store/userStore';
 
