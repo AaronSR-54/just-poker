@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { CardRank, CardSize, Suit } from '../types';
-import Button from '../components/Button';
+import PageHeader from '../components/PageHeader';
 import PokerCard from '../components/PokerCard';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { container, fadeIn, slideSwap } from '../animations/motion';
@@ -11,28 +11,6 @@ import { useI18n } from '../i18n';
 /* ------------------------------------------------------------------ *
  * Guía de manos — referencia de las diez combinaciones.
  * ------------------------------------------------------------------ */
-
-const Wordmark: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={`flex flex-col items-end font-display font-bold uppercase leading-[0.86] tracking-[-0.015em] ${className ?? 'text-fs-600'}`}>
-    <span className="text-[0.85em]">Just</span>
-    <span className="text-[0.9em]"><em className="font-light italic tracking-normal">Poker</em></span>
-  </div>
-);
-
-const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
-  const { t } = useI18n();
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="min-h-0! p-0! text-fs-500! leading-none! text-bone!"
-      aria-label={t('common.back')}
-      onClick={onClick}
-    >
-      ←
-    </Button>
-  );
-};
 
 const Title: React.FC<{ className?: string }> = ({ className }) => {
   const { t } = useI18n();
@@ -159,10 +137,12 @@ const HandsGuide: React.FC = () => {
   );
 
   const header = (
-    <div className="flex w-full items-start justify-between gap-4">
-      <BackButton onClick={back} />
-      <Wordmark className={isDesktop ? undefined : 'text-fs-600'} />
-    </div>
+    <PageHeader
+      onBack={back}
+      backLabel={t('common.back')}
+      className="flex w-full items-start justify-between gap-4"
+      wordmarkClassName="text-fs-600"
+    />
   );
 
   if (!isDesktop) {
@@ -192,10 +172,12 @@ const HandsGuide: React.FC = () => {
 
   return (
     <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-      <header className="relative z-10 mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-10 pt-7 lg:px-20">
-        <BackButton onClick={back} />
-        <Wordmark />
-      </header>
+      <PageHeader
+        onBack={back}
+        backLabel={t('common.back')}
+        className="relative z-10 mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-10 pt-7 lg:px-20"
+        wordmarkClassName="text-fs-600"
+      />
       <div className="relative z-10 mx-auto flex w-full max-w-[87.5rem] min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-10 pb-10 pt-4 lg:px-20">
         <div className="my-auto grid w-full grid-cols-2 gap-8 lg:gap-12">
           <motion.div
