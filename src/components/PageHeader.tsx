@@ -17,7 +17,7 @@ interface PageHeaderProps {
 /**
  * Cabecera de pantalla de contenido: `BackButton (←)` a la izquierda y
  * `Wordmark` (stack) a la derecha, con un hueco opcional para un nodo extra.
- * Es la cabecera que comparten `Local`, `HandsGuide`, `Online` y `Lobby`.
+ * Es la cabecera que comparten `Local`, `HandsGuide` y `Online`.
  */
 const PageHeader: React.FC<PageHeaderProps> = ({ onBack, backLabel, right, className, wordmarkClassName }) => (
   <header

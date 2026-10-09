@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import Button from '../components/Button';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CtaButton from '../components/CtaButton';
 import PageHeader from '../components/PageHeader';
 import Panel from '../components/Panel';
 import PersonCard from '../components/PersonCard';
+import ScreenTitle from '../components/ScreenTitle';
+import SelectableCard from '../components/SelectableCard';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { loadSavedGame } from '../game/saveGame';
 import { rivalAvatar, rivalAliasKey, rivalSlug, DIFFICULTY_AVATAR_TONE } from '../game/rivals';
@@ -44,48 +46,27 @@ const TABLES: Table[] = [
   },
 ];
 
-const difficultyCardSizes = {
-  sm: { root: 'gap-4 rounded-[14px] px-[1.125rem]', pad: 'py-4', label: 'text-fs-500', rivals: 'text-fs-200' },
-  lg: { root: 'gap-6 rounded-[clamp(0.75rem,2.4cqw,1rem)] px-[4.5cqw]', pad: 'py-[4cqw]', label: 'text-[clamp(1.5rem,5.5cqw,2.75rem)]', rivals: 'text-fs-300 leading-[1.35]' },
-} as const;
-
 // Tarjeta de dificultad seleccionable. Mismo componente en móvil y escritorio; solo varía el size.
 const DifficultyCard: React.FC<{
   table: Table;
   selected: boolean;
-  size?: keyof typeof difficultyCardSizes;
+  size?: 'sm' | 'lg';
   dataTour?: string;
   dense?: boolean;
   onClick: () => void;
 }> = ({ table, selected, size = 'sm', dataTour, dense = false, onClick }) => {
   const { t } = useI18n();
-  const s = difficultyCardSizes[size];
   return (
-    <motion.div
-      variants={fadeUp}
-      className={['w-full', size === 'lg' ? 'flex-1 min-h-0 @container' : ''].join(' ')}
-    >
-      <button
-        type="button"
-        aria-pressed={selected}
-        data-tour={dataTour}
-        onClick={onClick}
-        className={[
-          'flex h-full w-full items-center justify-between text-left cursor-pointer border-[1.5px]',
-          s.root,
-          dense ? 'py-3' : s.pad,
-          'transition-[background-color,border-color,transform] duration-[240ms] ease-brand',
-          'enabled:hover:-translate-y-0.5 enabled:hover:border-bone enabled:active:translate-y-px',
-          'focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone',
-          selected ? 'border-bone bg-bone text-ink' : 'border-bone/40 bg-ink text-bone',
-        ].join(' ')}
-      >
-        <div className={`font-display font-bold leading-none ${s.label}`}>{t(`difficulty.${table.id}`)}</div>
-        <div className={`shrink-0 text-right font-body tracking-[0.04em] opacity-70 ${s.rivals}`}>
-          {table.rivals.map(r => r.n).join(' · ')}
-        </div>
-      </button>
-    </motion.div>
+    <SelectableCard
+      label={t(`difficulty.${table.id}`)}
+      secondary={table.rivals.map(r => r.n).join(' · ')}
+      selected={selected}
+      size={size}
+      stretch={false}
+      dense={dense}
+      dataTour={dataTour}
+      onClick={onClick}
+    />
   );
 };
 
@@ -128,21 +109,16 @@ const TableDetail: React.FC<{ table: Table; onStart: () => void; compact?: boole
         </motion.div>
       ))}
     </motion.div>
-    <Button variant="primary" data-tour="start-game" onClick={onStart} className={`justify-between! rounded-[14px]! ${compact ? 'min-h-12!' : 'min-h-14!'}`}>
-      <span>{t('local.play')}</span>
-      <span className={`font-display font-bold leading-none ${compact ? 'text-fs-400' : 'text-fs-500'}`}>→</span>
-    </Button>
+    <CtaButton compact={compact} dataTour="start-game" onClick={onStart}>
+      {t('local.play')}
+    </CtaButton>
   </Panel>
   );
 };
 
 const Title: React.FC<{ className?: string }> = ({ className }) => {
   const { t } = useI18n();
-  return (
-  <div className={`font-display font-bold leading-[0.94] tracking-[-0.015em] ${className ?? ''}`}>
-    <span className="whitespace-nowrap"><em className="font-light italic tracking-normal">{t('local.titleEm')}</em> {t('local.titleRest')}</span>
-  </div>
-  );
+  return <ScreenTitle em={t('local.titleEm')} rest={t('local.titleRest')} className={className} />;
 };
 
 const Local: React.FC = () => {
@@ -250,7 +226,7 @@ const Local: React.FC = () => {
     <>
       <PageHeader onBack={() => navigate('/')} backLabel={t('common.backToMenu')} />
       <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[3.5rem] pt-4 lg:px-20">
-        <div className="flex w-full items-stretch justify-center gap-8 lg:gap-12">
+        <div className="flex w-full items-center justify-center gap-8 lg:gap-12">
           <motion.div
             variants={container(0.07, 0.05)}
             initial="hidden"
