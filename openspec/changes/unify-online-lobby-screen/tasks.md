@@ -2,8 +2,8 @@
 
 ## 1. Componentes compartidos extraídos de `local/`
 
-- [ ] 1.1 Extraer `src/components/Panel.tsx` (contenedor `bg-ink-900 rounded-[14px]` con el padding de `TableDetail`) y usarlo en `Local.tsx`; verificar el aspecto del panel de mesa.
-- [ ] 1.2 Extraer `src/components/PersonCard.tsx` (`Avatar` + nombre `text-fs-300` + línea secundaria `text-fs-100 tracking-[0.04em] opacity-70`) y usarlo en `RivalCard` de `Local.tsx`; verificar con `npx tsc --noEmit` y `npx oxlint src/` sin errores.
+- [x] 1.1 Extraer `src/components/Panel.tsx` (contenedor `bg-ink-900 rounded-[14px]` con el padding de `TableDetail`) y usarlo en `Local.tsx`; verificar el aspecto del panel de mesa.
+- [x] 1.2 Extraer `src/components/PersonCard.tsx` (`Avatar` + nombre `text-fs-300` + línea secundaria `text-fs-100 tracking-[0.04em] opacity-70`) y usarlo en `RivalCard` de `Local.tsx`; verificar con `npx tsc --noEmit` y `npx oxlint src/` sin errores.
 
 ## 2. Diálogos reutilizables
 
