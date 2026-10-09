@@ -32,6 +32,7 @@ const game = {
   call: 'Call',
   callAmount: 'Call ({amount})',
   newHand: 'New Hand',
+  waitingHost: 'Waiting for the host…',
   newGame: 'New game',
   selectDifficulty: 'Select difficulty',
   backHome: 'Back to home',

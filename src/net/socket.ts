@@ -1,86 +1,70 @@
-// PARKED (Fase 3 — ver ROADMAP.md): código online conservado, fuera de las rutas activas.
 import { io, type Socket } from 'socket.io-client';
-import { useUserStore } from '../store/userStore';
+import { getPlayerId, setPlayerId } from './onlineSession';
 
 let socket: Socket | null = null;
 
-export interface GuestAuth {
-  token: string;
-  user: { id: string; username: string; avatar: string; points: number };
+/** URL del servidor online (vacío = mismo origen). */
+function socketUrl(): string {
+  return (import.meta.env.VITE_ONLINE_URL as string | undefined) ?? '';
 }
 
-/** Obtiene (o renueva) un token de invitado y lo guarda en el store. */
-export async function ensureGuestAuth(): Promise<GuestAuth> {
-  const store = useUserStore.getState();
-  // Si ya hay token de invitado o real, reutilizarlo
-  if (store.token && store.user.id) {
-    return {
-      token: store.token,
-      user: {
-        id: store.user.id,
-        username: store.user.username,
-        avatar: store.user.avatar,
-        points: store.user.points,
-      },
-    };
-  }
-
-  const res = await fetch('/api/auth/guest', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username: store.user.username,
-      points: store.user.points,
-    }),
-  });
-  if (!res.ok) throw new Error('No se pudo autenticar como invitado');
-  const data = (await res.json()) as GuestAuth;
-  store.setToken(data.token);
-  store.setUser({
-    id: data.user.id,
-    username: data.user.username,
-    avatar: data.user.avatar,
-    points: data.user.points,
-  });
-  return data;
+/**
+ * Ruta del endpoint de socket.io. En producción apunta a la Function de
+ * Vercel; en desarrollo al servidor local a través del proxy de Vite.
+ */
+function socketPath(): string {
+  const override = import.meta.env.VITE_ONLINE_PATH as string | undefined;
+  if (override) return override;
+  return import.meta.env.PROD ? '/api/socket-io/socket.io' : '/socket.io';
 }
 
-export async function connectSocket(): Promise<Socket> {
-  if (socket?.connected) return socket;
-
-  const auth = await ensureGuestAuth();
-
+/** Conecta (o reutiliza) el socket anónimo de la sesión actual. */
+export function connectSocket(): Promise<Socket> {
   if (socket) {
-    socket.auth = { token: auth.token };
+    if (socket.connected) return Promise.resolve(socket);
+    socket.auth = { playerId: getPlayerId() ?? undefined };
     socket.connect();
-    return new Promise((resolve, reject) => {
-      socket!.once('connect', () => resolve(socket!));
-      socket!.once('connect_error', (err) => reject(err));
-    });
+    return waitForConnect(socket);
   }
 
-  socket = io({
-    path: '/socket.io',
-    auth: { token: auth.token },
+  socket = io(socketUrl(), {
+    path: socketPath(),
+    auth: { playerId: getPlayerId() ?? undefined },
     autoConnect: true,
-    transports: ['websocket', 'polling'],
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
   });
 
+  // El servidor asigna (o confirma) el id anónimo; se persiste para reconectar.
+  socket.on('session:id', (data: { playerId?: string }) => {
+    if (data?.playerId) setPlayerId(data.playerId);
+  });
+
+  return waitForConnect(socket);
+}
+
+function waitForConnect(sock: Socket): Promise<Socket> {
   return new Promise((resolve, reject) => {
+    if (sock.connected) {
+      resolve(sock);
+      return;
+    }
     const onConnect = () => {
       cleanup();
-      resolve(socket!);
+      resolve(sock);
     };
     const onError = (err: Error) => {
       cleanup();
       reject(err);
     };
     const cleanup = () => {
-      socket!.off('connect', onConnect);
-      socket!.off('connect_error', onError);
+      sock.off('connect', onConnect);
+      sock.off('connect_error', onError);
     };
-    socket!.once('connect', onConnect);
-    socket!.once('connect_error', onError);
+    sock.once('connect', onConnect);
+    sock.once('connect_error', onError);
   });
 }
 
@@ -95,7 +79,7 @@ export function disconnectSocket(): void {
   }
 }
 
-/** Helper: emit con ack tipado. */
+/** Emit con ack tipado. */
 export function emitAck<T>(event: string, data?: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     if (!socket?.connected) {

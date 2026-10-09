@@ -31,6 +31,8 @@ export interface ActionButtonsProps {
   onRaise: () => void;
   onAction: (action: 'fold' | 'check' | 'call' | 'raise') => void;
   onNewHand: () => void;
+  /** En online, solo el anfitrión puede repartir la siguiente mano. */
+  newHandEnabled?: boolean;
 }
 
 /** Botones de acción del turno humano (móvil, tablet y desktop). */
@@ -59,16 +61,20 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onRaise,
   onAction,
   onNewHand,
+  newHandEnabled = true,
 }) => {
   const { t } = useI18n();
 
   if (handOver) {
     return (
       <div className={`flex flex-col items-center gap-2 ${fill ? 'w-full' : ''}`}>
-        {!gameOver && (
+        {!gameOver && newHandEnabled && (
           <Button variant="primary" size={size} block={fill} className={fill ? 'min-h-11 px-1.5! py-1! tracking-[0.04em]!' : ''} onClick={onNewHand}>
             {t('game.newHand')}
           </Button>
+        )}
+        {!gameOver && !newHandEnabled && (
+          <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">{t('game.waitingHost')}</span>
         )}
       </div>
     );

@@ -1,191 +1,140 @@
-export interface RoomPlayer {
-  userId: string;
-  username: string;
-  avatar: string;
-  points: number;
-  socketId: string;
-}
+import type { RoomRepository } from './roomRepository';
+import type { Room, RoomPlayer, SeatInfo } from './types';
 
-export interface Room {
-  id: string;
-  type: 'public' | 'private';
-  code?: string;
-  players: RoomPlayer[];
-  hostId: string | null;
-  started: boolean;
-  countdownTimer: ReturnType<typeof setTimeout> | null;
-  createdAt: Date;
-}
+export const MAX_PLAYERS = 4;
+export const MIN_PLAYERS = 2;
 
-export interface SeatInfo {
-  seat: number;
-  userId: string | null;
-  username: string;
-  avatar: string;
-  points: number;
-  isAI: boolean;
-}
+export type JoinResult = { ok: true } | { ok: false; error: string };
 
-const AI_NAMES = ['Mia', 'Dan', 'Sam', 'Leo'];
+/** Reglas de negocio de las salas privadas anónimas. */
+export class GameManager {
+  constructor(private repo: RoomRepository) {}
 
-class GameManager {
-  rooms: Map<string, Room> = new Map();
-  /** userId → roomId */
-  playerRoom: Map<string, string> = new Map();
-
-  createRoom(type: 'public' | 'private'): Room {
-    const id = Math.random().toString(36).substring(2, 10);
+  async createRoom(host: RoomPlayer): Promise<Room> {
+    const code = await this.generateCode();
     const room: Room = {
-      id,
-      type,
+      id: Math.random().toString(36).substring(2, 10),
+      code,
       players: [],
       hostId: null,
       started: false,
-      countdownTimer: null,
-      createdAt: new Date(),
+      createdAt: Date.now(),
     };
-    if (type === 'private') {
-      room.code = generateCode();
-    }
-    this.rooms.set(id, room);
+    await this.repo.createRoom(room);
+    await this.joinRoom(room, host);
     return room;
   }
 
-  getRoom(roomId: string): Room | undefined {
-    return this.rooms.get(roomId);
+  async getRoom(roomId: string): Promise<Room | null> {
+    return this.repo.getRoom(roomId);
   }
 
-  getRoomByCode(code: string): Room | undefined {
-    const upper = code.toUpperCase();
-    for (const room of this.rooms.values()) {
-      if (room.type === 'private' && room.code === upper && !room.started) {
-        return room;
-      }
-    }
-    return undefined;
+  async getRoomByCode(code: string): Promise<Room | null> {
+    const roomId = await this.repo.getRoomIdByCode(code);
+    if (!roomId) return null;
+    return this.repo.getRoom(roomId);
   }
 
-  findPublicRoom(): Room | undefined {
-    for (const room of this.rooms.values()) {
-      if (room.type === 'public' && !room.started && room.players.length < 4) {
-        return room;
-      }
-    }
-    return undefined;
+  async getRoomByPlayer(playerId: string): Promise<Room | null> {
+    const roomId = await this.repo.getPlayerRoomId(playerId);
+    if (!roomId) return null;
+    return this.repo.getRoom(roomId);
   }
 
-  joinRoom(room: Room, player: RoomPlayer): { ok: true } | { ok: false; error: string } {
-    if (room.started) return { ok: false, error: 'La partida ya ha empezado' };
-    if (room.players.length >= 4) return { ok: false, error: 'Sala llena' };
-
-    // Si el jugador ya está (reconexión), actualiza socket
-    const existing = room.players.find(p => p.userId === player.userId);
+  async joinRoom(room: Room, player: RoomPlayer): Promise<JoinResult> {
+    const existing = room.players.find((p) => p.userId === player.userId);
     if (existing) {
       existing.socketId = player.socketId;
       existing.username = player.username;
-      existing.avatar = player.avatar;
-      existing.points = player.points;
-      this.playerRoom.set(player.userId, room.id);
+      await this.repo.updateRoom(room);
+      await this.repo.setPlayerRoom(player.userId, room.id);
       return { ok: true };
     }
 
-    // Quitar de otra sala si estaba
-    const prevRoomId = this.playerRoom.get(player.userId);
+    if (room.started) return { ok: false, error: 'started' };
+    if (room.players.length >= MAX_PLAYERS) return { ok: false, error: 'full' };
+
+    const prevRoomId = await this.repo.getPlayerRoomId(player.userId);
     if (prevRoomId && prevRoomId !== room.id) {
-      this.leaveRoom(prevRoomId, player.userId);
+      await this.leaveRoom(prevRoomId, player.userId);
     }
 
     room.players.push(player);
     if (!room.hostId) room.hostId = player.userId;
-    this.playerRoom.set(player.userId, room.id);
+    await this.repo.updateRoom(room);
+    await this.repo.setPlayerRoom(player.userId, room.id);
     return { ok: true };
   }
 
-  leaveRoom(roomId: string, userId: string): Room | undefined {
-    const room = this.rooms.get(roomId);
-    if (!room) return undefined;
+  async leaveRoom(roomId: string, playerId: string): Promise<Room | null> {
+    const room = await this.repo.getRoom(roomId);
+    if (!room) return null;
 
-    room.players = room.players.filter(p => p.userId !== userId);
-    this.playerRoom.delete(userId);
+    room.players = room.players.filter((p) => p.userId !== playerId);
+    await this.repo.clearPlayerRoom(playerId);
 
-    if (room.hostId === userId) {
+    if (room.hostId === playerId) {
       room.hostId = room.players[0]?.userId ?? null;
     }
 
     if (room.players.length === 0) {
-      if (room.countdownTimer) clearTimeout(room.countdownTimer);
-      this.rooms.delete(roomId);
-      return undefined;
+      await this.repo.deleteRoom(roomId);
+      await this.repo.clearCode(room.code);
+      return null;
     }
+    await this.repo.updateRoom(room);
     return room;
   }
 
-  getPlayerRoom(userId: string): Room | undefined {
-    const id = this.playerRoom.get(userId);
-    return id ? this.rooms.get(id) : undefined;
+  async renamePlayer(room: Room, playerId: string, name: string): Promise<void> {
+    const player = room.players.find((p) => p.userId === playerId);
+    if (!player) return;
+    player.username = name;
+    await this.repo.updateRoom(room);
   }
 
-  /** Construye 4 asientos: humanos primero, IA de relleno. */
-  buildSeats(room: Room): SeatInfo[] {
-    const seats: SeatInfo[] = [];
-    for (let i = 0; i < 4; i++) {
-      const human = room.players[i];
-      if (human) {
-        seats.push({
-          seat: i,
-          userId: human.userId,
-          username: human.username,
-          avatar: human.avatar,
-          points: human.points,
-          isAI: false,
-        });
-      } else {
-        const name = AI_NAMES[i] ?? `IA ${i + 1}`;
-        seats.push({
-          seat: i,
-          userId: null,
-          username: name,
-          avatar: name.slice(0, 2).toUpperCase(),
-          points: 100 * (i + 1),
-          isAI: true,
-        });
-      }
-    }
-    return seats;
-  }
-
-  markStarted(room: Room): void {
+  async markStarted(room: Room): Promise<void> {
     room.started = true;
-    if (room.countdownTimer) {
-      clearTimeout(room.countdownTimer);
-      room.countdownTimer = null;
+    await this.repo.updateRoom(room);
+  }
+
+  /** Asientos ocupados por los jugadores reales, en orden. */
+  buildSeats(room: Room): SeatInfo[] {
+    return room.players.map((p, seat) => ({
+      seat,
+      userId: p.userId,
+      username: p.username,
+    }));
+  }
+
+  /** Marca a un jugador como desconectado (conserva su asiento para reconectar). */
+  async markDisconnected(room: Room, playerId: string): Promise<void> {
+    const player = room.players.find((p) => p.userId === playerId);
+    if (!player) return;
+    player.socketId = '';
+    await this.repo.updateRoom(room);
+  }
+
+  async promoteHost(room: Room, playerId: string | null): Promise<void> {
+    room.hostId = playerId;
+    await this.repo.updateRoom(room);
+  }
+
+  async saveSnapshot(roomId: string, snapshot: unknown): Promise<void> {
+    await this.repo.saveSnapshot(roomId, snapshot);
+  }
+
+  async getSnapshot(roomId: string): Promise<unknown | null> {
+    return this.repo.getSnapshot(roomId);
+  }
+
+  /** Código de 4 dígitos libre. */
+  private async generateCode(): Promise<string> {
+    for (let i = 0; i < 100; i++) {
+      const code = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+      const existing = await this.repo.getRoomIdByCode(code);
+      if (!existing) return code;
     }
-  }
-
-  publicState(room: Room) {
-    return {
-      roomId: room.id,
-      type: room.type,
-      code: room.code,
-      hostId: room.hostId,
-      started: room.started,
-      players: room.players.map(p => ({
-        userId: p.userId,
-        username: p.username,
-        avatar: p.avatar,
-        points: p.points,
-      })),
-    };
+    return String(Math.floor(Math.random() * 10000)).padStart(4, '0');
   }
 }
-
-function generateCode(): string {
-  const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
-export const gameManager = new GameManager();

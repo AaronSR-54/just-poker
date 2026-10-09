@@ -14,6 +14,7 @@ import ScreenMessage from './components/ScreenMessage';
 import GameOverlays from './components/GameOverlays';
 import MobileGameLayout from './layout/MobileGameLayout';
 import DesktopGameLayout from './layout/DesktopGameLayout';
+import OnlineGame from './OnlineGame';
 import type { GameLayoutProps } from './layout/types';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useUserStore } from '../../store/userStore';
@@ -365,6 +366,10 @@ const LocalGame: React.FC = () => {
 // ---------- Router ----------
 
 const Game: React.FC = () => {
+  const { gameId } = useParams<{ gameId: string }>();
+  if (gameId?.startsWith('online-')) {
+    return <OnlineGame roomId={gameId.slice('online-'.length)} />;
+  }
   return <LocalGame />;
 };
 

@@ -18,7 +18,7 @@ export function sanitizeForBroadcast(state: PokerState): PokerState {
     ...state,
     players: state.players.map(p => ({
       ...p,
-      cards: p.cards.length > 0 ? [] : [], // ocultar cartas
+      cards: [], // ocultar cartas privadas hasta el showdown
     })),
     community: [...state.community],
     winner: state.winner ? [...state.winner] : null,

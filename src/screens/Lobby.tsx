@@ -1,20 +1,25 @@
-// PARKED (Fase 3 — ver ROADMAP.md): pantalla de lobby conservada, sin ruta activa.
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import TopBar from '../components/TopBar';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
-import RankBadge from '../components/RankBadge';
 import Badge from '../components/Badge';
+import PageHeader from '../components/PageHeader';
+import QrCode from '../components/QrCode';
 import { Stagger, StaggerItem } from '../components/Animated';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useUserStore } from '../store/userStore';
+import { useI18n } from '../i18n';
 import { connectSocket, getSocket } from '../net/socket';
 import {
   setOnlineSession,
+  getPlayerId,
+  getPlayerName,
+  setPlayerName,
   type RoomState,
-  type OnlineSeat,
+  type StartingPayload,
 } from '../net/onlineSession';
+import { randomName } from '../utils/randomName';
+import { markPlayed } from '../utils/lastPlayed';
+import { onlineError } from '../utils/onlineError';
 
 const PulseDot: React.FC = () => (
   <span className="relative inline-block size-2 rounded-full bg-bone">
@@ -25,14 +30,12 @@ const PulseDot: React.FC = () => (
 interface LobbySlotProps {
   occupied?: boolean;
   name?: string;
-  points?: number;
   isHost?: boolean;
   isYou?: boolean;
 }
 
-const LobbySlot: React.FC<LobbySlotProps> = ({
-  occupied = false, name, points = 0, isHost = false, isYou = false,
-}) => {
+const LobbySlot: React.FC<LobbySlotProps> = ({ occupied = false, name, isHost = false, isYou = false }) => {
+  const { t } = useI18n();
   if (occupied && name) {
     return (
       <div
@@ -42,10 +45,9 @@ const LobbySlot: React.FC<LobbySlotProps> = ({
       >
         <Avatar name={name} size={64} />
         <div className="mt-1 font-display font-bold leading-none text-fs-400">
-          {name}{isYou ? ' (tú)' : ''}
+          {name}{isYou ? ` (${t('online.youBadge')})` : ''}
         </div>
-        <RankBadge points={points} />
-        {isHost && <Badge variant="neutral">Anfitrión</Badge>}
+        {isHost && <Badge variant="neutral">{t('online.hostBadge')}</Badge>}
       </div>
     );
   }
@@ -53,100 +55,90 @@ const LobbySlot: React.FC<LobbySlotProps> = ({
   return (
     <div className="flex min-h-40 min-w-40 flex-col items-center justify-center gap-3 rounded-[14px] border-2 border-dashed border-bone/[0.18] bg-ink px-7 py-6">
       <PulseDot />
-      <div className="font-body tracking-[0.04em] opacity-70 text-fs-200">Esperando…</div>
+      <div className="font-body text-fs-200 tracking-[0.04em] opacity-70">{t('online.waitingPlayers')}</div>
     </div>
   );
 };
 
 const Lobby: React.FC = () => {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId, code } = useParams<{ roomId?: string; code?: string }>();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const user = useUserStore(s => s.user);
+  const { t } = useI18n();
 
   const [room, setRoom] = useState<RoomState | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(true);
+  const [myId, setMyId] = useState<string | null>(null);
+  const [name, setName] = useState(() => getPlayerName() ?? randomName());
+  const [copied, setCopied] = useState(false);
   const startedRef = useRef(false);
+  const nameRef = useRef(name);
+  const roomCodeRef = useRef<string | undefined>(code);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId && !code) return;
     let cancelled = false;
-    const countdownIntervals: ReturnType<typeof setInterval>[] = [];
+    setPlayerName(nameRef.current);
 
     (async () => {
       try {
         await connectSocket();
         if (cancelled) return;
         const sock = getSocket()!;
+        setMyId(getPlayerId());
 
-        // Unirse a la sala (por si llegamos directo por URL / tras crear)
-        sock.emit('room:join', { roomId }, (res: { ok: boolean; error?: string; type?: string; code?: string }) => {
-          if (cancelled) return;
-          if (!res?.ok) {
-            setError(res?.error ?? 'No se pudo unir a la sala');
-            setConnecting(false);
-            return;
-          }
-          setConnecting(false);
-        });
+        sock.emit(
+          'room:join',
+          { roomId, code, name: nameRef.current },
+          (res: { ok: boolean; error?: string; started?: boolean } | undefined) => {
+            if (cancelled) return;
+            if (!res?.ok) {
+              setError(onlineError(res?.error));
+              setConnecting(false);
+            }
+          },
+        );
 
+        const onId = (data: { playerId?: string }) => {
+          if (data?.playerId) setMyId(data.playerId);
+        };
         const onState = (state: RoomState) => {
+          roomCodeRef.current = state.code;
           setRoom(state);
           setConnecting(false);
         };
-
-        const onCountdown = (data: { seconds: number }) => {
-          setCountdown(data.seconds);
-          let left = data.seconds;
-          const iv = setInterval(() => {
-            left -= 1;
-            setCountdown(left > 0 ? left : null);
-            if (left <= 0) clearInterval(iv);
-          }, 1000);
-          countdownIntervals.push(iv);
+        const onHost = (data: { hostId: string | null }) => {
+          setRoom((prev) => (prev ? { ...prev, hostId: data.hostId } : prev));
         };
-
-        const onStarting = (data: {
-          roomId: string;
-          hostId: string | null;
-          type: 'public' | 'private';
-          seats: OnlineSeat[];
-        }) => {
+        const onStarting = (data: StartingPayload) => {
           if (startedRef.current) return;
           startedRef.current = true;
-          const myUserId = useUserStore.getState().user.id;
-          const mySeat = data.seats.find(s => s.userId === myUserId)?.seat ?? 0;
+          const id = getPlayerId() ?? '';
+          const mySeat = Math.max(0, data.seats.findIndex((s) => s.userId === id));
           setOnlineSession({
             roomId: data.roomId,
+            code: roomCodeRef.current ?? '',
             hostId: data.hostId,
-            type: data.type,
             seats: data.seats,
             mySeat,
-            isHost: data.hostId === myUserId,
+            isHost: data.hostId === id,
+            playerId: id,
+            playerName: nameRef.current,
           });
+          markPlayed('online');
           navigate(`/game/online-${data.roomId}`);
         };
+        const onClosed = () => setError(t('online.roomClosed'));
 
-        const onClosed = () => {
-          setError('La sala se ha cerrado');
-        };
-
+        sock.on('session:id', onId);
         sock.on('room:state', onState);
-        sock.on('room:countdown', onCountdown);
+        sock.on('room:host', onHost);
         sock.on('room:starting', onStarting);
         sock.on('room:closed', onClosed);
-
-        return () => {
-          sock.off('room:state', onState);
-          sock.off('room:countdown', onCountdown);
-          sock.off('room:starting', onStarting);
-          sock.off('room:closed', onClosed);
-        };
-      } catch (e) {
+      } catch {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Error de conexión');
+          setError(t('online.serverError'));
           setConnecting(false);
         }
       }
@@ -154,33 +146,59 @@ const Lobby: React.FC = () => {
 
     return () => {
       cancelled = true;
-      for (const iv of countdownIntervals) clearInterval(iv);
+      const sock = getSocket();
+      sock?.off('session:id');
+      sock?.off('room:state');
+      sock?.off('room:host');
+      sock?.off('room:starting');
+      sock?.off('room:closed');
     };
-  }, [roomId, navigate]);
+    // El nombre se fija al entrar; no queremos re-unirse a cada pulsación.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, code]);
 
   const leave = () => {
     if (roomId) getSocket()?.emit('room:leave', { roomId });
-    navigate('/online');
+    navigate('/');
+  };
+
+  const saveName = () => {
+    const next = name.trim().slice(0, 24);
+    if (!next || !roomId) return;
+    nameRef.current = next;
+    setPlayerName(next);
+    setName(next);
+    getSocket()?.emit('room:rename', { roomId, name: next });
+  };
+
+  const changeName = (value: string) => {
+    nameRef.current = value;
+    setName(value);
   };
 
   const start = () => {
     if (!roomId) return;
-    getSocket()?.emit('room:start', { roomId }, (res: { ok: boolean; error?: string }) => {
-      if (!res?.ok) setError(res?.error ?? 'No se pudo empezar');
+    getSocket()?.emit('room:start', { roomId }, (res: { ok: boolean; error?: string } | undefined) => {
+      if (!res?.ok) setError(onlineError(res?.error));
     });
   };
 
-  const isHost = room?.hostId === user.id;
-  const count = room?.players.length ?? 0;
-  const isPrivate = room?.type === 'private';
+  const copy = (value: string) => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  };
 
-  const titleText = (() => {
-    if (countdown !== null) return `La partida empieza en ${countdown}s`;
-    if (connecting) return 'Conectando…';
-    if (count >= 4) return 'Sala completa';
-    if (isPrivate) return 'Sala privada — esperando jugadores';
-    return 'Buscando jugadores…';
-  })();
+  const isHost = room?.hostId === myId;
+  const count = room?.players.length ?? 0;
+  const inviteUrl = room?.code ? `${window.location.origin}/join/${room.code}` : '';
+
+  const titleText = connecting
+    ? t('online.connecting')
+    : count >= 4
+      ? t('online.roomFull')
+      : t('online.waitingPlayers');
 
   const slotsData: LobbySlotProps[] = Array.from({ length: 4 }).map((_, i) => {
     const p = room?.players[i];
@@ -188,85 +206,121 @@ const Lobby: React.FC = () => {
     return {
       occupied: true,
       name: p.username,
-      points: p.points,
       isHost: p.userId === room?.hostId,
-      isYou: p.userId === user.id,
+      isYou: p.userId === myId,
     };
   });
+
+  const codeBlock = room?.code && (
+    <div className="flex flex-col items-center gap-3 rounded-[14px] bg-ink-900 px-8 py-6">
+      <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">{t('online.codeLabel')}</div>
+      <div className="flex items-baseline gap-2">
+        {room.code.split('').map((c, i) => (
+          <span key={i} className="font-display font-bold text-fs-700">{c}</span>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={() => copy(room.code!)}>
+          {copied ? t('online.copied') : t('online.copy')}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => copy(inviteUrl)}>
+          {t('online.copyLink')}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const nameBlock = (
+    <div className="flex w-full max-w-[320px] flex-col gap-2 rounded-[14px] bg-ink-900 p-5">
+      <label className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65" htmlFor="jp-online-name">
+        {t('online.nameLabel')}
+      </label>
+      <div className="flex gap-2">
+        <input
+          id="jp-online-name"
+          value={name}
+          maxLength={24}
+          onChange={(e) => changeName(e.target.value)}
+          onBlur={saveName}
+          className="min-h-12 flex-1 rounded-pill border-[1.5px] border-bone/40 bg-ink px-4 font-body text-fs-300 text-bone outline-none focus-visible:border-bone"
+        />
+        <Button size="sm" variant="outline" onClick={saveName}>{t('online.save')}</Button>
+      </div>
+    </div>
+  );
+
+  const qrBlock = room?.code && (
+    <div className="flex flex-col items-center gap-3">
+      <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">{t('online.inviteTitle')}</div>
+      <div className="rounded-[14px] bg-bone p-3">
+        <QrCode value={inviteUrl} size={isMobile ? 160 : 200} label={t('online.inviteTitle')} />
+      </div>
+      <div className="max-w-[220px] text-center font-body text-fs-100 tracking-[0.04em] opacity-70">{t('online.inviteHint')}</div>
+    </div>
+  );
 
   const footer = (
     <div className={isMobile ? 'mt-6 flex flex-col gap-3' : 'mt-4 flex items-center justify-between'}>
       <Button variant="ghost" size={isMobile ? 'sm' : undefined} onClick={leave} className={isMobile ? 'self-start' : undefined}>
-        ← Abandonar sala
+        {t('online.leave')}
       </Button>
       {isHost ? (
-        <Button
-          variant="primary"
-          block={isMobile}
-          disabled={count < 1 || countdown !== null}
-          onClick={start}
-        >
-          {count >= 2 ? 'Empezar ahora' : 'Empezar (con IA)'}
+        <Button variant="primary" block={isMobile} disabled={count < 2} onClick={start}>
+          {count < 2 ? t('online.needPlayers') : t('online.start')}
         </Button>
       ) : (
         <Button variant="outline" block={isMobile} disabled>
-          {countdown !== null ? `Empieza en ${countdown}s` : 'Esperando al anfitrión…'}
+          {t('online.waitingHost')}
         </Button>
       )}
-    </div>
-  );
-
-  const codeBlock = isPrivate && room?.code && (
-    <div className="mt-1 flex flex-col items-center gap-2">
-      <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">Código de sala</div>
-      <div className="flex items-baseline gap-2">
-        {room.code.split('').map((c, i) => (
-          <span key={i} className={`font-display font-bold ${isMobile ? 'text-[1.5rem]' : 'text-[1.75rem]'}`}>{c}</span>
-        ))}
-      </div>
-      <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(room.code || '')}>
-        Copiar
-      </Button>
     </div>
   );
 
   if (error && !room) {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">No se pudo entrar</div>
+        <PageHeader onBack={() => navigate('/')} backLabel={t('common.backToMenu')} />
+        <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 flex-col items-center justify-center gap-4 px-10 pb-[3.5rem] pt-4 lg:px-20">
+          <div className="font-display font-bold leading-[0.96] tracking-[-0.015em] text-fs-700">{t('online.notFound')}</div>
           <div className="font-body leading-[1.45] text-fs-300 opacity-40">{error}</div>
-          <Button variant="outline" className="rounded-[0.875rem]!" onClick={() => navigate('/online')}>← Volver</Button>
+          <Button variant="outline" onClick={() => navigate('/')}>{t('online.back')}</Button>
         </div>
       </div>
     );
   }
 
+  const slots = (
+    <Stagger className={isMobile ? 'flex w-full max-w-[260px] flex-col gap-3' : 'flex flex-wrap justify-center gap-4'} stagger={0.08} delay={0.1}>
+      {slotsData.map((s, i) => (
+        <StaggerItem key={i}>
+          <LobbySlot {...s} />
+        </StaggerItem>
+      ))}
+    </Stagger>
+  );
+
   if (isMobile) {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        <div className="flex shrink-0 items-center justify-between border-b border-bone/10 bg-ink px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
-          <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
-          <div className="flex items-center gap-3">
-            <Avatar name={user.username} size={32} />
-            <RankBadge points={user.points} compact />
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] pb-7 pt-8">
+          <PageHeader
+            onBack={leave}
+            backLabel={t('common.backToMenu')}
+            className="flex w-full items-start justify-between gap-4"
+            wordmarkClassName="text-fs-600"
+            right={<Avatar name={name} size={32} />}
+          />
+          <div className="flex min-h-0 flex-1 flex-col justify-between">
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 py-6">
+              <div className="text-center font-display font-bold leading-[0.96] tracking-[-0.015em] text-fs-500">{titleText}</div>
+              {error && <div className="font-body text-fs-100 tracking-[0.04em] text-danger opacity-70">{error}</div>}
+              {slots}
+              {codeBlock}
+              {qrBlock}
+              {nameBlock}
+            </div>
+            {footer}
           </div>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-[1.125rem] py-6">
-          <div className="flex flex-1 flex-col items-center justify-center gap-4">
-            <div className="text-center font-display font-bold leading-none text-[1.125rem]">{titleText}</div>
-            {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
-            <Stagger className="flex w-full max-w-[260px] flex-col gap-3" stagger={0.08} delay={0.1}>
-              {slotsData.map((s, i) => (
-                <StaggerItem key={i}>
-                  <LobbySlot {...s} />
-                </StaggerItem>
-              ))}
-            </Stagger>
-            {codeBlock}
-          </div>
-          {footer}
         </div>
       </div>
     );
@@ -274,27 +328,21 @@ const Lobby: React.FC = () => {
 
   return (
     <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-      <TopBar
-        right={
-          <div className="flex items-center gap-3">
-            <Avatar name={user.username} size={40} />
-            <RankBadge points={user.points} />
-          </div>
-        }
+      <PageHeader
+        onBack={leave}
+        backLabel={t('common.backToMenu')}
+        right={<Avatar name={name} size={40} />}
       />
-
-      <div className="flex flex-1 flex-col justify-between px-[3.75rem] py-10">
+      <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 flex-col justify-between px-10 pb-[3.5rem] pt-4 lg:px-20">
         <div className="flex flex-1 flex-col items-center justify-center gap-6">
-          <div className="font-display font-bold leading-none tracking-[-0.01em] text-center text-fs-700">{titleText}</div>
-          {error && <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 text-danger">{error}</div>}
-          <Stagger className="flex flex-wrap justify-center gap-4" stagger={0.08} delay={0.1}>
-            {slotsData.map((s, i) => (
-              <StaggerItem key={i}>
-                <LobbySlot {...s} />
-              </StaggerItem>
-            ))}
-          </Stagger>
-          {codeBlock}
+          <div className="text-center font-display font-bold leading-[0.96] tracking-[-0.015em] text-fs-700">{titleText}</div>
+          {error && <div className="font-body text-fs-100 tracking-[0.04em] text-danger opacity-70">{error}</div>}
+          {slots}
+          <div className="flex items-start gap-12">
+            {codeBlock}
+            {qrBlock}
+          </div>
+          {nameBlock}
         </div>
         {footer}
       </div>

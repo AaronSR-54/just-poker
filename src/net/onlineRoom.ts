@@ -1,108 +1,88 @@
-// PARKED (Fase 3 — ver ROADMAP.md): registro de listeners del online conservado.
 import type { Dispatch, SetStateAction } from 'react';
 import type { Socket } from 'socket.io-client';
 import type { Card } from '../types';
-import type { PokerGame, PokerState } from '../game/poker';
-import { PERSONALITIES } from '../ai/personalities';
-import { createAIPlayer, type AIPlayer } from '../ai/aiPlayer';
-import { useUserStore } from '../store/userStore';
+import type { PokerGame, PokerState, PokerSaveData } from '../game/poker';
 import type { OnlineSession, OnlineSeat } from './onlineSession';
 
 export interface RoomListenerContext {
   sock: Socket;
   sess: OnlineSession;
   seatsRef: { current: OnlineSeat[] };
-  aiRef: { current: Map<number, AIPlayer> };
   gameRef: { current: PokerGame | null };
   holeCardsRef: { current: Card[] };
-  recordedGameRef: { current: boolean };
-  recordedHandRef: { current: number };
+  isHostRef: { current: boolean };
   applyRotated: (raw: PokerState, mySeat: number, myCards?: Card[]) => void;
   broadcast: (g: PokerGame, sess: OnlineSession) => void;
   hostApply: (seat: number, type: string, amount?: number) => void;
   hostPush: () => void;
   setState: Dispatch<SetStateAction<PokerState | null>>;
-  recordHand: (won: boolean) => void;
-  recordGame: (record: { place: 1 | 2 | 3 | 4; pts: number; rivals: string[]; mode: 'online' }) => void;
+  onHostChange: (hostId: string | null) => void;
+  onResume: (snapshot: PokerSaveData | null) => void;
 }
 
-/** Registra los listeners de socket de una sala y devuelve el cleanup. */
+/** Registra los listeners de una sala online y devuelve el cleanup. */
 export function registerRoomListeners(ctx: RoomListenerContext): () => void {
   const {
-    sock, sess, seatsRef, aiRef, gameRef, holeCardsRef,
-    recordedGameRef, recordedHandRef, applyRotated, broadcast,
-    hostApply, hostPush, setState, recordHand, recordGame,
+    sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef,
+    applyRotated, broadcast, hostApply, hostPush, setState,
+    onHostChange, onResume,
   } = ctx;
 
   const onState = (data: { state: PokerState }) => {
-    if (sess.isHost) return; // el host ya tiene el suyo
+    if (isHostRef.current) return;
     applyRotated(data.state, sess.mySeat);
   };
 
   const onHole = (data: { cards: Card[] }) => {
     holeCardsRef.current = data.cards ?? [];
-    setState(prev => {
+    setState((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        players: prev.players.map((p, i) =>
-          i === 0 ? { ...p, cards: holeCardsRef.current } : p
-        ),
+        players: prev.players.map((p, i) => (i === 0 ? { ...p, cards: holeCardsRef.current } : p)),
       };
     });
   };
 
   const onPeerAction = (data: { userId: string; type: string; amount?: number }) => {
-    if (!sess.isHost) return;
-    const seat = seatsRef.current.find(s => s.userId === data.userId);
+    if (!isHostRef.current) return;
+    const seat = seatsRef.current.find((s) => s.userId === data.userId);
     if (!seat) return;
     hostApply(seat.seat, data.type, data.amount);
   };
 
-  const onSyncRequest = (_data: { userId: string }) => {
-    if (!sess.isHost || !gameRef.current) return;
+  const onSyncRequest = () => {
+    if (!isHostRef.current || !gameRef.current) return;
     broadcast(gameRef.current, sess);
   };
 
+  /** Un rival se desconecta: si tenía el turno, se resuelve sin bloquear. */
   const onPeerLeft = (data: { userId: string }) => {
-    if (!sess.isHost) return;
-    const seat = seatsRef.current.find(s => s.userId === data.userId);
+    if (!isHostRef.current) return;
+    const g = gameRef.current;
+    if (!g) return;
+    const seat = seatsRef.current.find((s) => s.userId === data.userId);
     if (!seat) return;
-    // Convertir a IA
-    seat.isAI = true;
-    seat.userId = null;
-    const personalities = PERSONALITIES.medium;
-    const p = personalities[seat.seat % personalities.length];
-    aiRef.current.set(seat.seat, createAIPlayer(seat.seat, { ...p, name: seat.username }));
-    // Si era su turno, la IA actuará en el próximo efecto
-    hostPush();
-  };
-
-  const onResult = (data: { places: { userId: string; place: number; pts: number }[]; type: string }) => {
-    const me = useUserStore.getState().user;
-    const mine = data.places.find(p => p.userId === me.id);
-    if (!mine) return;
-    const rivals = data.places
-      .filter(p => p.userId !== me.id)
-      .map(p => {
-        const seat = seatsRef.current.find(s => s.userId === p.userId);
-        return seat?.username ?? 'Rival';
-      });
-    recordHand(mine.place === 1);
-    recordGame({
-      place: mine.place as 1 | 2 | 3 | 4,
-      pts: mine.pts,
-      rivals,
-      mode: 'online',
-    });
+    const raw = g.getState();
+    if (!raw.handOver && raw.currentPlayer === seat.seat) {
+      if (g.canCheck(seat.seat)) g.check(seat.seat);
+      else g.fold(seat.seat);
+      hostPush();
+    }
   };
 
   const onRestart = () => {
-    if (sess.isHost) return;
-    recordedGameRef.current = false;
-    recordedHandRef.current = 0;
+    if (isHostRef.current) return;
     holeCardsRef.current = [];
     sock.emit('game:sync', { roomId: sess.roomId });
+  };
+
+  const onHost = (data: { hostId: string | null }) => {
+    onHostChange(data.hostId ?? null);
+  };
+
+  const onResumeEvent = (data: { snapshot: PokerSaveData | null }) => {
+    onResume(data?.snapshot ?? null);
   };
 
   sock.on('game:state', onState);
@@ -110,8 +90,9 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
   sock.on('game:peer-action', onPeerAction);
   sock.on('game:sync-request', onSyncRequest);
   sock.on('game:peer-left', onPeerLeft);
-  sock.on('game:result', onResult);
   sock.on('game:restart', onRestart);
+  sock.on('room:host', onHost);
+  sock.on('game:resume', onResumeEvent);
 
   return () => {
     sock.off('game:state', onState);
@@ -119,7 +100,8 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
     sock.off('game:peer-action', onPeerAction);
     sock.off('game:sync-request', onSyncRequest);
     sock.off('game:peer-left', onPeerLeft);
-    sock.off('game:result', onResult);
     sock.off('game:restart', onRestart);
+    sock.off('room:host', onHost);
+    sock.off('game:resume', onResumeEvent);
   };
 }

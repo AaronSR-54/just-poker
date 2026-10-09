@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import Menu from './screens/Menu';
 import Local from './screens/Local';
+import Online from './screens/Online';
+import Lobby from './screens/Lobby';
+import { ONLINE_ENABLED } from './config/features';
 import Game from './screens/Game/Game';
 import HandsGuide from './screens/HandsGuide';
 import OnboardingCoach from './components/OnboardingCoach';
@@ -33,6 +36,9 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<Menu />} />
           <Route path="/local" element={<Local />} />
+          {ONLINE_ENABLED && <Route path="/online" element={<Online />} />}
+          {ONLINE_ENABLED && <Route path="/lobby/:roomId" element={<Lobby />} />}
+          {ONLINE_ENABLED && <Route path="/join/:code" element={<Lobby />} />}
           <Route path="/hands" element={<HandsGuide />} />
           <Route path="/game/:gameId" element={<Game />} />
           <Route path="*" element={<Navigate to="/" replace />} />

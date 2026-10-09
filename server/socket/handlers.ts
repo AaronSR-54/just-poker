@@ -1,218 +1,253 @@
+import { randomUUID } from 'crypto';
 import { Server, Socket } from 'socket.io';
-import { verifyToken } from '../middleware/auth.js';
-import { gameManager, type RoomPlayer } from '../game/GameManager.js';
+import { GameManager, MAX_PLAYERS, MIN_PLAYERS } from '../game/GameManager';
+import type { Room, RoomPlayer } from '../game/types';
 
-type Ack<T = unknown> = (res: T) => void;
+type Ack = (res: unknown) => void;
+
+interface JoinData {
+  roomId?: string;
+  code?: string;
+  name?: string;
+}
 
 function playerFromSocket(socket: Socket): RoomPlayer {
   return {
-    userId: socket.data.userId as string,
-    username: socket.data.username as string,
-    avatar: socket.data.avatar as string,
-    points: (socket.data.points as number) || 0,
+    userId: socket.data.playerId as string,
+    username: (socket.data.username as string) || '',
     socketId: socket.id,
   };
 }
 
-function broadcastRoom(io: Server, roomId: string): void {
-  const room = gameManager.getRoom(roomId);
-  if (!room) {
-    io.to(roomId).emit('room:closed');
-    return;
-  }
-  io.to(roomId).emit('room:state', gameManager.publicState(room));
-}
-
-function startRoom(io: Server, roomId: string): void {
-  const room = gameManager.getRoom(roomId);
-  if (!room || room.started || room.players.length < 1) return;
-
-  gameManager.markStarted(room);
-  const seats = gameManager.buildSeats(room);
-  io.to(roomId).emit('room:starting', {
+function publicState(room: Room) {
+  return {
     roomId: room.id,
+    code: room.code,
     hostId: room.hostId,
-    type: room.type,
-    seats,
-  });
+    started: room.started,
+    players: room.players.map((p) => ({
+      userId: p.userId,
+      username: p.username,
+    })),
+  };
 }
 
-function maybeAutoStart(io: Server, roomId: string): void {
-  const room = gameManager.getRoom(roomId);
-  if (!room || room.started || room.type !== 'public') return;
-  if (room.players.length < 4) return;
-  if (room.countdownTimer) return;
-
-  io.to(roomId).emit('room:countdown', { seconds: 3 });
-  room.countdownTimer = setTimeout(() => {
-    startRoom(io, roomId);
-  }, 3000);
-}
-
-export function setupSocketHandlers(io: Server): void {
+export function setupSocketHandlers(io: Server, gameManager: GameManager): void {
   io.on('connection', (socket: Socket) => {
-    const token = socket.handshake.auth.token as string;
-    const user = verifyToken(token);
+    // Identidad anónima de sesión: el cliente reutiliza el id para reconectar.
+    const provided = socket.handshake.auth?.playerId as string | undefined;
+    const playerId = provided || randomUUID();
+    socket.data.playerId = playerId;
+    socket.emit('session:id', { playerId });
 
-    if (!user) {
-      socket.emit('error', { message: 'No autorizado' });
-      socket.disconnect();
-      return;
-    }
+    const broadcastRoom = async (roomId: string): Promise<void> => {
+      const room = await gameManager.getRoom(roomId);
+      if (!room) {
+        io.to(roomId).emit('room:closed');
+        return;
+      }
+      io.to(roomId).emit('room:state', publicState(room));
+    };
 
-    socket.data.userId = user.id;
-    socket.data.username = user.username;
-    socket.data.avatar = user.avatar;
-    socket.data.points = user.points;
+    /** Salida de un jugador (abandono o desconexión), con failover si procede. */
+    const handleDeparture = async (roomId: string, who: string): Promise<void> => {
+      const room = await gameManager.getRoom(roomId);
+      if (!room) return;
+
+      if (!room.started) {
+        const left = await gameManager.leaveRoom(roomId, who);
+        if (left) {
+          await broadcastRoom(roomId);
+          io.to(roomId).emit('room:host', { hostId: left.hostId });
+        } else {
+          io.to(roomId).emit('room:closed');
+        }
+        return;
+      }
+
+      await gameManager.markDisconnected(room, who);
+
+      if (room.hostId === who) {
+        const next = room.players.find((p) => p.userId !== who && p.socketId);
+        await gameManager.promoteHost(room, next?.userId ?? null);
+        io.to(roomId).emit('room:host', { hostId: room.hostId });
+        if (next) {
+          const snapshot = await gameManager.getSnapshot(roomId);
+          if (snapshot) io.to(next.socketId).emit('game:resume', { snapshot, hostId: room.hostId });
+        }
+        return;
+      }
+
+      const host = room.players.find((p) => p.userId === room.hostId);
+      if (host?.socketId) io.to(host.socketId).emit('game:peer-left', { userId: who });
+    };
 
     // ---- Lobby ----
 
-    socket.on('room:create', (data: { type?: 'public' | 'private' }, ack?: Ack) => {
-      const type = data?.type === 'private' ? 'private' : 'public';
-      const room = gameManager.createRoom(type);
-      const result = gameManager.joinRoom(room, playerFromSocket(socket));
-      if (!result.ok) {
-        ack?.({ ok: false, error: result.error });
-        return;
-      }
+    socket.on('room:create', async (data: { name?: string }, ack?: Ack) => {
+      socket.data.username = (data?.name ?? '').toString().slice(0, 24);
+      const room = await gameManager.createRoom(playerFromSocket(socket));
       socket.join(room.id);
-      broadcastRoom(io, room.id);
-      ack?.({ ok: true, roomId: room.id, code: room.code, type: room.type });
+      await broadcastRoom(room.id);
+      ack?.({ ok: true, roomId: room.id, code: room.code, hostId: room.hostId });
     });
 
-    socket.on('room:quick', (_data: unknown, ack?: Ack) => {
-      let room = gameManager.findPublicRoom();
-      if (!room) room = gameManager.createRoom('public');
-      const result = gameManager.joinRoom(room, playerFromSocket(socket));
-      if (!result.ok) {
-        // Sala llena entre medias: crear otra
-        room = gameManager.createRoom('public');
-        gameManager.joinRoom(room, playerFromSocket(socket));
-      }
-      socket.join(room.id);
-      broadcastRoom(io, room.id);
-      maybeAutoStart(io, room.id);
-      ack?.({ ok: true, roomId: room.id, type: 'public' });
-    });
-
-    socket.on('room:join', (data: { roomId?: string; code?: string }, ack?: Ack) => {
-      let room = data?.roomId ? gameManager.getRoom(data.roomId) : undefined;
-      if (!room && data?.code) room = gameManager.getRoomByCode(data.code);
+    socket.on('room:join', async (data: JoinData, ack?: Ack) => {
+      if (data?.name) socket.data.username = data.name.toString().slice(0, 24);
+      let room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
+      if (!room && data?.code) room = await gameManager.getRoomByCode(data.code);
       if (!room) {
-        ack?.({ ok: false, error: 'Sala no encontrada' });
+        ack?.({ ok: false, error: 'notFound' });
         return;
       }
-      const result = gameManager.joinRoom(room, playerFromSocket(socket));
+
+      const result = await gameManager.joinRoom(room, playerFromSocket(socket));
       if (!result.ok) {
         ack?.({ ok: false, error: result.error });
         return;
       }
+
       socket.join(room.id);
-      broadcastRoom(io, room.id);
-      maybeAutoStart(io, room.id);
-      ack?.({ ok: true, roomId: room.id, code: room.code, type: room.type });
+
+      // Si es el único conectado de una partida ya empezada, recupera el rol de anfitrión.
+      if (room.started && !room.hostId) {
+        await gameManager.promoteHost(room, playerId);
+        const snapshot = await gameManager.getSnapshot(room.id);
+        if (snapshot) socket.emit('game:resume', { snapshot, hostId: room.hostId });
+      }
+
+      await broadcastRoom(room.id);
+
+      // Comunica el anfitrión actual (por si reconecta un antiguo anfitrión).
+      socket.emit('room:host', { hostId: room.hostId });
+
+      // Quien se une (o reconecta) a una partida en curso va directo a la mesa.
+      if (room.started) {
+        socket.emit('room:starting', {
+          roomId: room.id,
+          hostId: room.hostId,
+          seats: gameManager.buildSeats(room),
+        });
+      }
+
+      ack?.({
+        ok: true,
+        roomId: room.id,
+        code: room.code,
+        hostId: room.hostId,
+        started: room.started,
+      });
     });
 
-    socket.on('room:leave', (data: { roomId: string }) => {
+    socket.on('room:rename', async (data: { roomId?: string; name?: string }, ack?: Ack) => {
+      const name = (data?.name ?? '').toString().trim().slice(0, 24);
+      if (!data?.roomId || !name) {
+        ack?.({ ok: false, error: 'name' });
+        return;
+      }
+      const room = await gameManager.getRoom(data.roomId);
+      if (!room || room.started) {
+        ack?.({ ok: false, error: 'rename' });
+        return;
+      }
+      socket.data.username = name;
+      await gameManager.renamePlayer(room, playerId, name);
+      await broadcastRoom(room.id);
+      ack?.({ ok: true });
+    });
+
+    socket.on('room:leave', async (data: { roomId?: string }) => {
       if (!data?.roomId) return;
       socket.leave(data.roomId);
-      const room = gameManager.leaveRoom(data.roomId, user.id);
-      if (room) broadcastRoom(io, data.roomId);
-      else io.to(data.roomId).emit('room:closed');
+      await handleDeparture(data.roomId, playerId);
     });
 
-    socket.on('room:start', (data: { roomId: string }, ack?: Ack) => {
-      const room = gameManager.getRoom(data?.roomId);
+    socket.on('room:start', async (data: { roomId?: string }, ack?: Ack) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
       if (!room) {
-        ack?.({ ok: false, error: 'Sala no encontrada' });
+        ack?.({ ok: false, error: 'notFound' });
         return;
       }
-      if (room.hostId !== user.id) {
-        ack?.({ ok: false, error: 'Solo el anfitrión puede empezar' });
+      if (room.hostId !== playerId) {
+        ack?.({ ok: false, error: 'host' });
         return;
       }
-      if (room.players.length < 1) {
-        ack?.({ ok: false, error: 'No hay jugadores' });
+      if (room.players.length < MIN_PLAYERS) {
+        ack?.({ ok: false, error: 'players' });
         return;
       }
-      startRoom(io, room.id);
+      if (room.players.length > MAX_PLAYERS) {
+        ack?.({ ok: false, error: 'max' });
+        return;
+      }
+      await gameManager.markStarted(room);
+      io.to(room.id).emit('room:starting', {
+        roomId: room.id,
+        hostId: room.hostId,
+        seats: gameManager.buildSeats(room),
+      });
       ack?.({ ok: true });
     });
 
     // ---- Juego (relay host-autoritativo) ----
 
-    /** El host emite el estado público (cartas rivales ocultas salvo showdown). */
-    socket.on('game:state', (data: { roomId: string; state: unknown }) => {
-      const room = gameManager.getRoom(data?.roomId);
-      if (!room || room.hostId !== user.id) return;
-      socket.to(data.roomId).emit('game:state', { state: data.state });
+    socket.on('game:state', async (data: { roomId?: string; state?: unknown }) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
+      if (!room || room.hostId !== playerId) return;
+      socket.to(room.id).emit('game:state', { state: data.state });
     });
 
-    /** El host envía cartas privadas a un jugador concreto. */
-    socket.on('game:holecards', (data: { roomId: string; targetUserId: string; cards: unknown }) => {
-      const room = gameManager.getRoom(data?.roomId);
-      if (!room || room.hostId !== user.id) return;
-      const target = room.players.find(p => p.userId === data.targetUserId);
-      if (!target) return;
-      io.to(target.socketId).emit('game:holecards', { cards: data.cards });
+    socket.on('game:snapshot', async (data: { roomId?: string; snapshot?: unknown }) => {
+      if (!data?.roomId || data.snapshot === undefined) return;
+      const room = await gameManager.getRoom(data.roomId);
+      if (!room || room.hostId !== playerId) return;
+      await gameManager.saveSnapshot(data.roomId, data.snapshot);
     });
 
-    /** Un no-host pide sincronización: se reenvía al host. */
-    socket.on('game:sync', (data: { roomId: string }) => {
-      const room = gameManager.getRoom(data?.roomId);
+    socket.on('game:holecards', async (data: { roomId?: string; targetUserId?: string; cards?: unknown }) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
+      if (!room || room.hostId !== playerId || !data?.targetUserId) return;
+      io.to(data.targetUserId).emit('game:holecards', { cards: data.cards });
+    });
+
+    socket.on('game:resume-request', async (data: { roomId?: string }) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
+      if (!room || room.hostId !== playerId) return;
+      const snapshot = await gameManager.getSnapshot(room.id);
+      // `snapshot` puede ser null: el cliente anfitrión creará una partida nueva.
+      socket.emit('game:resume', { snapshot: snapshot ?? null, hostId: room.hostId });
+    });
+
+    socket.on('game:sync', async (data: { roomId?: string }) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
       if (!room || !room.hostId) return;
-      const host = room.players.find(p => p.userId === room.hostId);
-      if (!host) return;
-      io.to(host.socketId).emit('game:sync-request', { userId: user.id });
+      const host = room.players.find((p) => p.userId === room.hostId);
+      if (host?.socketId) io.to(host.socketId).emit('game:sync-request', { userId: playerId });
     });
 
-    /** Acción de un cliente → al host. */
-    socket.on('game:action', (data: { roomId: string; type: string; amount?: number }) => {
-      const room = gameManager.getRoom(data?.roomId);
-      if (!room || !room.hostId) return;
-      // El host no necesita su propia acción por socket
-      if (room.hostId === user.id) return;
-      const host = room.players.find(p => p.userId === room.hostId);
-      if (!host) return;
-      io.to(host.socketId).emit('game:peer-action', {
-        userId: user.id,
-        type: data.type,
-        amount: data.amount,
-      });
+    socket.on('game:action', async (data: { roomId?: string; type?: string; amount?: number }) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
+      if (!room || !room.hostId || room.hostId === playerId) return;
+      const host = room.players.find((p) => p.userId === room.hostId);
+      if (host?.socketId) {
+        io.to(host.socketId).emit('game:peer-action', {
+          userId: playerId,
+          type: data.type,
+          amount: data.amount,
+        });
+      }
     });
 
-    /** Resultado final de la partida (host). */
-    socket.on('game:result', (data: { roomId: string; places: { userId: string; place: number; pts: number }[] }) => {
-      const room = gameManager.getRoom(data?.roomId);
-      if (!room || room.hostId !== user.id) return;
-      io.to(data.roomId).emit('game:result', { places: data.places, type: room.type });
+    socket.on('game:restart', async (data: { roomId?: string }) => {
+      const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
+      if (!room || room.hostId !== playerId) return;
+      socket.to(room.id).emit('game:restart');
     });
 
-    socket.on('game:restart', (data: { roomId: string }) => {
-      const room = gameManager.getRoom(data?.roomId);
-      if (!room || room.hostId !== user.id) return;
-      socket.to(data.roomId).emit('game:restart');
-    });
-
-    socket.on('disconnect', () => {
-      const room = gameManager.getPlayerRoom(user.id);
+    socket.on('disconnect', async () => {
+      const room = await gameManager.getRoomByPlayer(playerId);
       if (!room) return;
-
-      if (!room.started) {
-        const left = gameManager.leaveRoom(room.id, user.id);
-        if (left) broadcastRoom(io, room.id);
-        else io.to(room.id).emit('room:closed');
-        return;
-      }
-
-      // Partida en curso: avisar al host (el asiento pasa a IA)
-      const host = room.players.find(p => p.userId === room.hostId);
-      if (host && host.userId !== user.id) {
-        io.to(host.socketId).emit('game:peer-left', { userId: user.id });
-      }
-      // Actualizar socketId a vacío (ya no hay conexión)
-      const p = room.players.find(pl => pl.userId === user.id);
-      if (p) p.socketId = '';
+      await handleDeparture(room.id, playerId);
     });
   });
 }

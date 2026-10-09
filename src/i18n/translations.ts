@@ -23,6 +23,7 @@ import esGame from './locales/es/game';
 import esSettings from './locales/es/settings';
 import esOnboarding from './locales/es/onboarding';
 import esTutorial from './locales/es/tutorial';
+import esOnline from './locales/es/online';
 
 import enCommon from './locales/en/common';
 import enDifficulty from './locales/en/difficulty';
@@ -36,6 +37,7 @@ import enGame from './locales/en/game';
 import enSettings from './locales/en/settings';
 import enOnboarding from './locales/en/onboarding';
 import enTutorial from './locales/en/tutorial';
+import enOnline from './locales/en/online';
 
 const es = {
   common: esCommon,
@@ -50,6 +52,7 @@ const es = {
   settings: esSettings,
   onboarding: esOnboarding,
   tutorial: esTutorial,
+  online: esOnline,
 };
 
 export type Dict = typeof es;
@@ -67,6 +70,7 @@ const en: Dict = {
   settings: enSettings,
   onboarding: enOnboarding,
   tutorial: enTutorial,
+  online: enOnline,
 };
 
 export const messages = { es, en } as const;

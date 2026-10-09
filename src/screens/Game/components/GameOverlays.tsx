@@ -9,17 +9,20 @@ const GameOverlays: React.FC<{
   onTutorial: () => void;
   onHandsGuide: () => void;
   onLeave: () => void;
+  context?: 'game' | 'online';
 }> = ({
   settingsOpen,
   onCloseSettings,
   onTutorial,
   onHandsGuide,
   onLeave,
+  context = 'game',
 }) => {
   return (
     <AnimatePresence>
       {settingsOpen && (
         <GameSettings
+          context={context}
           onClose={onCloseSettings}
           onTutorial={onTutorial}
           onHandsGuide={onHandsGuide}

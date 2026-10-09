@@ -1,28 +1,27 @@
-// PARKED (Fase 3 — ver ROADMAP.md): pantalla online conservada, sin ruta activa.
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TopBar from '../components/TopBar';
 import Button from '../components/Button';
+import PageHeader from '../components/PageHeader';
 import { AnimatePresence } from 'framer-motion';
-import RankBadge from '../components/RankBadge';
 import { FadeIn } from '../components/Animated';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useUserStore } from '../store/userStore';
+import { useI18n } from '../i18n';
 import { connectSocket, emitAck } from '../net/socket';
+import { getPlayerName, setPlayerName, getActiveOnlineSession } from '../net/onlineSession';
+import { randomName } from '../utils/randomName';
+import { onlineError } from '../utils/onlineError';
 
-type OnlineMode = 'main' | 'create' | 'join' | 'join-typing' | 'busy';
+type OnlineMode = 'main' | 'join';
 
 const CodeDigit: React.FC<{ digit?: string; focused?: boolean }> = ({ digit, focused = false }) => {
   const hasDigit = digit !== undefined && digit !== '';
   return (
     <div
       className={[
-        'flex h-16 w-14 items-center justify-center rounded-lg bg-ink sm:h-20 sm:w-16',
-        'font-display font-bold text-[1.625rem] leading-none sm:text-[2rem]',
+        'flex h-16 w-14 items-center justify-center rounded-[14px] bg-ink-700 sm:h-20 sm:w-16',
+        'font-display font-bold text-fs-600 leading-none sm:text-fs-700',
         'transition-[border-color] duration-200',
-        focused
-          ? 'border-2 border-bone'
-          : 'border-[1.5px] border-bone/20',
+        focused ? 'border-2 border-bone' : 'border-[1.5px] border-bone/20',
         hasDigit ? 'text-bone' : '',
       ].join(' ')}
     >
@@ -31,7 +30,7 @@ const CodeDigit: React.FC<{ digit?: string; focused?: boolean }> = ({ digit, foc
   );
 };
 
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 const KeypadKey: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
   <button
@@ -43,104 +42,82 @@ const KeypadKey: React.FC<{ onClick: () => void; children: React.ReactNode }> = 
   </button>
 );
 
+/** Hub de juego con amigos: crear una partida privada o unirse con un código. */
 const Online: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const user = useUserStore(s => s.user);
+  const { t } = useI18n();
 
   const [mode, setMode] = useState<OnlineMode>('main');
   const [code, setCode] = useState<string[]>(['', '', '', '']);
-  const [createdCode, setCreatedCode] = useState('');
-  const [createdRoomId, setCreatedRoomId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [session] = useState(() => getActiveOnlineSession());
+
+  const ensureName = () => {
+    const name = getPlayerName() ?? randomName();
+    setPlayerName(name);
+    return name;
+  };
 
   const handleCodeInput = (val: string) => {
     const next = [...code];
     if (val === '') {
-      // backspace
       for (let i = 3; i >= 0; i--) {
         if (next[i] !== '') {
           next[i] = '';
           break;
         }
       }
-    } else if (/^[A-Za-z0-9]$/.test(val)) {
-      const idx = next.findIndex(d => d === '');
-      if (idx >= 0) next[idx] = val.toUpperCase();
+    } else if (/^\d$/.test(val)) {
+      const idx = next.findIndex((d) => d === '');
+      if (idx >= 0) next[idx] = val;
     }
     setCode(next);
   };
 
-  const codeFilled = code.every(d => d !== '');
+  const codeFilled = code.every((d) => d !== '');
 
-  const withSocket = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+  const createPrivate = async () => {
     setBusy(true);
     setError(null);
     try {
       await connectSocket();
-      return await fn();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo conectar al servidor');
-      return null;
+      const res = await emitAck<{ ok: boolean; roomId?: string; error?: string }>('room:create', {
+        name: ensureName(),
+      });
+      if (!res?.ok || !res.roomId) {
+        setError(onlineError(res?.error));
+        return;
+      }
+      navigate(`/lobby/${res.roomId}`);
+    } catch {
+      setError(t('online.serverError'));
     } finally {
       setBusy(false);
     }
   };
 
-  const findPublic = async () => {
-    const res = await withSocket(() =>
-      emitAck<{ ok: boolean; roomId?: string; error?: string }>('room:quick')
-    );
-    if (!res) return;
-    if (!res.ok || !res.roomId) {
-      setError(res?.error ?? 'No se pudo unir a una mesa');
-      return;
-    }
-    navigate(`/lobby/${res.roomId}`);
+  const joinWithCode = () => {
+    if (!codeFilled) return;
+    ensureName();
+    navigate(`/join/${code.join('')}`);
   };
 
-  const createPrivate = async () => {
-    const res = await withSocket(() =>
-      emitAck<{ ok: boolean; roomId?: string; code?: string; error?: string }>('room:create', {
-        type: 'private',
-      })
-    );
-    if (!res) return;
-    if (!res.ok || !res.roomId) {
-      setError(res?.error ?? 'No se pudo crear la sala');
-      return;
-    }
-    setCreatedCode(res.code ?? '');
-    setCreatedRoomId(res.roomId);
-    setMode('create');
-  };
-
-  const goToCreatedLobby = () => {
-    if (createdRoomId) navigate(`/lobby/${createdRoomId}`);
-  };
-
-  const joinWithCode = async () => {
-    const joined = code.join('');
-    const res = await withSocket(() =>
-      emitAck<{ ok: boolean; roomId?: string; error?: string }>('room:join', { code: joined })
-    );
-    if (!res) return;
-    if (!res.ok || !res.roomId) {
-      setError(res?.error ?? 'Código inválido o sala llena');
-      return;
-    }
-    navigate(`/lobby/${res.roomId}`);
-  };
-
-  const resetToJoin = () => { setMode('join-typing'); setCode(['', '', '', '']); setError(null); };
+  const errorLine = error && (
+    <div className="max-w-[320px] text-center font-body text-fs-100 tracking-[0.04em] text-danger opacity-70">
+      {error}
+    </div>
+  );
 
   const keypad = (
     <div className="flex flex-col items-center gap-2">
-      {[0, 1, 2].map(row => (
+      {[0, 1, 2].map((row) => (
         <div key={row} className="flex gap-2">
-          {KEYS.slice(row * 3, row * 3 + 3).map(k => (
-            <KeypadKey key={k} onClick={() => handleCodeInput(k)}>{k}</KeypadKey>
+          {KEYS.slice(row * 3, row * 3 + 3).map((k) => (
+            <KeypadKey key={k} onClick={() => handleCodeInput(k)}>
+              {k}
+            </KeypadKey>
           ))}
         </div>
       ))}
@@ -151,202 +128,128 @@ const Online: React.FC = () => {
     </div>
   );
 
-  const errorLine = error && (
-    <div className="flex max-w-[320px] flex-col text-center font-body text-fs-100 tracking-[0.04em] text-danger opacity-70">
-      <div>{error}</div>
-      <div className="opacity-70">¿Está el servidor en marcha? (npm run dev en /server)</div>
+  const hubTitle = (cls: string) => (
+    <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${cls}`}>
+      {t('online.hubTitleRest')} <em className="font-light italic tracking-normal">{t('online.hubTitleEm')}</em>
     </div>
   );
 
-  const brandBar = (
-    <div className="flex shrink-0 items-center justify-between border-b border-bone/10 bg-ink px-[1.125rem] py-[0.875rem] font-display font-bold tracking-[0.02em]">
-      <div className="font-display font-bold text-fs-300 uppercase tracking-[0.08em]">Just <em className="font-light italic tracking-normal">Poker</em></div>
+  const joinTitle = (cls: string) => (
+    <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${cls}`}>
+      {t('online.joinTitleRest')} <em className="font-light italic tracking-normal">{t('online.joinTitleEm')}</em>
     </div>
   );
 
-  // ------- MOBILE -------
+  const actionsBox = (extra: string) => (
+    <div className={`flex w-full flex-col items-center gap-3 rounded-[14px] bg-ink-900 text-center ${extra}`}>
+      {session && (
+        <>
+          <Button variant="primary" block onClick={() => navigate(`/game/online-${session.roomId}`)}>
+            {t('online.resume')}
+          </Button>
+          <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">
+            {t('online.roomContext', { code: session.code, count: session.seats.length })}
+          </div>
+        </>
+      )}
+      <Button variant={session ? 'outline' : 'primary'} block disabled={busy} onClick={createPrivate}>
+        {busy ? t('online.creating') : t('online.create')}
+      </Button>
+      <Button variant="outline" block onClick={() => { setError(null); setMode('join'); }}>
+        {t('online.join')}
+      </Button>
+    </div>
+  );
+
   if (isMobile) {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        {mode !== 'main' && brandBar}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] pb-7 pt-8">
+          <PageHeader
+            onBack={() => navigate('/')}
+            backLabel={t('common.backToMenu')}
+            className="flex w-full items-start justify-between gap-4"
+            wordmarkClassName="text-fs-600"
+          />
+          <AnimatePresence mode="wait">
+            {mode === 'main' && (
+              <FadeIn key="main" className="flex min-h-0 flex-1 flex-col items-center gap-5 [justify-content:safe_center] py-6">
+                {hubTitle('text-center text-fs-700')}
+                <div className="mx-auto max-w-[280px] text-center font-body text-fs-200 leading-[1.45] opacity-70">
+                  {t('online.hubHint')}
+                </div>
+                {actionsBox('p-7')}
+                {errorLine}
+              </FadeIn>
+            )}
 
-        <AnimatePresence mode="wait">
-        {mode === 'main' && (
-          <FadeIn key="main" className="flex min-h-0 flex-1 flex-col [justify-content:safe_center] gap-5 overflow-y-auto px-5 py-[1.875rem]">
-            <div className="mb-2.5 text-center font-display font-bold text-fs-400 uppercase tracking-[0.08em]">
-              Just <em className="font-light italic tracking-normal">Poker</em>
-            </div>
-            <div className="text-center font-display font-bold leading-none text-[1.5rem]">Jugar en línea</div>
-
-            <div className="flex flex-col items-center gap-3 rounded-[14px] bg-bone p-7 text-center text-ink">
-              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">Pública</div>
-              <div className="font-display font-bold leading-none text-[1.125rem]">Unirse a una mesa aleatoria</div>
-              <RankBadge points={user.points} />
-              <Button variant="primary" block disabled={busy} onClick={findPublic}>
-                {busy ? 'Conectando…' : 'Buscar partida'}
-              </Button>
-            </div>
-
-            <div className="flex flex-col items-center gap-3 rounded-[14px] border-[1.5px] border-bone bg-ink p-7 text-center">
-              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Privada</div>
-              <div className="font-display font-bold leading-none text-[1.125rem]">Partida privada</div>
-              <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 max-w-[260px]">
-                Crea una sala con código o únete a una existente.
-              </div>
-              <Button variant="outline" block disabled={busy} onClick={createPrivate}>
-                Crear partida
-              </Button>
-              <Button variant="outline" block onClick={resetToJoin}>
-                Unirse a partida
-              </Button>
-            </div>
-
-            {errorLine}
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>← Menú</Button>
-          </FadeIn>
-        )}
-
-        {mode === 'create' && (
-          <FadeIn key="create" className="flex min-h-0 flex-1 flex-col items-center [justify-content:safe_center] gap-5 overflow-y-auto px-5 py-[1.875rem]">
-            <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de sala</div>
-            <div className="flex gap-3">
-              {createdCode.split('').map((d, i) => <CodeDigit key={i} digit={d} />)}
-            </div>
-            <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 max-w-[280px] text-center">
-              Comparte este código. Las privadas no cuentan para el ranking.
-            </div>
-            <div className="flex w-full flex-col gap-2">
-              <Button variant="primary" block onClick={goToCreatedLobby}>
-                Ir al lobby
-              </Button>
-              <Button variant="outline" block onClick={() => navigator.clipboard.writeText(createdCode)}>
-                Copiar código
-              </Button>
-              <Button variant="ghost" block onClick={() => setMode('main')}>Cancelar</Button>
-            </div>
-          </FadeIn>
-        )}
-
-        {mode === 'join-typing' && (
-          <FadeIn key="join-typing" className="flex min-h-0 flex-1 flex-col items-center [justify-content:safe_center] gap-5 overflow-y-auto px-5 py-[1.875rem]">
-            <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de 4 dígitos</div>
-            <div className="flex gap-3">
-              {code.map((d, i) => (
-                <CodeDigit key={i} digit={d || undefined} focused={d === ''} />
-              ))}
-            </div>
-            {keypad}
-            {errorLine}
-            <div className="flex w-full flex-col gap-2">
-              <Button variant="primary" block disabled={!codeFilled || busy} onClick={joinWithCode}>
-                {busy ? 'Uniéndose…' : 'Unirse'}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setMode('main')}>Cancelar</Button>
-            </div>
-          </FadeIn>
-        )}
-        </AnimatePresence>
+            {mode === 'join' && (
+              <FadeIn key="join" className="flex min-h-0 flex-1 flex-col items-center gap-5 [justify-content:safe_center] py-6">
+                {joinTitle('text-center text-fs-700')}
+                <div className="max-w-[280px] text-center font-body text-fs-200 leading-[1.45] opacity-70">{t('online.joinHint')}</div>
+                <div className="flex gap-3">
+                  {code.map((d, i) => (
+                    <CodeDigit key={i} digit={d || undefined} focused={d === ''} />
+                  ))}
+                </div>
+                {keypad}
+                <div className="flex w-full flex-col gap-2">
+                  <Button variant="primary" block disabled={!codeFilled} onClick={joinWithCode}>
+                    {t('online.joinAction')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setMode('main')}>{t('online.cancel')}</Button>
+                </div>
+              </FadeIn>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     );
   }
 
-  // ------- DESKTOP -------
   return (
     <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-      <TopBar
-        right={
-          <Button size="sm" variant="ghost" onClick={() => navigate('/')}>← Menú</Button>
-        }
-      />
+      <PageHeader onBack={() => navigate('/')} backLabel={t('common.backToMenu')} />
 
-      <AnimatePresence mode="wait">
-      {mode === 'main' && (
-        <FadeIn key="main" className="flex flex-1 items-stretch justify-center gap-12 px-[3.75rem] py-10">
-          <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] bg-bone p-12 text-ink">
-            <div className="flex flex-col gap-4">
-              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">Pública</div>
-              <div className="font-display font-bold leading-none text-[2.25rem]">Unirse a una mesa aleatoria</div>
-              <div className="self-start">
-                <RankBadge points={user.points} />
+      <div className="mx-auto flex min-h-0 w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[3.5rem] pt-4 lg:px-20">
+        <AnimatePresence mode="wait">
+          {mode === 'main' && (
+            <FadeIn key="main" className="flex w-full items-stretch justify-center gap-8 lg:gap-12">
+              <div className="flex min-h-0 flex-[48] flex-col justify-center gap-4">
+                {hubTitle('text-fs-800')}
+                <p className="max-w-[440px] font-body leading-[1.45] opacity-70">{t('online.hubHint')}</p>
               </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="font-body text-fs-100 tracking-[0.04em] text-ink opacity-70">
-                Las partidas públicas cuentan para el ranking global.
+              <div className="flex flex-[52] flex-col justify-center">
+                {actionsBox('max-w-[420px] p-12')}
+                {errorLine}
               </div>
-              <Button variant="primary" block disabled={busy} onClick={findPublic}>
-                {busy ? 'Conectando…' : 'Buscar partida'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex max-w-[420px] flex-1 flex-col justify-between gap-5 rounded-[14px] border-[1.5px] border-bone bg-ink p-12">
-            <div className="flex flex-col gap-4">
-              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Privada</div>
-              <div className="font-display font-bold leading-none text-[2.25rem]">Partida privada</div>
-              <div className="font-body leading-[1.45] max-w-[320px] opacity-80">
-                Crea una sala con un código de 4 dígitos o únete a una existente.
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="font-body text-fs-100 tracking-[0.04em] opacity-70">Las partidas privadas no cuentan para el ranking.</div>
-              <Button variant="outline" block disabled={busy} onClick={createPrivate}>
-                Crear partida
-              </Button>
-              <Button variant="outline" block onClick={resetToJoin}>
-                Unirse a partida
-              </Button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="absolute bottom-10 left-0 right-0 flex justify-center">
-              {errorLine}
-            </div>
+            </FadeIn>
           )}
-        </FadeIn>
-      )}
 
-      {mode === 'create' && (
-        <FadeIn key="create" className="flex flex-1 flex-col items-center justify-center gap-6 px-[3.75rem] py-10">
-          <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Tu código de sala</div>
-          <div className="mt-2 flex items-center gap-4">
-            {createdCode.split('').map((d, i) => <CodeDigit key={i} digit={d} />)}
-          </div>
-          <div className="font-body text-fs-100 tracking-[0.04em] opacity-70 max-w-[360px] text-center">
-            Comparte este código con tus amigos. Las privadas no cuentan para el ranking.
-          </div>
-          <div className="mt-2 flex gap-4">
-            <Button variant="ghost" onClick={() => setMode('main')}>Cancelar</Button>
-            <Button variant="outline" onClick={() => navigator.clipboard.writeText(createdCode)}>
-              Copiar código
-            </Button>
-            <Button variant="primary" onClick={goToCreatedLobby}>
-              Ir al lobby
-            </Button>
-          </div>
-        </FadeIn>
-      )}
-
-      {mode === 'join-typing' && (
-        <FadeIn key="join-typing" className="flex flex-1 flex-col items-center justify-center gap-6 px-[3.75rem] py-10">
-          <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">Código de 4 dígitos</div>
-          <div className="flex gap-4">
-            {code.map((d, i) => (
-              <CodeDigit key={i} digit={d || undefined} focused={d === ''} />
-            ))}
-          </div>
-          {keypad}
-          {errorLine}
-          <div className="mt-2 flex gap-4">
-            <Button variant="ghost" onClick={() => setMode('main')}>Cancelar</Button>
-            <Button variant="primary" disabled={!codeFilled || busy} onClick={joinWithCode}>
-              {busy ? 'Uniéndose…' : 'Unirse'}
-            </Button>
-          </div>
-        </FadeIn>
-      )}
-      </AnimatePresence>
+          {mode === 'join' && (
+            <FadeIn key="join" className="flex w-full items-stretch justify-center gap-8 lg:gap-12">
+              <div className="flex min-h-0 flex-[48] flex-col justify-center gap-4">
+                {joinTitle('text-fs-700')}
+                <p className="max-w-[440px] font-body leading-[1.45] opacity-70">{t('online.joinHint')}</p>
+              </div>
+              <div className="flex flex-[52] flex-col items-center justify-center gap-6">
+                <div className="flex gap-4">
+                  {code.map((d, i) => (
+                    <CodeDigit key={i} digit={d || undefined} focused={d === ''} />
+                  ))}
+                </div>
+                {keypad}
+                <div className="mt-2 flex gap-4">
+                  <Button variant="ghost" onClick={() => setMode('main')}>{t('online.cancel')}</Button>
+                  <Button variant="primary" disabled={!codeFilled} onClick={joinWithCode}>
+                    {t('online.joinAction')}
+                  </Button>
+                </div>
+              </div>
+            </FadeIn>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

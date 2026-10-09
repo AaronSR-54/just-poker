@@ -32,6 +32,7 @@ const game = {
   call: 'Igualar',
   callAmount: 'Igualar ({amount})',
   newHand: 'Nueva Mano',
+  waitingHost: 'Esperando al anfitrión…',
   newGame: 'Nueva partida',
   selectDifficulty: 'Seleccionar dificultad',
   backHome: 'Volver a inicio',

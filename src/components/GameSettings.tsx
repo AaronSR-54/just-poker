@@ -13,7 +13,7 @@ interface GameSettingsProps {
   onTutorial?: () => void;
   onHandsGuide?: () => void;
   onLeave?: () => void;
-  context?: 'game' | 'home';
+  context?: 'game' | 'home' | 'online';
 }
 
 /** Fila de acción con etiqueta y flecha. */
@@ -36,7 +36,8 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHandsGuide, onLeave, context = 'game' }) => {
   const { t, locale, setLocale } = useI18n();
-  const inGame = context === 'game';
+  const inGame = context !== 'home';
+  const showSpeed = context !== 'online';
   const speedLabel = (speed: GameSpeed) => `×${new Intl.NumberFormat(locale).format(speed)}`;
   const musicVolume = useSettingsStore((s) => s.musicVolume);
   const sfxVolume = useSettingsStore((s) => s.sfxVolume);
@@ -96,27 +97,29 @@ const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHand
           <SettingSlider label={t('settings.music')} value={musicVolume} onChange={setMusicVolume} />
           <SettingSlider label={t('settings.sfx')} value={sfxVolume} onChange={handleSfxVolume} />
           {crtSupported && <SettingSlider label={t('settings.crt')} value={crtAmount} onChange={setCrtAmount} />}
-          <div className="flex flex-col gap-2">
-            <span className="font-display font-bold text-fs-200 text-bone">{t('settings.speed')}</span>
-            <div className="grid grid-cols-4 gap-2">
-              {GAME_SPEEDS.map((speed: GameSpeed) => {
-                const active = speed === gameSpeed;
-                return (
-                  <button
-                    key={speed}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setGameSpeed(speed)}
-                    className={`cursor-pointer rounded-full border-[1.5px] py-2 font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-                      active ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone'
-                    }`}
-                  >
-                    {speedLabel(speed)}
-                  </button>
-                );
-              })}
+          {showSpeed && (
+            <div className="flex flex-col gap-2">
+              <span className="font-display font-bold text-fs-200 text-bone">{t('settings.speed')}</span>
+              <div className="grid grid-cols-4 gap-2">
+                {GAME_SPEEDS.map((speed: GameSpeed) => {
+                  const active = speed === gameSpeed;
+                  return (
+                    <button
+                      key={speed}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setGameSpeed(speed)}
+                      className={`cursor-pointer rounded-full border-[1.5px] py-2 font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
+                        active ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone'
+                      }`}
+                    >
+                      {speedLabel(speed)}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </Section>
 
         <Section title={t('settings.language')}>
