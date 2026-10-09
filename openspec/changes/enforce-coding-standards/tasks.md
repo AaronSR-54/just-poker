@@ -7,8 +7,8 @@
 
 ## 2. Norma de reutilización en `AGENTS.md`
 
-- [ ] 2.1 Añadir la sección «Reutilización y buenas prácticas» con reglas accionables (reutilizar componentes de `src/components/`; extraer un componente React cuando un patrón se repite; no duplicar markup, lógica ni helpers; usar tokens de diseño; usar `t(...)` para texto visible) y una checklist de revisión de change. Verificar que la checklist cubre las cinco categorías de la auditoría.
-- [ ] 2.2 Reconciliar la deriva de `AGENTS.md` (p. ej. `PokerCard.back`, `ProgressDots`) con los componentes reales: ajustar el texto a lo existente o marcarlo explícitamente como pendiente con referencia a `docs/code-reuse-audit.md`. Verificar que cada componente nombrado en la sección existe en `src/components/`.
+- [x] 2.1 Añadir la sección «Reutilización y buenas prácticas» con reglas accionables (reutilizar componentes de `src/components/`; extraer un componente React cuando un patrón se repite; no duplicar markup, lógica ni helpers; usar tokens de diseño; usar `t(...)` para texto visible) y una checklist de revisión de change. Verificar que la checklist cubre las cinco categorías de la auditoría.
+- [x] 2.2 Reconciliar la deriva de `AGENTS.md` (p. ej. `PokerCard.back`, `ProgressDots`) con los componentes reales: ajustar el texto a lo existente o marcarlo explícitamente como pendiente con referencia a `docs/code-reuse-audit.md`. Verificar que cada componente nombrado en la sección existe en `src/components/`.
 
 ## 3. Aplicación de la norma vía OpenSpec
 

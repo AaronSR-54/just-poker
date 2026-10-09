@@ -8,6 +8,28 @@ La maquetación se hace **siempre** con utilidades nativas de Tailwind, aplicada
 - **Estilos coherentes:** reutiliza las mismas recetas de utilidades en toda la app (mismas fuentes, tamaños, espaciados y colores).
 - Si un patrón se repite mucho, extrae un **componente React** en `src/components/` con utilidades nativas, no una clase CSS.
 
+## Reutilización y buenas prácticas
+
+Norma obligatoria para **todo change** (OpenSpec SDD). Antes de escribir código nuevo, comprueba si ya existe un componente, helper o receta que puedas reutilizar. La deuda existente y las remediaciones planificadas están en `docs/code-reuse-audit.md`.
+
+### Reglas
+
+1. **Reutiliza componentes:** usa lo que ya existe en `src/components/` (ver tabla de componentes) en lugar de recrear botones, badges, cartas, avatares, slots u overlays.
+2. **Extrae, no copies:** si un patrón de JSX o de lógica se repite (o ya se repite en el repo), extrae un **componente React** en `src/components/` o un **helper** en `src/utils/`, y sustituye **todas** las copias.
+3. **Sin duplicación de lógica:** cada función, constante o cálculo tiene **una sola definición**. Si dos módulos necesitan lo mismo, muévelo a un módulo compartido e impórtalo.
+4. **Tokens y utilidades nativas:** colores, tamaños, radios y motion con tokens (`bone`, `ink`, `danger`, `text-fs-*`, `rounded-*`…). Nada de `rgba(...)`, `#fff` ni `text-[…]` en px.
+5. **i18n siempre:** ningún texto visible hardcodeado; usa `t(...)`, también en `aria-label`, `title` y `placeholder`.
+
+### Checklist de revisión de change
+
+Antes de dar un change por terminado, verifica:
+
+- [ ] ¿He reutilizado los componentes de `src/components/` en lugar de recrearlos? _(primitivas reinventadas)_
+- [ ] ¿He extraído el markup y la lógica que se repetían? _(duplicación de JSX/lógica)_
+- [ ] ¿Hay funciones, constantes o helpers definidos más de una vez? _(helpers duplicados)_
+- [ ] ¿Uso tokens en vez de colores y tamaños crudos? _(violaciones de tokens)_
+- [ ] ¿Todo el texto visible pasa por `t(...)`? _(strings hardcodeados)_
+
 ## Stack de estilos
 
 Tailwind CSS v4 (configuración CSS-first, sin `tailwind.config.js`).
@@ -91,9 +113,9 @@ Prefiere estos componentes antes de replicar utilidades:
 |------------|-------------|
 | `Button` | `variant` (`outline`/`primary`/`ghost`), `size` (`sm`/`''`/`lg`), `block`, `as` (p. ej. `as="a"` para enlaces) |
 | `Avatar` | `name`, `size` (24–120), `ring`, `muted` |
-| `PokerCard` | `rank`, `suit`, `size` (`xs`–`xxl`), `back`, `dimmed` |
+| `PokerCard` | `rank`, `suit`, `size` (`xs`–`xxl`), `dimmed` |
 | `Badge` | `variant` (`neutral`/`warning`/`info`/`turn`) |
-| `RankBadge`, `RankBlock`, `ProgressDots`, `TopBar` | ver `src/components/` |
+| `RankBadge`, `RankBlock`, `TopBar`, `Wordmark`, `ConfirmDialog`, `SettingsButton` | ver `src/components/` |
 
 ## Layout
 
