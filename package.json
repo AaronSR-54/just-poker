@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/index.ts",
+    "dev:all": "concurrently -n web,online \"npm:dev\" \"npm:dev:server\"",
     "build": "tsc -b && vite build",
     "android": "bash scripts/build-android.sh",
     "android:debug": "bash scripts/build-android.sh debug",
@@ -43,6 +44,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.6",
     "oxlint": "^1.71.0",
     "playwright": "^1.64.0",
     "tailwindcss": "^4.3.3",
