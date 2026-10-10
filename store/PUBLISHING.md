@@ -164,6 +164,28 @@ npm run android
 3. **Producción**: al cumplir los 14 días, *Solicitar acceso a producción* →
    cuestionario → revisión (hasta ~7 días).
 
+### App Links (huella SHA-256)
+
+Para que los enlaces de invitación (`https://just-poker-delta.vercel.app/online?code=…`)
+abran la app instalada, la asociación de dominio en `public/.well-known/assetlinks.json`
+debe contener la huella SHA-256 del certificado con el que **Google firma** la app en
+Play (la de *Play App Signing*, no la *upload key*):
+
+1. Play Console → **Test and release → App integrity → Play app signing**.
+2. Copia el **SHA-256 certificate fingerprint** (añade también el de la *upload key*
+   si pruebas con builds locales del repo).
+3. Sustituye/añade el valor en `sha256_cert_fingerprints` de
+   `public/.well-known/assetlinks.json` y despliega (Vercel).
+4. Verifica en un dispositivo: `adb shell pm get-app-links com.justpoker.app`
+   (estado `verified`) y abre un enlace de invitación sin el diálogo app/navegador.
+
+La huella del keystore de release del repo (para pruebas pre-Play) se obtiene con:
+
+```bash
+keytool -list -v -keystore android/keystore/just-poker-release.jks \
+  -storepass justpoker -alias justpoker
+```
+
 ## 7. Después de publicar
 
 - **Perfil de desarrollador** (`Developer account → Developer profile`): requiere

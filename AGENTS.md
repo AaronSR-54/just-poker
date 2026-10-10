@@ -251,6 +251,7 @@ npx capacitor-assets generate --android \
 - **Splash con el fondo del icono:** `windowSplashScreenBackground` en `android/app/src/main/res/values/styles.xml` usa `@color/jp_background` (`#22201F`, definido en `values/colors.xml`). El `windowBackground` del tema también es ese color.
 - Orientación vertical bloqueada en `AndroidManifest.xml`.
 - Botón atrás de Android conectado al router: `src/hooks/useAndroidBackButton.ts`.
+- **App Links:** los enlaces de invitación (`https://just-poker-delta.vercel.app/online?code=…` y el heredado `/join`) abren la app instalada. El `intent-filter` con `autoVerify` está en `AndroidManifest.xml`; la asociación de dominio se sirve en `public/.well-known/assetlinks.json`; el enlace entrante se resuelve con `src/hooks/useDeepLinks.ts` + `src/utils/deepLink.ts`. Sin la app, el enlace abre la web (fallback). La verificación depende de la huella SHA-256 de firma (ver `store/PUBLISHING.md`).
 
 ### Web (Vercel)
 
