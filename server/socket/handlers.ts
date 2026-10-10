@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Server, Socket } from 'socket.io';
-import { GameManager, MAX_PLAYERS, MIN_PLAYERS } from '../game/GameManager';
-import { MAX_NAME_LENGTH } from '../game/types';
-import type { Room, RoomPlayer } from '../game/types';
+import { GameManager, MAX_PLAYERS, MIN_PLAYERS } from '../game/GameManager.js';
+import { MAX_NAME_LENGTH } from '../game/types.js';
+import type { Room, RoomPlayer } from '../game/types.js';
 
 type Ack = (res: unknown) => void;
 

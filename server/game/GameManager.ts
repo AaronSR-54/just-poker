@@ -1,5 +1,5 @@
-import type { RoomRepository } from './roomRepository';
-import type { Room, RoomPlayer, SeatInfo } from './types';
+import type { RoomRepository } from './roomRepository.js';
+import type { Room, RoomPlayer, SeatInfo } from './types.js';
 
 export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;

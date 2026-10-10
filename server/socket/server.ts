@@ -1,9 +1,9 @@
 import { createServer, type Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { createRedisClient, roomRepositoryFrom } from '../game/roomRepository';
-import { GameManager } from '../game/GameManager';
-import { setupSocketHandlers } from './handlers';
+import { createRedisClient, roomRepositoryFrom } from '../game/roomRepository.js';
+import { GameManager } from '../game/GameManager.js';
+import { setupSocketHandlers } from './handlers.js';
 
 /**
  * Crea el servidor HTTP con socket.io y sus handlers.

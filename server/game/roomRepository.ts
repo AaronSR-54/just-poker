@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import type { Room } from './types';
+import type { Room } from './types.js';
 
 /**
  * Almacén del registro de salas. En producción se respalda con Redis para que
