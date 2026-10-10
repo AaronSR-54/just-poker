@@ -9,9 +9,12 @@ import type { PokerState } from '../../../game/poker';
 const GameOverOverlay: React.FC<{
   state: PokerState;
   onRestart: () => void;
-  onSelectDifficulty: () => void;
+  onSelectDifficulty?: () => void;
   onHome: () => void;
-}> = ({ state, onRestart, onSelectDifficulty, onHome }) => {
+  restartLabel?: string;
+  restartDisabled?: boolean;
+  waitingLabel?: string;
+}> = ({ state, onRestart, onSelectDifficulty, onHome, restartLabel, restartDisabled = false, waitingLabel }) => {
   const { t } = useI18n();
   const standings = [...state.players]
     .sort((a, b) => {
@@ -73,11 +76,17 @@ const GameOverOverlay: React.FC<{
           className="flex w-full flex-col gap-2 border-t border-bone/[0.18] pt-5"
         >
           <motion.div variants={fadeUp}>
-            <Button variant="primary" block onClick={onRestart}>{t('game.newGame')}</Button>
+            {restartDisabled ? (
+              <span className="font-body text-fs-100 tracking-[0.04em] opacity-70">{waitingLabel ?? t('game.waitingHost')}</span>
+            ) : (
+              <Button variant="primary" block onClick={onRestart}>{restartLabel ?? t('game.newGame')}</Button>
+            )}
           </motion.div>
-          <motion.div variants={fadeUp}>
-            <Button variant="outline" block onClick={onSelectDifficulty}>{t('game.selectDifficulty')}</Button>
-          </motion.div>
+          {onSelectDifficulty && (
+            <motion.div variants={fadeUp}>
+              <Button variant="outline" block onClick={onSelectDifficulty}>{t('game.selectDifficulty')}</Button>
+            </motion.div>
+          )}
           <motion.div variants={fadeUp}>
             <Button variant="ghost" size="sm" block onClick={onHome}>{t('game.backHome')}</Button>
           </motion.div>

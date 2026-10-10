@@ -34,6 +34,7 @@ const game = {
   newHand: 'Nueva Mano',
   waitingHost: 'Esperando al anfitrión…',
   newGame: 'Nueva partida',
+  rematch: 'Revancha',
   selectDifficulty: 'Seleccionar dificultad',
   backHome: 'Volver a inicio',
   overEyebrow: 'Fin de la partida · {n} manos',

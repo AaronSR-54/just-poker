@@ -4,9 +4,10 @@ import { getLastPlayed, clearLastPlayed } from '../utils/lastPlayed';
 /**
  * Ventana durante la que una sesión online se considera reanudable. Pasada
  * esta ventana desde la última actividad, la partida se da por terminada y la
- * sesión se descarta (evita ofrecer salas muertas).
+ * sesión se descarta (evita ofrecer salas muertas). Alineada con la ventana de
+ * expulsión por inactividad del servidor: el asiento ya habrá caducado.
  */
-export const ONLINE_RESUME_WINDOW_MS = 30 * 60 * 1000;
+export const ONLINE_RESUME_WINDOW_MS = 120 * 1000;
 
 /** Asiento ocupado por un jugador real. */
 export interface OnlineSeat {
@@ -132,6 +133,8 @@ export function setPlayerName(name: string): void {
 export interface LobbyPlayer {
   userId: string;
   username: string;
+  /** El jugador dejó la sala y conserva su asiento en la ventana de gracia. */
+  absent?: boolean;
 }
 
 export interface RoomState {

@@ -97,6 +97,40 @@ export class PokerGame extends PokerGameState {
     this.streetPending = false;
   }
 
+  /**
+   * Elimina definitivamente a un asiento (p. ej. expulsado por inactividad):
+   * lo retira si la mano está en curso y lo deja sin fichas. Si solo queda un
+   * jugador con fichas, la partida termina a su favor.
+   */
+  eliminate(playerIndex: number): void {
+    const p = this.players[playerIndex];
+    if (!p || p.eliminated) return;
+
+    p.eliminated = true;
+    p.chips = 0;
+    p.folded = true;
+    p.lastAction = 'Eliminado';
+
+    if (this.gameOver) return;
+
+    if (!this.handOver) {
+      const contenders = activeNotFolded(this.players);
+      if (contenders.length <= 1) {
+        this.finishHand(contenders, false);
+        return;
+      }
+      if (this.currentPlayer === playerIndex) this.advance();
+      return;
+    }
+
+    // La mano ya había terminado: basta con declarar el fin si queda uno con fichas.
+    const alive = this.players.filter((q) => !q.eliminated && q.chips > 0);
+    if (alive.length === 1) {
+      this.gameOver = true;
+      this.gameWinner = alive[0].id;
+    }
+  }
+
   // ---------- Helpers de asientos ----------
 
   // ---------- Acciones ----------

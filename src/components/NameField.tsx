@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { MAX_PLAYER_NAME_LENGTH } from '../config/online';
 
 interface NameFieldProps {
   /** Etiqueta del campo, ya traducida. */
@@ -21,7 +22,7 @@ const NameField: React.FC<NameFieldProps> = ({
   value,
   onChange,
   placeholder,
-  maxLength = 24,
+  maxLength = MAX_PLAYER_NAME_LENGTH,
   compact = false,
 }) => {
   const inputId = useId();

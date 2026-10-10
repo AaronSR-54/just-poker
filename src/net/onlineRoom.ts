@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { Socket } from 'socket.io-client';
 import type { Card } from '../types';
 import type { PokerGame, PokerState, PokerSaveData } from '../game/poker';
-import type { OnlineSession, OnlineSeat } from './onlineSession';
+import type { LobbyPlayer, OnlineSession, OnlineSeat } from './onlineSession';
 
 export interface RoomListenerContext {
   sock: Socket;
@@ -11,6 +11,7 @@ export interface RoomListenerContext {
   gameRef: { current: PokerGame | null };
   holeCardsRef: { current: Card[] };
   isHostRef: { current: boolean };
+  absentRef: { current: Set<string> };
   applyRotated: (raw: PokerState, mySeat: number, myCards?: Card[]) => void;
   broadcast: (g: PokerGame, sess: OnlineSession) => void;
   hostApply: (seat: number, type: string, amount?: number) => void;
@@ -23,7 +24,7 @@ export interface RoomListenerContext {
 /** Registra los listeners de una sala online y devuelve el cleanup. */
 export function registerRoomListeners(ctx: RoomListenerContext): () => void {
   const {
-    sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef,
+    sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef, absentRef,
     applyRotated, broadcast, hostApply, hostPush, setState,
     onHostChange, onResume,
   } = ctx;
@@ -56,19 +57,37 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
     broadcast(gameRef.current, sess);
   };
 
-  /** Un rival se desconecta: si tenía el turno, se resuelve sin bloquear. */
+  /** Un rival se desconecta: se retira (fold) si tenía el turno y queda marcado ausente. */
   const onPeerLeft = (data: { userId: string }) => {
     if (!isHostRef.current) return;
+    absentRef.current.add(data.userId);
     const g = gameRef.current;
     if (!g) return;
     const seat = seatsRef.current.find((s) => s.userId === data.userId);
     if (!seat) return;
     const raw = g.getState();
     if (!raw.handOver && raw.currentPlayer === seat.seat) {
-      if (g.canCheck(seat.seat)) g.check(seat.seat);
-      else g.fold(seat.seat);
+      g.fold(seat.seat);
       hostPush();
     }
+  };
+
+  /** El servidor expulsa a un ausente: se elimina su asiento del juego. */
+  const onPeerExpelled = (data: { userId: string }) => {
+    if (!isHostRef.current) return;
+    absentRef.current.delete(data.userId);
+    const g = gameRef.current;
+    if (!g) return;
+    const seat = seatsRef.current.find((s) => s.userId === data.userId);
+    if (!seat) return;
+    g.eliminate(seat.seat);
+    hostPush();
+  };
+
+  /** La sala informa de quién sigue presente: se refresca la ausencia. */
+  const onRoomState = (state: { players: LobbyPlayer[] }) => {
+    if (!isHostRef.current) return;
+    absentRef.current = new Set(state.players.filter((p) => p.absent).map((p) => p.userId));
   };
 
   const onRestart = () => {
@@ -90,6 +109,8 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
   sock.on('game:peer-action', onPeerAction);
   sock.on('game:sync-request', onSyncRequest);
   sock.on('game:peer-left', onPeerLeft);
+  sock.on('game:peer-expelled', onPeerExpelled);
+  sock.on('room:state', onRoomState);
   sock.on('game:restart', onRestart);
   sock.on('room:host', onHost);
   sock.on('game:resume', onResumeEvent);
@@ -100,6 +121,8 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
     sock.off('game:peer-action', onPeerAction);
     sock.off('game:sync-request', onSyncRequest);
     sock.off('game:peer-left', onPeerLeft);
+    sock.off('game:peer-expelled', onPeerExpelled);
+    sock.off('room:state', onRoomState);
     sock.off('game:restart', onRestart);
     sock.off('room:host', onHost);
     sock.off('game:resume', onResumeEvent);

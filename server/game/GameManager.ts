@@ -4,6 +4,10 @@ import type { Room, RoomPlayer, SeatInfo } from './types';
 export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;
 
+/** Alfabeto del código de sala: `A-Z` + `2-9`, sin ambiguos (`O`, `0`, `I`, `1`, `L`). */
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const CODE_LENGTH = 4;
+
 export type JoinResult = { ok: true } | { ok: false; error: string };
 
 /** Reglas de negocio de las salas privadas anónimas. */
@@ -30,7 +34,7 @@ export class GameManager {
   }
 
   async getRoomByCode(code: string): Promise<Room | null> {
-    const roomId = await this.repo.getRoomIdByCode(code);
+    const roomId = await this.repo.getRoomIdByCode(this.normalizeCode(code));
     if (!roomId) return null;
     return this.repo.getRoom(roomId);
   }
@@ -46,6 +50,7 @@ export class GameManager {
     if (existing) {
       existing.socketId = player.socketId;
       existing.username = player.username;
+      delete existing.absentSince;
       await this.repo.updateRoom(room);
       await this.repo.setPlayerRoom(player.userId, room.id);
       return { ok: true };
@@ -112,6 +117,7 @@ export class GameManager {
     const player = room.players.find((p) => p.userId === playerId);
     if (!player) return;
     player.socketId = '';
+    player.absentSince = Date.now();
     await this.repo.updateRoom(room);
   }
 
@@ -128,13 +134,27 @@ export class GameManager {
     return this.repo.getSnapshot(roomId);
   }
 
-  /** Código de 4 dígitos libre. */
+  /** Normaliza un código tecleado (mayúsculas, sin espacios) para su búsqueda. */
+  normalizeCode(code: string): string {
+    return String(code ?? '').trim().toUpperCase();
+  }
+
+  /** Código aleatorio de 4 caracteres del alfabeto sin ambiguos. */
+  private randomCode(): string {
+    let code = '';
+    for (let i = 0; i < CODE_LENGTH; i++) {
+      code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    }
+    return code;
+  }
+
+  /** Código alfanumérico de 4 caracteres libre. */
   private async generateCode(): Promise<string> {
     for (let i = 0; i < 100; i++) {
-      const code = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+      const code = this.randomCode();
       const existing = await this.repo.getRoomIdByCode(code);
       if (!existing) return code;
     }
-    return String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+    return this.randomCode();
   }
 }

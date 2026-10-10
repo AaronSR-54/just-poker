@@ -6,8 +6,8 @@ import GameSettings from '../../../components/GameSettings';
 const GameOverlays: React.FC<{
   settingsOpen: boolean;
   onCloseSettings: () => void;
-  onTutorial: () => void;
-  onHandsGuide: () => void;
+  onTutorial?: () => void;
+  onHandsGuide?: () => void;
   onLeave: () => void;
   context?: 'game' | 'online';
 }> = ({

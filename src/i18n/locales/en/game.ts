@@ -34,6 +34,7 @@ const game = {
   newHand: 'New Hand',
   waitingHost: 'Waiting for the host…',
   newGame: 'New game',
+  rematch: 'Rematch',
   selectDifficulty: 'Select difficulty',
   backHome: 'Back to home',
   overEyebrow: 'Game over · {n} hands',

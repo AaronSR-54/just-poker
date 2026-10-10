@@ -19,7 +19,7 @@ import type { GameLayoutProps } from './types';
 const DesktopGameLayout: React.FC<GameLayoutProps> = ({
   state,
   view,
-  aiTurn,
+  rivalTurn,
   humanCards,
   humanSeatProps,
   actionButtonProps,
@@ -35,6 +35,9 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
   onRestart,
   onSelectDifficulty,
   onHome,
+  gameOverRestartLabel,
+  gameOverRestartDisabled,
+  gameOverWaitingLabel,
   potAward,
   onPotAwardLanded,
   onPotAwardDone,
@@ -87,7 +90,7 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
                 avatarTone={avatarTone.tone}
                 avatarImgClassName={avatarTone.imgClassName}
                 avatarRing={avatarRing}
-                timerDuration={aiTurn?.playerIndex === r.id ? aiTurn.duration : undefined}
+                timerDuration={rivalTurn?.playerIndex === r.id ? rivalTurn.duration : undefined}
                 timerKey={`${state.handNumber}-${phase}-${r.id}`}
               />
               <div className={`flex flex-col items-center gap-2 ${isShort ? 'min-h-[3.75rem]' : 'min-h-[7.1875rem]'}`}>
@@ -142,6 +145,9 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
             onRestart={onRestart}
             onSelectDifficulty={onSelectDifficulty}
             onHome={onHome}
+            restartLabel={gameOverRestartLabel}
+            restartDisabled={gameOverRestartDisabled}
+            waitingLabel={gameOverWaitingLabel}
           />
         )}
       </AnimatePresence>

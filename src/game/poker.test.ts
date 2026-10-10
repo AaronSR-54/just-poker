@@ -310,6 +310,51 @@ describe('PokerGame — eliminaciones y fin de partida', () => {
     expect(s.gameOver).toBe(false);
     expect(s.handNumber).toBe(0);
   });
+
+  it('elimina un asiento a mitad de mano y termina si queda uno con fichas', () => {
+    const g = new PokerGame(2, 10, 20, ['A', 'B'], [1000, 1000]);
+    g.startHand();
+
+    g.eliminate(1);
+
+    const s = g.getState();
+    expect(s.players[1].eliminated).toBe(true);
+    expect(s.players[1].chips).toBe(0);
+    expect(s.players[1].folded).toBe(true);
+    expect(s.handOver).toBe(true);
+    expect(s.gameOver).toBe(true);
+    expect(s.gameWinner).toBe(0);
+    expect(s.players[0].chips).toBe(1020);
+  });
+
+  it('elimina un asiento y la partida continúa si quedan más jugadores', () => {
+    const g = new PokerGame(3, 10, 20, ['A', 'B', 'C'], [1000, 1000, 1000]);
+    g.startHand();
+    const inTurn = g.getState().currentPlayer;
+
+    g.eliminate(inTurn);
+
+    const s = g.getState();
+    expect(s.players[inTurn].eliminated).toBe(true);
+    expect(s.handOver).toBe(false);
+    expect(s.gameOver).toBe(false);
+    expect(s.currentPlayer).not.toBe(inTurn);
+  });
+
+  it('elimina a un jugador con la mano ya terminada y declara el fin', () => {
+    const g = new PokerGame(2, 10, 20, ['A', 'B'], [1000, 1000]);
+    g.startHand();
+    g.call(0); // pasa el turno a B
+    g.fold(1); // B se retira; A gana la mano
+    expect(g.getState().handOver).toBe(true);
+    expect(g.getState().gameOver).toBe(false);
+
+    g.eliminate(1);
+
+    const s = g.getState();
+    expect(s.gameOver).toBe(true);
+    expect(s.gameWinner).toBe(0);
+  });
 });
 
 describe('PokerGame — integración (manos completas aleatorias)', () => {

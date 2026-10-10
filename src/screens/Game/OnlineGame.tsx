@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import Button from '../../components/Button';
-import { TURN_DURATION } from './gameConfig';
+import { TURN_DURATION, GAME_OVER_DELAY } from './gameConfig';
 import { buildGameView } from './gameView';
 import HumanCards from './components/HumanCards';
 import ScreenMessage from './components/ScreenMessage';
@@ -12,6 +12,9 @@ import type { GameLayoutProps } from './layout/types';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useI18n } from '../../i18n';
 import { useOnlineGame } from '../../net/useOnlineGame';
+import { usePotAward } from './hooks/usePotAward';
+import { useTurnCountdown } from './hooks/useTurnCountdown';
+import { useGameSounds } from '../../hooks/useGameSounds';
 
 /** Mesa online host-autoritativa: el anfitrión ejecuta el motor y reparte el estado. */
 const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
@@ -27,8 +30,23 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
   const [raiseAmount, setRaiseAmount] = useState(20);
   const [showRaise, setShowRaise] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [gameOverModal, setGameOverModal] = useState(false);
+  const gameOverTimerRef = useRef<number | null>(null);
 
   const turnDurationMs = TURN_DURATION * 1000;
+  const isHost = online.session?.isHost ?? false;
+
+  useGameSounds(state);
+
+  const {
+    potAward,
+    awardProgress,
+    potRemaining,
+    setPotRemaining,
+    handlePotAwardLanded,
+    finishPotAward,
+    resetPotAward,
+  } = usePotAward(state);
 
   useEffect(() => {
     if (state && raiseAmount < state.minRaise) setRaiseAmount(state.minRaise);
@@ -37,25 +55,77 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
 
   const leave = () => {
     online.leave();
-    navigate('/');
+    // `replace` para no dejar la URL muerta de la partida en el historial:
+    // al volver atrás se regresa a la sala, no a un juego sin sesión.
+    navigate('/', { replace: true });
+  };
+
+  const startNewHand = () => {
+    resetPotAward();
+    online.startNewHand();
+  };
+
+  const restartGame = () => {
+    resetPotAward();
+    setPotRemaining(null);
+    online.restartGame();
   };
 
   // Auto check/fold si el turno propio expira (el anfitrión además resuelve a los rivales).
   const isMyTurn = Boolean(state && state.currentPlayer === 0 && !state.handOver && !state.streetPending);
-  useEffect(() => {
-    if (!isMyTurn || settingsOpen || !state) return;
-    const id = window.setTimeout(() => {
+  useTurnCountdown({
+    active: isMyTurn,
+    settingsOpen,
+    turnDurationMs,
+    initialSeconds: TURN_DURATION,
+    turnKey: `${state?.handNumber ?? 0}-${state?.phase ?? ''}`,
+    onExpire: () => {
+      if (!state) return;
       const maxBet = Math.max(0, ...state.players.map((p) => p.bet));
       if (state.players[0].bet >= maxBet) online.handleAction('check');
       else online.handleAction('fold');
       setShowRaise(false);
-    }, turnDurationMs);
-    return () => window.clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMyTurn, settingsOpen, state?.handNumber, state?.phase]);
+    },
+  });
+
+  // Fin de partida: deja ver el showdown antes de abrir el overlay. Si aún
+  // queda partida, ocúltalo de inmediato.
+  const gameOverForHuman = Boolean(
+    state &&
+    (state.gameOver ||
+      (state.handOver && (state.players[0].chips <= 0 || state.players[0].eliminated)))
+  );
+
+  useEffect(() => {
+    if (!gameOverForHuman || settingsOpen) {
+      setGameOverModal(false);
+      if (gameOverTimerRef.current) {
+        window.clearTimeout(gameOverTimerRef.current);
+        gameOverTimerRef.current = null;
+      }
+      return;
+    }
+    if (gameOverTimerRef.current) return;
+    gameOverTimerRef.current = window.setTimeout(() => {
+      gameOverTimerRef.current = null;
+      setGameOverModal(true);
+    }, GAME_OVER_DELAY);
+    return () => {
+      if (gameOverTimerRef.current) {
+        window.clearTimeout(gameOverTimerRef.current);
+        gameOverTimerRef.current = null;
+      }
+    };
+  }, [gameOverForHuman, settingsOpen]);
 
   if (online.loading) {
     return <ScreenMessage title={t('online.connectingTable')} />;
+  }
+
+  // Sin sesión (p. ej. al volver atrás o recargar tras salir): vuelve a la sala
+  // para poder reincorporarse en lugar de dejar una pantalla sin salida.
+  if (!online.session) {
+    return <Navigate to="/online" replace />;
   }
 
   if (online.error || !state) {
@@ -69,13 +139,18 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
   }
 
   const view = buildGameView(state, {
-    potRemaining: null,
-    awardProgress: {},
+    potRemaining,
+    awardProgress,
     gameId: 'online',
     isTutorial: false,
     t,
   });
   const { human, handOver } = view;
+
+  // Barra de tiempo del rival activo (turno remoto gestionado por el anfitrión).
+  const rivalTurn = !handOver && !view.streetPending && !state.gameOver && view.activePlayer !== 0
+    ? { playerIndex: view.activePlayer, duration: turnDurationMs }
+    : null;
 
   const humanCards = (
     <HumanCards
@@ -96,7 +171,7 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     isWinner: view.humanIsWinner,
     folded: human.folded,
     allIn: view.humanAllIn,
-    chips: human.chips,
+    chips: view.displayedChips(0, human.chips),
     net: view.humanNet,
     bet: human.bet,
     handOver,
@@ -131,8 +206,8 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       else online.handleAction(action);
       setShowRaise(false);
     },
-    onNewHand: online.startNewHand,
-    newHandEnabled: online.session?.isHost ?? false,
+    onNewHand: startNewHand,
+    newHandEnabled: isHost,
   };
 
   const noop = () => {};
@@ -140,7 +215,7 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
   const layoutProps: GameLayoutProps = {
     state,
     view,
-    aiTurn: null,
+    rivalTurn,
     humanCards,
     humanSeatProps,
     actionButtonProps,
@@ -168,20 +243,21 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       onClose: () => setShowRaise(false),
     },
     onOpenSettings: () => setSettingsOpen(true),
-    gameOverModal: false,
-    onRestart: online.restartGame,
-    onSelectDifficulty: leave,
+    gameOverModal,
+    onRestart: restartGame,
+    onSelectDifficulty: undefined,
     onHome: leave,
-    potAward: null,
-    onPotAwardLanded: noop,
-    onPotAwardDone: noop,
+    gameOverRestartLabel: t('game.rematch'),
+    gameOverRestartDisabled: !isHost,
+    gameOverWaitingLabel: t('game.waitingHost'),
+    potAward,
+    onPotAwardLanded: handlePotAwardLanded,
+    onPotAwardDone: finishPotAward,
     overlays: (
       <GameOverlays
         context="online"
         settingsOpen={settingsOpen}
         onCloseSettings={() => setSettingsOpen(false)}
-        onTutorial={noop}
-        onHandsGuide={noop}
         onLeave={leave}
       />
     ),

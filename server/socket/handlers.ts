@@ -1,9 +1,13 @@
 import { randomUUID } from 'crypto';
 import { Server, Socket } from 'socket.io';
 import { GameManager, MAX_PLAYERS, MIN_PLAYERS } from '../game/GameManager';
+import { MAX_NAME_LENGTH } from '../game/types';
 import type { Room, RoomPlayer } from '../game/types';
 
 type Ack = (res: unknown) => void;
+
+/** Ventana de gracia de un asiento ausente antes de expulsarlo de la partida. */
+const ABSENT_EXPIRY_MS = parseInt(process.env.ONLINE_ABSENT_EXPIRY_MS ?? '', 10) || 120 * 1000;
 
 interface JoinData {
   roomId?: string;
@@ -28,17 +32,76 @@ function publicState(room: Room) {
     players: room.players.map((p) => ({
       userId: p.userId,
       username: p.username,
+      absent: p.socketId === '',
     })),
   };
 }
 
 export function setupSocketHandlers(io: Server, gameManager: GameManager): void {
+  /** Temporizadores de expulsión por jugador ausente (`roomId:userId`). */
+  const absenceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  const clearAbsenceTimer = (roomId: string, userId: string): void => {
+    const key = `${roomId}:${userId}`;
+    const timer = absenceTimers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      absenceTimers.delete(key);
+    }
+  };
+
+  const scheduleAbsenceExpiry = (roomId: string, userId: string): void => {
+    clearAbsenceTimer(roomId, userId);
+    const key = `${roomId}:${userId}`;
+    const timer = setTimeout(() => {
+      void expireAbsent(roomId, userId);
+    }, ABSENT_EXPIRY_MS);
+    absenceTimers.set(key, timer);
+  };
+
+  /** Expulsa a un ausente: libera su asiento y avisa a la mesa. */
+  const expireAbsent = async (roomId: string, userId: string): Promise<void> => {
+    clearAbsenceTimer(roomId, userId);
+    const room = await gameManager.getRoom(roomId);
+    if (!room) return;
+    const player = room.players.find((p) => p.userId === userId);
+    if (!player || player.socketId) return;
+
+    io.to(roomId).emit('game:peer-expelled', { userId });
+    const left = await gameManager.leaveRoom(roomId, userId);
+    if (!left) {
+      io.to(roomId).emit('room:closed');
+      return;
+    }
+    io.to(roomId).emit('room:host', { hostId: left.hostId });
+  };
+
+  /** Comprobación perezosa: expulsa a los ausentes que superaron la ventana. */
+  const expireStale = async (room: Room): Promise<void> => {
+    const now = Date.now();
+    const stale = room.players.filter(
+      (p) => p.absentSince !== undefined && now - p.absentSince >= ABSENT_EXPIRY_MS,
+    );
+    for (const p of stale) await expireAbsent(room.id, p.userId);
+  };
+
   io.on('connection', (socket: Socket) => {
     // Identidad anónima de sesión: el cliente reutiliza el id para reconectar.
     const provided = socket.handshake.auth?.playerId as string | undefined;
     const playerId = provided || randomUUID();
     socket.data.playerId = playerId;
+    // Sala personal: permite enviar datos privados (cartas) por `io.to(playerId)`.
+    socket.join(playerId);
     socket.emit('session:id', { playerId });
+
+    // Respaldo del temporizador: cada evento comprueba la caducidad de la sala.
+    socket.use((_event, next) => {
+      void gameManager
+        .getRoomByPlayer(playerId)
+        .then((room) => (room ? expireStale(room) : undefined))
+        .catch(() => {});
+      next();
+    });
 
     const broadcastRoom = async (roomId: string): Promise<void> => {
       const room = await gameManager.getRoom(roomId);
@@ -66,6 +129,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       }
 
       await gameManager.markDisconnected(room, who);
+      scheduleAbsenceExpiry(roomId, who);
 
       if (room.hostId === who) {
         const next = room.players.find((p) => p.userId !== who && p.socketId);
@@ -75,7 +139,6 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
           const snapshot = await gameManager.getSnapshot(roomId);
           if (snapshot) io.to(next.socketId).emit('game:resume', { snapshot, hostId: room.hostId });
         }
-        return;
       }
 
       const host = room.players.find((p) => p.userId === room.hostId);
@@ -85,7 +148,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
     // ---- Lobby ----
 
     socket.on('room:create', async (data: { name?: string }, ack?: Ack) => {
-      socket.data.username = (data?.name ?? '').toString().slice(0, 24);
+      socket.data.username = (data?.name ?? '').toString().slice(0, MAX_NAME_LENGTH);
       const room = await gameManager.createRoom(playerFromSocket(socket));
       socket.join(room.id);
       await broadcastRoom(room.id);
@@ -93,7 +156,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
     });
 
     socket.on('room:join', async (data: JoinData, ack?: Ack) => {
-      if (data?.name) socket.data.username = data.name.toString().slice(0, 24);
+      if (data?.name) socket.data.username = data.name.toString().slice(0, MAX_NAME_LENGTH);
       let room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
       if (!room && data?.code) room = await gameManager.getRoomByCode(data.code);
       if (!room) {
@@ -108,6 +171,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       }
 
       socket.join(room.id);
+      clearAbsenceTimer(room.id, playerId);
 
       // Si es el único conectado de una partida ya empezada, recupera el rol de anfitrión.
       if (room.started && !room.hostId) {
@@ -140,7 +204,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
     });
 
     socket.on('room:rename', async (data: { roomId?: string; name?: string }, ack?: Ack) => {
-      const name = (data?.name ?? '').toString().trim().slice(0, 24);
+      const name = (data?.name ?? '').toString().trim().slice(0, MAX_NAME_LENGTH);
       if (!data?.roomId || !name) {
         ack?.({ ok: false, error: 'name' });
         return;

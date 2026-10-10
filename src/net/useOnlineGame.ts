@@ -10,12 +10,14 @@ import {
 } from './onlineSession';
 import { sanitizeForBroadcast, rotateState } from './onlineGameState';
 import { registerRoomListeners } from './onlineRoom';
+import { scheduleStreetResolve } from '../screens/Game/hooks/streetDelay';
+import { TURN_DURATION } from '../screens/Game/gameConfig';
 import { t } from '../i18n';
 import { onlineError } from '../utils/onlineError';
 import { markPlayed } from '../utils/lastPlayed';
 
-/** Tiempo máximo de espera del turno de un rival (ritmo fijo, sin velocidad). */
-const REMOTE_TURN_MS = 35000;
+/** Tiempo máximo de espera del turno de un rival (misma duración que el humano). */
+const REMOTE_TURN_MS = TURN_DURATION * 1000;
 
 export interface OnlineGameApi {
   state: PokerState | null;
@@ -39,11 +41,20 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
   const sessionRef = useRef<OnlineSession | null>(null);
   const isHostRef = useRef(false);
   const remoteTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const streetTimerRef = useRef<number | null>(null);
   const holeCardsRef = useRef<Card[]>([]);
+  const absentRef = useRef<Set<string>>(new Set());
 
   const clearRemoteTimers = useCallback(() => {
     for (const t of remoteTimers.current.values()) clearTimeout(t);
     remoteTimers.current.clear();
+  }, []);
+
+  const cancelStreetResolve = useCallback(() => {
+    if (streetTimerRef.current !== null) {
+      window.clearTimeout(streetTimerRef.current);
+      streetTimerRef.current = null;
+    }
   }, []);
 
   const broadcast = useCallback((g: PokerGame, sess: OnlineSession) => {
@@ -112,7 +123,10 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
       const cur = gameRef.current?.getState();
       if (!cur || cur.currentPlayer !== seat || cur.handOver) return;
       const g2 = gameRef.current!;
-      if (g2.canCheck(seat)) g2.check(seat);
+      const userId = seatsRef.current.find((s) => s.seat === seat)?.userId;
+      // Un rival ausente se retira; nunca hace check para no ganar sin apostar.
+      if (userId && absentRef.current.has(userId)) g2.fold(seat);
+      else if (g2.canCheck(seat)) g2.check(seat);
       else g2.fold(seat);
       hostPush();
     }, REMOTE_TURN_MS);
@@ -145,6 +159,8 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
       gameRef.current = game;
       game.startHand();
     }
+    // Pausa entre calles: la UI del anfitrión llama a resolveStreet().
+    gameRef.current.setAutoDeal(false);
     isHostRef.current = true;
     const next = { ...sess, isHost: true };
     sessionRef.current = next;
@@ -152,24 +168,38 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
     hostPush();
   }, [hostPush]);
 
-  // El anfitrión gestiona los tiempos de espera de los rivales en su turno.
+  // El anfitrión gestiona los tiempos de espera de los rivales y la pausa entre calles.
   useEffect(() => {
     if (!state || !isHostRef.current) return;
     const g = gameRef.current;
     if (!g) return;
     const raw = g.getState();
-    if (raw.handOver) return;
+
+    // Pausa entre calles: reparte la calle pendiente tras el retardo y difunde.
+    if (raw.streetPending) {
+      clearRemoteTimers();
+      cancelStreetResolve();
+      streetTimerRef.current = scheduleStreetResolve(gameRef, hostPush);
+      return;
+    }
+    cancelStreetResolve();
+
+    if (raw.handOver || raw.gameOver) {
+      clearRemoteTimers();
+      return;
+    }
     if (raw.currentPlayer === sessionRef.current?.mySeat) {
       clearRemoteTimers();
       return;
     }
     scheduleRemoteTimeout();
-  }, [state, scheduleRemoteTimeout, clearRemoteTimers]);
+  }, [state, scheduleRemoteTimeout, clearRemoteTimers, hostPush, cancelStreetResolve]);
 
   useEffect(() => {
     if (!roomId) return;
     let cancelled = false;
     let cleanupListeners: (() => void) | undefined;
+    let detachConnect: (() => void) | undefined;
 
     (async () => {
       try {
@@ -188,7 +218,7 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
         if (cancelled) return;
 
         cleanupListeners = registerRoomListeners({
-          sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef,
+          sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef, absentRef,
           applyRotated, broadcast, hostApply, hostPush, setState,
           onHostChange, onResume,
         });
@@ -200,6 +230,7 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
           else sock.emit('game:sync', { roomId: sess.roomId });
         };
         sock.on('connect', onConnect);
+        detachConnect = () => sock.off('connect', onConnect);
 
         // (Re)entra a la sala. Si soy host, el servidor reenvía `room:host` y pido
         // el snapshot (o creo partida nueva si no hay); si no, pido sincronización.
@@ -228,11 +259,12 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
 
     return () => {
       cancelled = true;
-      getSocket()?.off('connect');
+      detachConnect?.();
       cleanupListeners?.();
       clearRemoteTimers();
+      cancelStreetResolve();
     };
-  }, [roomId, broadcast, applyRotated, hostApply, hostPush, onHostChange, onResume, clearRemoteTimers]);
+  }, [roomId, broadcast, applyRotated, hostApply, hostPush, onHostChange, onResume, clearRemoteTimers, cancelStreetResolve]);
 
   // Refresca la última actividad online mientras la partida avanza (throttle).
   const lastMarkRef = useRef(0);
@@ -269,12 +301,18 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
     hostPush();
   }, [hostPush]);
 
+  // Vuelve al menú dejando la partida reanudable: libera la plaza en la sala
+  // (el servidor resuelve el turno y hace failover del anfitrión) pero conserva
+  // la sesión local, para que el menú ofrezca «Continuar partida» como en local.
   const leave = useCallback(() => {
     const sess = sessionRef.current;
-    if (sess) getSocket()?.emit('room:leave', { roomId: sess.roomId });
-    clearOnlineSession();
+    if (sess) {
+      markPlayed('online');
+      getSocket()?.emit('room:leave', { roomId: sess.roomId });
+    }
     clearRemoteTimers();
-  }, [clearRemoteTimers]);
+    cancelStreetResolve();
+  }, [clearRemoteTimers, cancelStreetResolve]);
 
   return { state, session, loading, error, handleAction, startNewHand, restartGame, leave };
 }

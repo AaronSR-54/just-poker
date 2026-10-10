@@ -9,7 +9,8 @@ import type { ActionButtonsProps } from '../components/ActionButtons';
 export interface GameLayoutProps {
   state: PokerState;
   view: GameView;
-  aiTurn: { playerIndex: number; duration: number } | null;
+  /** Turno en curso de un rival (IA en local, jugador remoto en online) para la barra de tiempo. */
+  rivalTurn: { playerIndex: number; duration: number } | null;
   humanCards: React.ReactNode;
   humanSeatProps: HumanSeatProps;
   actionButtonProps: ActionButtonsProps;
@@ -36,8 +37,11 @@ export interface GameLayoutProps {
   onOpenSettings: () => void;
   gameOverModal: boolean;
   onRestart: () => void;
-  onSelectDifficulty: () => void;
+  onSelectDifficulty?: () => void;
   onHome: () => void;
+  gameOverRestartLabel?: string;
+  gameOverRestartDisabled?: boolean;
+  gameOverWaitingLabel?: string;
   potAward: PotAwardData | null;
   onPotAwardLanded: (id: number, value: number) => void;
   onPotAwardDone: () => void;

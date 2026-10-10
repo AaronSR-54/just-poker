@@ -20,7 +20,7 @@ import type { GameLayoutProps } from './types';
 const MobileGameLayout: React.FC<GameLayoutProps> = ({
   state,
   view,
-  aiTurn,
+  rivalTurn,
   humanCards,
   humanSeatProps,
   actionButtonProps,
@@ -34,6 +34,9 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
   onRestart,
   onSelectDifficulty,
   onHome,
+  gameOverRestartLabel,
+  gameOverRestartDisabled,
+  gameOverWaitingLabel,
   potAward,
   onPotAwardLanded,
   onPotAwardDone,
@@ -78,7 +81,7 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
                 avatarTone={avatarTone.tone}
                 avatarImgClassName={avatarTone.imgClassName}
                 avatarRing={avatarRing}
-                timerDuration={aiTurn?.playerIndex === r.id ? aiTurn.duration : undefined}
+                timerDuration={rivalTurn?.playerIndex === r.id ? rivalTurn.duration : undefined}
                 timerKey={`${state.handNumber}-${phase}-${r.id}`}
               />
               <div className="flex min-h-[5.5rem] flex-col items-center gap-1.5">
@@ -150,6 +153,9 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
             onRestart={onRestart}
             onSelectDifficulty={onSelectDifficulty}
             onHome={onHome}
+            restartLabel={gameOverRestartLabel}
+            restartDisabled={gameOverRestartDisabled}
+            waitingLabel={gameOverWaitingLabel}
           />
         )}
       </AnimatePresence>

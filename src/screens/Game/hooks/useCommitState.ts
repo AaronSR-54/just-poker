@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { PokerGame, PokerState } from '../../../game/poker';
 import { useSettingsStore, speedFactor } from '../../../store/settingsStore';
 import { STREET_DELAY } from '../gameConfig';
+import { scheduleStreetResolve } from './streetDelay';
 
 /**
  * Sincroniza el estado de la partida con la UI. Si la ronda acaba de cerrarse
@@ -26,15 +27,16 @@ export function useCommitState({
       window.clearTimeout(streetTimerRef.current);
       streetTimerRef.current = null;
     }
-    if (s.streetPending) {
-      streetTimerRef.current = window.setTimeout(() => {
+    streetTimerRef.current = scheduleStreetResolve(
+      gameRef,
+      () => {
         streetTimerRef.current = null;
         const current = gameRef.current;
         if (!current) return;
-        current.resolveStreet();
         setGameState(current.getState());
-      }, STREET_DELAY * speedFactor(useSettingsStore.getState().gameSpeed));
-    }
+      },
+      STREET_DELAY * speedFactor(useSettingsStore.getState().gameSpeed),
+    );
   }, [gameRef, setGameState]);
 
   useEffect(() => () => {

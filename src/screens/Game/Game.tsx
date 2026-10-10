@@ -316,7 +316,7 @@ const LocalGame: React.FC = () => {
   const layoutProps: GameLayoutProps = {
     state,
     view,
-    aiTurn,
+    rivalTurn: aiTurn,
     humanCards,
     humanSeatProps,
     actionButtonProps,

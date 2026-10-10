@@ -9,6 +9,7 @@ import { RANKS, rankFor } from '../types';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUserStore, type GameRecord } from '../store/userStore';
 import { FadeIn, Stagger, StaggerItem } from '../components/Animated';
+import { MAX_PLAYER_NAME_LENGTH } from '../config/online';
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -132,7 +133,7 @@ const Profile: React.FC = () => {
     : 0;
 
   const saveProfile = () => {
-    const name = nameDraft.trim().slice(0, 16) || 'Tú';
+    const name = nameDraft.trim().slice(0, MAX_PLAYER_NAME_LENGTH) || 'Tú';
     updateProfile(name, name.slice(0, 2).toUpperCase());
     setEditing(false);
   };
@@ -144,7 +145,7 @@ const Profile: React.FC = () => {
         value={nameDraft}
         onChange={e => setNameDraft(e.target.value)}
         placeholder="Tu nombre"
-        maxLength={16}
+        maxLength={MAX_PLAYER_NAME_LENGTH}
         onKeyDown={e => { if (e.key === 'Enter') saveProfile(); }}
       />
       <div className="font-body tracking-[0.04em] text-fs-100 opacity-60">

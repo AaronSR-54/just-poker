@@ -12,15 +12,22 @@ const player = (id: string, name = id): RoomPlayer => ({
 const makeManager = () => new GameManager(new MemoryRoomRepository());
 
 describe('GameManager — salas privadas', () => {
-  it('asigna un código de 4 dígitos único', async () => {
+  it('asigna un código alfanumérico de 4 caracteres único, sin ambiguos', async () => {
     const gm = makeManager();
     const codes = new Set<string>();
     for (let i = 0; i < 20; i++) {
       const room = await gm.createRoom(player(`p${i}`));
-      expect(room.code).toMatch(/^\d{4}$/);
+      expect(room.code).toMatch(/^[A-HJKMNP-Z2-9]{4}$/);
       expect(codes.has(room.code)).toBe(false);
       codes.add(room.code);
     }
+  });
+
+  it('resuelve el código sin distinguir mayúsculas/minúsculas', async () => {
+    const gm = makeManager();
+    const room = await gm.createRoom(player('host'));
+    const found = await gm.getRoomByCode(room.code.toLowerCase());
+    expect(found?.id).toBe(room.id);
   });
 
   it('incorpora al creador como anfitrión', async () => {
@@ -82,5 +89,30 @@ describe('GameManager — salas privadas', () => {
     const seats = gm.buildSeats(room);
     expect(seats.map((s) => s.seat)).toEqual([0, 1]);
     expect(seats.map((s) => s.username)).toEqual(['A', 'B']);
+  });
+
+  it('marca la ausencia al desconectar sin liberar el asiento', async () => {
+    const gm = makeManager();
+    const room = await gm.createRoom(player('p1'));
+    await gm.joinRoom(room, player('p2'));
+
+    const before = Date.now();
+    await gm.markDisconnected(room, 'p2');
+
+    const absent = room.players.find((p) => p.userId === 'p2');
+    expect(absent).toBeDefined();
+    expect(absent?.socketId).toBe('');
+    expect(absent?.absentSince).toBeGreaterThanOrEqual(before);
+  });
+
+  it('limpia la marca de ausencia al reconectar', async () => {
+    const gm = makeManager();
+    const room = await gm.createRoom(player('p1'));
+    await gm.joinRoom(room, player('p2'));
+    await gm.markDisconnected(room, 'p2');
+
+    const reconnect = await gm.joinRoom(room, { userId: 'p2', username: 'p2', socketId: 'new-sock' });
+    expect(reconnect.ok).toBe(true);
+    expect(room.players.find((p) => p.userId === 'p2')?.absentSince).toBeUndefined();
   });
 });

@@ -43,6 +43,7 @@ export function rotateState(state: PokerState, mySeat: number): PokerState {
     dealer: map(state.dealer),
     winner: state.winner ? state.winner.map(map) : null,
     winAmounts: order.map(i => state.winAmounts[i] ?? 0),
+    committed: order.map(i => state.committed[i] ?? 0),
     gameWinner: state.gameWinner !== null ? map(state.gameWinner) : null,
     actions: state.actions.map(a => ({
       ...a,

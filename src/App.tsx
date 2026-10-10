@@ -1,5 +1,14 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import Menu from './screens/Menu';
 import Local from './screens/Local';
@@ -24,6 +33,7 @@ function JoinRedirect() {
   return <Navigate to={code ? `/online?code=${code}` : '/online'} replace />;
 }
 
+/** Rutas animadas por `pathname`, dentro del data router (para poder usar `useBlocker`). */
 function AnimatedRoutes() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,7 +63,8 @@ function AnimatedRoutes() {
   );
 }
 
-function App() {
+/** Layout raíz: fondo, CRT, coach, transiciones y atrás de Android. */
+function RootLayout() {
   const crtAmount = useSettingsStore((s) => s.crtAmount);
   const locale = useLocaleStore((s) => s.locale);
   const crtOn = crtSupported && crtAmount > 0;
@@ -80,26 +91,37 @@ function App() {
   }, []);
 
   return (
-    <MotionConfig reducedMotion="user">
-      <BrowserRouter>
-        <div className="relative h-dvh w-full overflow-hidden bg-ink">
-          <div
-            className="relative h-full w-full"
-            style={
-              crtOn
-                ? { filter: `url(#jp-crt) brightness(${1 + 0.05 * crtAmount}) contrast(${1 + 0.025 * crtAmount})` }
-                : undefined
-            }
-          >
-            <Background />
-            <div className="relative z-10 h-full">
-              <AnimatedRoutes />
-              <OnboardingCoach />
-            </div>
+    <>
+      <div className="relative h-dvh w-full overflow-hidden bg-ink">
+        <div
+          className="relative h-full w-full"
+          style={
+            crtOn
+              ? { filter: `url(#jp-crt) brightness(${1 + 0.05 * crtAmount}) contrast(${1 + 0.025 * crtAmount})` }
+              : undefined
+          }
+        >
+          <Background />
+          <div className="relative z-10 h-full">
+            <AnimatedRoutes />
+            <OnboardingCoach />
           </div>
         </div>
-        {crtOn && <CrtOverlay />}
-      </BrowserRouter>
+      </div>
+      {crtOn && <CrtOverlay />}
+    </>
+  );
+}
+
+// Un único route que delega el matching en `<Routes>` de AnimatedRoutes: así se
+// conserva el comportamiento de transiciones y se dispone del data router para
+// `useBlocker` (confirmación al salir del lobby).
+const router = createBrowserRouter([{ path: '*', element: <RootLayout /> }]);
+
+function App() {
+  return (
+    <MotionConfig reducedMotion="user">
+      <RouterProvider router={router} />
     </MotionConfig>
   );
 }

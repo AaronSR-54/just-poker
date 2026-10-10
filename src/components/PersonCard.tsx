@@ -16,6 +16,12 @@ interface PersonCardProps {
   compact?: boolean;
   /** Contenido a la derecha de la tarjeta (p. ej. un `Badge`). */
   trailing?: React.ReactNode;
+  /** Nombre para las iniciales del avatar cuando difiere del nombre visible. */
+  avatarName?: string;
+  /** Fila atenuada (p. ej. una plaza libre). */
+  muted?: boolean;
+  /** Nombre en negrita (por defecto). `false` para las filas secundarias. */
+  strong?: boolean;
 }
 
 /**
@@ -33,17 +39,21 @@ const PersonCard: React.FC<PersonCardProps> = ({
   avatarSize,
   compact = false,
   trailing,
+  avatarName,
+  muted = false,
+  strong = true,
 }) => (
   <div className={`flex items-center ${compact ? 'gap-3' : 'gap-4'}`}>
     <Avatar
-      name={name}
+      name={avatarName ?? name}
       src={avatarSrc}
       size={avatarSize ?? (compact ? 40 : 56)}
       tone={avatarTone}
       imgClassName={avatarImgClassName}
+      muted={muted}
     />
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <div className="font-display font-bold leading-none text-fs-300">
+    <div className={`flex min-w-0 flex-1 flex-col gap-1 ${muted ? 'opacity-50' : ''}`}>
+      <div className={`truncate font-display leading-none text-fs-300 ${strong ? 'font-bold' : 'font-normal'}`}>
         {name}
         {quip && <> <em className="font-light italic opacity-80">“{quip}”</em></>}
       </div>
