@@ -1,6 +1,6 @@
 # Release notes
 
-## 1.2.1 (versionCode 5)
+## 1.2.1 (versionCode 6)
 
 <en-US>
 Online multiplayer is here.
