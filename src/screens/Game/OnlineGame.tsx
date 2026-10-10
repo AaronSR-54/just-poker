@@ -128,6 +128,12 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     return <Navigate to="/online" replace />;
   }
 
+  // Ya unido a la sala pero sin el primer estado del anfitrión: mantén
+  // "conectando" en vez de mostrar un error inexistente (parpadeo en móvil).
+  if (!state && !online.error) {
+    return <ScreenMessage title={t('online.connectingTable')} />;
+  }
+
   if (online.error || !state) {
     return (
       <ScreenMessage
