@@ -1,6 +1,6 @@
 # Release notes
 
-## 1.2.1 (versionCode 8)
+## 1.2.1 (versionCode 9)
 
 <en-US>
 Online multiplayer is here.
