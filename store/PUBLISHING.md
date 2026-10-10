@@ -50,7 +50,23 @@ Checklist para dejar la ficha y la app publicadas. Web/Política:
   gambling; sin dinero real, sin moneda de cambio). Corea del Sur queda fuera
   salvo revisión posterior de GRAC.
 - **Público objetivo**: **18+** (coherente con la clasificación; «para familias» → No).
-- **Seguridad de los datos**: **no se recogen ni comparten datos** (`No` en todo).
+- **Seguridad de los datos**: el modo online **sí envía datos al servidor** (el de un jugador
+  no envía nada), así que hay que declarar recogida:
+  - **¿Recopila o comparte datos?**: **Sí**.
+  - **Tipos de datos** (todos con finalidad **Funcionalidad de la app**):
+    - Personal info → **Name** (el nombre de jugador que escribes; temporal).
+    - App activity → **Other actions** (acciones/estado de la partida).
+    - Device or other IDs → **Device or other IDs** (identificador anónimo de sesión).
+  - **¿Obligatorio u opcional?**: **Opcional** (solo al usar el multijugador).
+  - **¿Compartidos?**: **No** — Vercel y Upstash/Redis son **encargados** del tratamiento,
+    no terceros.
+  - **Cifrado en tránsito**: **Sí** (TLS/WSS).
+  - **Eliminación de datos**: las salas se borran al terminar y, como máximo, a las **12 h**;
+    no hay cuentas. El usuario puede pedir la supresión por correo
+    (`aaronsanzroca@gmail.com`).
+  > Nota: los datos online son anónimos, pero Google **obliga a declarar** lo que sale del
+  > dispositivo; los 12 h de TTL **no** cuentan como «procesamiento efímero», así que se
+  > declaran (y se muestran en la ficha).
 - **Apps gubernamentales / Noticias / COVID**: No.
 - **Funciones financieras**: ninguna (es juego simulado, sin dinero real).
 
@@ -83,8 +99,8 @@ Guía integrada con las diez combinaciones, de carta alta a escalera real, con e
 ▸ Sin dinero real, sin trampas
 Es un juego de práctica. No hay apuestas con dinero real, ni compras, ni monedas que se agoten. Nada te empuja a pagar.
 
-▸ Sin anuncios, sin cuentas, sin conexión
-Funciona 100 % offline. No necesitas registrarte ni dar ningún dato. Sin publicidad y sin rastreadores.
+▸ Sin anuncios, sin cuentas
+El modo de un jugador funciona 100 % offline. El multijugador privado es opcional y anónimo: sin registrarte ni dar datos personales. Sin publicidad y sin rastreadores.
 
 ▸ Español e inglés
 Interfaz y ayuda disponibles en ambos idiomas.
@@ -114,8 +130,8 @@ Built-in guide to all ten hand rankings, from high card to royal flush, with bro
 ▸ No real money, no tricks
 It's a practice game. No real-money betting, no purchases, no coins that run out. Nothing pushes you to pay.
 
-▸ No ads, no accounts, no connection
-Works fully offline. No registration, no personal data. No advertising and no trackers.
+▸ No ads, no accounts
+Single-player works fully offline. Private multiplayer is optional and anonymous: no sign-up, no personal data. No advertising and no trackers.
 
 ▸ Spanish and English
 Interface and help available in both languages.
@@ -131,11 +147,12 @@ npm run android
 
 - Artefacto: `android/app/build/outputs/bundle/release/app-release.aab`
 - Sube `versionCode` en `android/app/build.gradle` **antes de cada subida**; el
-  `versionName` puede repetirse. Versión actual: **versionCode 2**, `versionName 1.0`
-  (el `versionCode 1` ya se consumió al subir el primer bundle).
-- La app se distribuye **100 % offline**: el multijugador privado está oculto tras
-  `ONLINE_ENABLED = false` (`src/config/features.ts`). No reactivar sin actualizar
-  las declaraciones de datos y la política de privacidad.
+  `versionName` puede repetirse. Versión actual: **versionCode 5**, `versionName 1.2.1`.
+- La app incluye el **multijugador online** (`ONLINE_ENABLED = true`,
+  `src/config/features.ts`). El build de Android apunta al servidor de producción con
+  `VITE_ONLINE_URL=https://just-poker-delta.vercel.app` (`scripts/build-android.sh`).
+- Al tocar el online hay que mantener al día las declaraciones de datos (sección 3) y
+  `public/privacy-policy.html`.
 
 ## 6. Subir y probar
 
@@ -157,5 +174,6 @@ npm run android
 
 ## Notas
 
-- La app es 100 % offline y sin anuncios → Data safety sin datos.
+- El modo de un jugador es 100 % offline y sin anuncios; el online es opcional y anónimo →
+  Data safety **con** datos declarados (sección 3).
 - El despliegue web lo hace la **integración Git de Vercel** (no GitHub Actions).

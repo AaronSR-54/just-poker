@@ -193,7 +193,7 @@ Soporte **español (es)** e **inglés (en)** con un módulo propio, sin dependen
 
 ## Android (Capacitor / Google Play)
 
-La app Android es la web de Vite empaquetada con **Capacitor 8** (WebView). Es 100 % offline: no necesita servidor.
+La app Android es la web de Vite empaquetada con **Capacitor 8** (WebView). El modo de un jugador es 100 % offline; el multijugador online usa el servidor de producción (Vercel), al que apunta el build de Android con `VITE_ONLINE_URL`.
 
 ### Generar el APK/AAB
 
@@ -275,6 +275,6 @@ El multijugador privado anónimo se sirve desde el **mismo dominio**: una Functi
 
 - `npm run store:assets` genera `store/icon-512.png` y `store/feature-graphic-1024x500.png` (Satoshi, fondo `#22201F`).
 - `public/privacy-policy.html` — política de privacidad (es/en). Se sirve en `https://just-poker-delta.vercel.app/privacy-policy.html` y es la URL que se declara en Play.
-- La app declara el permiso `INTERNET` (necesario para el multijugador online). En Data safety, declarar que **no se recogen datos de usuario**: las salas online son anónimas y efímeras.
+- La app declara el permiso `INTERNET` (multijugador online). En Data safety hay que **declarar recogida** (el online envía datos anónimos al servidor): tipos «Name», «Other actions» y «Device or other IDs», finalidad «App functionality», opcional, cifrado en tránsito y sin compartir (Vercel/Upstash son encargados). Detalle en `store/PUBLISHING.md` §3.
 
 Para publicar en Play (fuera del repo) hace falta: cuenta de desarrollador (25 USD), subir el AAB, listing (capturas, descripción, feature graphic), política de privacidad pública, Data safety y content rating. Declarar **"poker de práctica, sin dinero real"** y marcar *simulated gambling*.

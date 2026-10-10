@@ -22,96 +22,186 @@
       h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
       h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; }
       .muted { opacity: 0.65; font-size: 0.9rem; }
+      ul { margin: 0.5rem 0; padding-left: 1.25rem; }
+      li { margin: 0.25rem 0; }
       hr { border: 0; border-top: 1px solid currentColor; opacity: 0.15; margin: 2rem 0; }
     </style>
   </head>
   <body>
     <h1>Política de privacidad de Just Poker</h1>
-    <p class="muted">Última actualización: 6 de octubre de 2026</p>
+    <p class="muted">Última actualización: 10 de octubre de 2026</p>
 
     <h2>1. Responsable</h2>
     <p>
-      Just Poker es una aplicación de póker de práctica, para un solo jugador y sin dinero real.
+      Just Poker es una aplicación de póker de práctica, con un modo de un jugador
+      (sin conexión) y un multijugador privado opcional (online), sin dinero real.
       Responsable del tratamiento: <strong>sanzaar</strong>
       (<a href="mailto:aaronsanzroca@gmail.com">aaronsanzroca@gmail.com</a>).
     </p>
 
     <h2>2. Qué datos tratamos</h2>
     <p>
-      <strong>Ningún dato personal.</strong> La aplicación funciona completamente sin conexión,
-      no requiere registro ni cuenta, y no incorpora analítica, publicidad ni rastreadores.
-      No se envía información a servidores propios ni de terceros.
+      <strong>Modo de un jugador (sin conexión).</strong> No requiere registro ni cuenta,
+      funciona sin conexión y no envía información a servidores. No incorpora analítica,
+      publicidad ni rastreadores.
+    </p>
+    <p>
+      <strong>Multijugador online (opcional).</strong> Solo si usas el modo online se
+      envían al servidor datos <strong>anónimos y temporales</strong> para poder jugar:
+    </p>
+    <ul>
+      <li>Un <strong>identificador de sesión anónimo</strong> (un código aleatorio) que permite reconectar y recuperar tu asiento. No está vinculado a tu identidad.</li>
+      <li>El <strong>nombre de jugador</strong> que escribes para la partida (o uno generado al azar). Es temporal y lo eliges tú.</li>
+      <li>El <strong>código de la sala y el estado de la partida</strong> (asientos, turnos, cartas y fichas), necesario para sincronizar la mesa.</li>
+    </ul>
+    <p>
+      No se recogen datos personales (nombre real, correo, teléfono), ni ubicación, ni
+      contactos. Estos datos online no se usan para crear perfiles, ni para analítica, ni
+      para publicidad, y no se comparten con terceros ajenos al servicio.
     </p>
 
     <h2>3. Almacenamiento en el dispositivo</h2>
     <p>
-      La aplicación guarda localmente (almacenamiento del navegador/WebView del propio dispositivo)
-      datos de juego, como la partida en curso, los ajustes y el progreso del tutorial.
-      Esta información nunca sale del dispositivo y se elimina al desinstalar la aplicación.
+      La aplicación guarda localmente (almacenamiento del navegador/WebView del propio
+      dispositivo) datos de juego, como la partida en curso, los ajustes y el progreso del
+      tutorial; y, si juegas online, tu identificador de sesión y el nombre temporal de la
+      partida. Esta información se elimina al desinstalar la aplicación.
     </p>
 
-    <h2>4. Permisos</h2>
-    <p>La aplicación no solicita permisos sensibles (ni ubicación, ni contactos, ni cámara, ni micrófono).</p>
+    <h2>4. Conservación en el servidor (modo online)</h2>
+    <p>
+      El estado de una sala se guarda en el servidor solo mientras la partida está activa y
+      se borra al terminar. En cualquier caso, se elimina automáticamente como máximo
+      <strong>12 horas</strong> después. Se trata de información anónima que no se conserva
+      más allá de lo necesario para el funcionamiento del multijugador.
+    </p>
 
-    <h2>5. Enlaces externos</h2>
+    <h2>5. Proveedores</h2>
+    <p>
+      El multijugador se sirve a través de <strong>Vercel</strong> (alojamiento y Functions)
+      y <strong>Upstash/Redis</strong> (almacén temporal de salas), que tratan los datos por
+      cuenta y siguiendo instrucciones de Just Poker. Como en cualquier conexión a internet,
+      el proveedor puede procesar de forma transitoria datos técnicos de conexión (por
+      ejemplo, la dirección IP) con fines de enrutamiento y seguridad.
+    </p>
+
+    <h2>6. Permisos</h2>
+    <p>
+      La aplicación solo declara el permiso de <strong>Internet</strong>, necesario para el
+      multijugador online. No solicita permisos sensibles (ni ubicación, ni contactos, ni
+      cámara, ni micrófono).
+    </p>
+
+    <h2>7. Enlaces externos</h2>
     <p>
       La aplicación incluye un enlace voluntario «Invítame a un café» que abre el sitio
       <a href="https://buymeacoffee.com/" rel="noopener">buymeacoffee.com</a> en el navegador.
       Al abrirlo, se aplica la política de privacidad de ese sitio, ajena a Just Poker.
     </p>
 
-    <h2>6. Menores</h2>
+    <h2>8. Menores</h2>
     <p>La aplicación no está dirigida a menores de edad y no recopila datos de menores.</p>
 
-    <h2>7. Cambios en esta política</h2>
+    <h2>9. Tus derechos</h2>
+    <p>
+      Los datos del modo online son anónimos y se eliminan por sí solos (como máximo, a las
+      12 horas). Si aun así quieres ejercer tus derechos de acceso, rectificación o supresión,
+      escribe a <a href="mailto:aaronsanzroca@gmail.com">aaronsanzroca@gmail.com</a>.
+    </p>
+
+    <h2>10. Cambios en esta política</h2>
     <p>Si esta política cambia, se actualizará la fecha indicada al inicio de esta página.</p>
 
-    <h2>8. Contacto</h2>
+    <h2>11. Contacto</h2>
     <p>Para cualquier duda sobre privacidad, escribe a <a href="mailto:aaronsanzroca@gmail.com">aaronsanzroca@gmail.com</a>.</p>
 
     <hr />
 
     <h1>Privacy Policy — Just Poker</h1>
-    <p class="muted">Last updated: October 6, 2026</p>
+    <p class="muted">Last updated: October 10, 2026</p>
 
     <h2>1. Controller</h2>
     <p>
-      Just Poker is a single-player poker practice app with no real money.
-      Data controller: <strong>sanzaar</strong>
+      Just Poker is a poker practice app with a single-player (offline) mode and an optional
+      private multiplayer (online) mode, with no real money. Data controller:
+      <strong>sanzaar</strong>
       (<a href="mailto:aaronsanzroca@gmail.com">aaronsanzroca@gmail.com</a>).
     </p>
 
     <h2>2. What data we process</h2>
     <p>
-      <strong>No personal data.</strong> The app works fully offline, requires no registration or
-      account, and contains no analytics, ads, or trackers. No information is sent to our servers
-      or to third-party servers.
+      <strong>Single-player mode (offline).</strong> It requires no registration or account,
+      works offline, and sends no information to any server. It contains no analytics, ads, or
+      trackers.
+    </p>
+    <p>
+      <strong>Online multiplayer (optional).</strong> Only if you use the online mode is
+      <strong>anonymous, temporary</strong> data sent to the server so you can play:
+    </p>
+    <ul>
+      <li>An <strong>anonymous session identifier</strong> (a random code) that lets you reconnect and reclaim your seat. It is not linked to your identity.</li>
+      <li>The <strong>player name</strong> you type for the game (or a randomly generated one). It is temporary and you choose it.</li>
+      <li>The <strong>room code and game state</strong> (seats, turns, cards, and chips), needed to synchronize the table.</li>
+    </ul>
+    <p>
+      No personal data (real name, email, phone), location, or contacts are collected. This
+      online data is not used to build profiles, nor for analytics, nor for advertising, and
+      it is not shared with third parties outside the service.
     </p>
 
     <h2>3. On-device storage</h2>
     <p>
       The app stores game data locally (the device's own browser/WebView storage), such as the
-      current game, settings, and tutorial progress. This information never leaves the device and
-      is removed when you uninstall the app.
+      current game, settings, and tutorial progress; and, if you play online, your session
+      identifier and temporary in-game name. This information is removed when you uninstall the
+      app.
     </p>
 
-    <h2>4. Permissions</h2>
-    <p>The app requests no sensitive permissions (no location, contacts, camera, or microphone).</p>
+    <h2>4. Server retention (online mode)</h2>
+    <p>
+      A room's state is stored on the server only while the game is active and is deleted when
+      it ends. In any case, it is automatically deleted after at most <strong>12 hours</strong>.
+      This is anonymous information and is not kept beyond what is needed to run the
+      multiplayer.
+    </p>
 
-    <h2>5. External links</h2>
+    <h2>5. Providers</h2>
+    <p>
+      The multiplayer is served through <strong>Vercel</strong> (hosting and Functions) and
+      <strong>Upstash/Redis</strong> (temporary room store), which process the data on our
+      behalf and under Just Poker's instructions. As with any internet connection, the provider
+      may transiently process technical connection data (for example, the IP address) for
+      routing and security purposes.
+    </p>
+
+    <h2>6. Permissions</h2>
+    <p>
+      The app declares only the <strong>Internet</strong> permission, needed for online
+      multiplayer. It requests no sensitive permissions (no location, contacts, camera, or
+      microphone).
+    </p>
+
+    <h2>7. External links</h2>
     <p>
       The app includes a voluntary “Buy me a coffee” link that opens
       <a href="https://buymeacoffee.com/" rel="noopener">buymeacoffee.com</a> in your browser.
       When you open it, that site's own privacy policy applies, which is independent of Just Poker.
     </p>
 
-    <h2>6. Minors</h2>
+    <h2>8. Minors</h2>
     <p>The app is not directed at children and does not collect data from minors.</p>
 
-    <h2>7. Changes to this policy</h2>
+    <h2>9. Your rights</h2>
+    <p>
+      Online-mode data is anonymous and deletes itself (at most after 12 hours). If you still
+      wish to exercise your rights of access, rectification, or erasure, email
+      <a href="mailto:aaronsanzroca@gmail.com">aaronsanzroca@gmail.com</a>.
+    </p>
+
+    <h2>10. Changes to this policy</h2>
     <p>If this policy changes, the date shown at the top of this page will be updated.</p>
 
-    <h2>8. Contact</h2>
+    <h2>11. Contact</h2>
     <p>For any privacy questions, email <a href="mailto:aaronsanzroca@gmail.com">aaronsanzroca@gmail.com</a>.</p>
   </body>
 </html>
