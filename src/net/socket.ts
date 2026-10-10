@@ -9,13 +9,13 @@ function socketUrl(): string {
 }
 
 /**
- * Ruta del endpoint de socket.io. En producción apunta a la Function de
- * Vercel; en desarrollo al servidor local a través del proxy de Vite.
+ * Ruta del endpoint de socket.io. Es la misma en producción (Function de Vercel
+ * en `/api/socket-io`) y en desarrollo (proxy de Vite a `/api/socket-io`).
  */
 function socketPath(): string {
   const override = import.meta.env.VITE_ONLINE_PATH as string | undefined;
   if (override) return override;
-  return import.meta.env.PROD ? '/api/socket-io/socket.io' : '/socket.io';
+  return '/api/socket-io';
 }
 
 /** Conecta (o reutiliza) el socket anónimo de la sesión actual. */
