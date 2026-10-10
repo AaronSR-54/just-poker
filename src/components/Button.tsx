@@ -25,6 +25,7 @@ const variants: Record<ButtonVariant, string> = {
   outline: 'border-bone/40 bg-ink text-bone enabled:hover:border-bone',
   primary: 'border-bone bg-bone text-ink enabled:hover:brightness-[1.08]',
   ghost: 'border-transparent bg-ink text-bone enabled:hover:opacity-80',
+  outlineFill: 'border-bone/40 bg-ink text-bone enabled:hover:border-bone enabled:hover:bg-bone enabled:hover:text-ink',
 };
 
 const sizes: Record<Exclude<ButtonSize, ''>, string> = {

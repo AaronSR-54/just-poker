@@ -2,7 +2,7 @@ const local = {
   titleEm: 'Choose',
   titleRest: 'difficulty',
   difficultyLine: 'Difficulty: {difficulty}.',
-  play: 'Play',
+  play: 'Start game',
   table: {
     easy: { title: 'The Haven', blurb: 'No rush, no pressure.' },
     medium: { title: 'The Den', blurb: 'The right balance.' },

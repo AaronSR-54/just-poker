@@ -11,7 +11,6 @@ import { container } from '../animations/motion';
 import { useI18n } from '../i18n';
 import { ONLINE_ENABLED } from '../config/features';
 import { getActiveOnlineSession } from '../net/onlineSession';
-import { getLastPlayed } from '../utils/lastPlayed';
 
 const Menu: React.FC = () => {
   const navigate = useNavigate();
@@ -20,13 +19,6 @@ const Menu: React.FC = () => {
   const [saved] = useState(() => loadSavedGame());
   const [onlineSession] = useState(() => getActiveOnlineSession());
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // Tarjeta recomendada (rellena): sin partidas, la local; con una, esa; con
-  // dos, la jugada más recientemente.
-  const localAt = saved ? getLastPlayed('local') ?? saved.savedAt : 0;
-  const onlineAt = onlineSession ? getLastPlayed('online') ?? onlineSession.savedAt : 0;
-  const highlightLocal = onlineSession ? (saved ? localAt >= onlineAt : false) : true;
-  const highlightOnline = Boolean(onlineSession) && !highlightLocal;
 
   const settingsOverlay = (
     <AnimatePresence>
@@ -47,7 +39,6 @@ const Menu: React.FC = () => {
         stacked={isMobile}
         fill={!isMobile}
         dataTour="play-local"
-        highlighted={highlightLocal}
         onClick={() => navigate(saved ? `/game/${saved.gameId}?continue=1` : '/local')}
         label={saved ? t('menu.continue') : t('menu.newGame')}
         hint={t('menu.localHint')}
@@ -68,7 +59,6 @@ const Menu: React.FC = () => {
           stacked={isMobile}
           fill={!isMobile}
           dataTour="play-friends"
-          highlighted={highlightOnline}
           onClick={() => navigate(onlineSession ? `/game/online-${onlineSession.roomId}` : '/online')}
           label={onlineSession ? t('menu.continue') : t('menu.newGame')}
           hint={t('menu.friendsHint')}
@@ -78,7 +68,7 @@ const Menu: React.FC = () => {
               ? t('online.roomContext', { code: onlineSession.code, count: onlineSession.seats.length })
               : undefined
           }
-          onNewGame={onlineSession ? () => navigate('/online') : undefined}
+          onNewGame={onlineSession ? () => navigate('/online', { state: { newGame: true } }) : undefined}
           newGameLabel={t('menu.newGame')}
         >
           {t('menu.friendsTitle')} <em className="font-light italic tracking-normal">{t('menu.friendsTitleEm')}</em>

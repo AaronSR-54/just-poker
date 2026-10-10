@@ -2,7 +2,7 @@ const local = {
   titleEm: 'Elige la',
   titleRest: 'dificultad',
   difficultyLine: 'Dificultad {difficulty}.',
-  play: 'Jugar',
+  play: 'Empezar partida',
   table: {
     easy: { title: 'El Remanso', blurb: 'Sin prisa ni presión.' },
     medium: { title: 'La Guarida', blurb: 'El equilibrio justo.' },

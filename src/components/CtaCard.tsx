@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { fadeUp } from '../animations/motion';
 
@@ -8,8 +8,6 @@ interface CtaCardProps {
   /** Layout móvil (apilado). */
   stacked?: boolean;
   half?: boolean;
-  /** Tarjeta recomendada: la fila de continuar se muestra rellena (fondo bone). */
-  highlighted?: boolean;
   dataTour?: string;
   /** Acción principal: continuar la partida en curso o empezar una nueva. */
   onClick: () => void;
@@ -30,15 +28,19 @@ interface CtaCardProps {
 
 /**
  * Tarjeta de modo del menú. Sin partida en curso es una única fila (título,
- * descripción y flecha). Con partida en curso son dos filas independientes en
- * una columna sin separación: la superior continúa (rellena si es la
- * recomendada) y la inferior, en outline, inicia una partida nueva.
+ * descripción y flecha) en contorno, que se rellena al pasar el cursor. Con
+ * partida en curso son dos filas independientes en una columna sin separación:
+ * la superior continúa y la inferior inicia una partida nueva. Al pasar el
+ * cursor, la fila señalada se rellena (fondo bone) y el contorno pasa a la otra
+ * fila. Con partida en curso siempre hay exactamente una fila rellena (la de
+ * continuar en reposo, la señalada al pasar el cursor), así la compañera
+ * conserva su contorno completo (los cuatro lados) y la unión es una sola línea:
+ * sin doble borde y sin aristas abiertas.
  */
 export const CtaCard: React.FC<CtaCardProps> = ({
   fill = false,
   stacked = false,
   half = false,
-  highlighted = false,
   dataTour,
   onClick,
   label,
@@ -49,6 +51,7 @@ export const CtaCard: React.FC<CtaCardProps> = ({
   newGameLabel,
   children,
 }) => {
+  const [hoveredRow, setHoveredRow] = useState<'continue' | 'new' | null>(null);
   const hasGame = Boolean(status && onNewGame);
 
   const wrapper = [
@@ -66,12 +69,19 @@ export const CtaCard: React.FC<CtaCardProps> = ({
   const titleCls = `font-display font-bold leading-[0.96] tracking-[-0.015em] ${stacked ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,10.5cqw,3.75rem)]'}`;
   const arrowCls = `font-display font-bold leading-none ${stacked ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,7.2cqw,2.5rem)]'}`;
 
-  const filled = 'bg-bone text-ink';
-  const dark = 'bg-ink text-bone';
   const rowMotion = 'cursor-pointer transition-[translate,border-color,background-color,color] duration-[240ms] ease-brand hover:translate-x-2 active:translate-x-0 focus-visible:outline-2 focus-visible:-outline-offset-2';
-  const continueRow = `${rowMotion} ${highlighted ? 'focus-visible:outline-ink' : 'focus-visible:outline-bone'}`;
-  const outlineRow = `${rowMotion} border-[1.5px] border-bone/40 hover:border-bone focus-visible:outline-bone`;
-  const legacyRow = `border-[1.5px] ${rowMotion} hover:border-bone ${highlighted ? 'border-bone focus-visible:outline-ink' : 'border-bone/40 focus-visible:outline-bone'}`;
+  const filledRow = 'bg-bone text-ink focus-visible:outline-ink';
+  const outlineRow = 'bg-transparent text-bone border-[1.5px] border-bone/40 focus-visible:outline-bone';
+
+  // Con partida en curso siempre hay exactamente una fila rellena (la de continuar
+  // en reposo, la señalada al pasar el cursor). Sin partida, la fila está en
+  // contorno y solo se rellena al pasar el cursor. La unión es una sola línea,
+  // así que nunca hay doble borde ni una fila con el contorno abierto.
+  const continueFilled = hasGame
+    ? hoveredRow !== 'new'
+    : hoveredRow === 'continue';
+  const continueRow = continueFilled ? filledRow : outlineRow;
+  const newRow = hoveredRow === 'new' ? filledRow : outlineRow;
 
   const arrowEl = <span className={arrowCls}>→</span>;
 
@@ -81,6 +91,11 @@ export const CtaCard: React.FC<CtaCardProps> = ({
       fn();
     }
   };
+
+  const rowEvents = (key: 'continue' | 'new') => ({
+    onMouseEnter: () => setHoveredRow(key),
+    onMouseLeave: () => setHoveredRow((r) => (r === key ? null : r)),
+  });
 
   return (
     <motion.div variants={fadeUp} className={wrapper}>
@@ -94,7 +109,8 @@ export const CtaCard: React.FC<CtaCardProps> = ({
               data-tour={dataTour}
               onClick={onClick}
               onKeyDown={(e) => onKeyDown(e, onClick)}
-              className={`flex flex-1 flex-col justify-between gap-3 ${radiusTop} ${hPad} ${gameVPad} ${continueRow} ${highlighted ? filled : dark}`}
+              {...rowEvents('continue')}
+              className={`flex flex-1 flex-col justify-between gap-3 ${radiusTop} ${hPad} ${gameVPad} ${rowMotion} ${continueRow}`}
             >
               <div className={titleCls}>{children}</div>
               <div className="flex items-end justify-between gap-4">
@@ -111,7 +127,8 @@ export const CtaCard: React.FC<CtaCardProps> = ({
               aria-label={newGameLabel}
               onClick={onNewGame}
               onKeyDown={(e) => onKeyDown(e, onNewGame ?? (() => {}))}
-              className={`flex w-full items-center justify-between gap-4 bg-transparent ${radiusBottom} ${hPad} ${stacked ? 'py-4' : 'py-[1rem]'} font-display font-bold leading-none tracking-[-0.015em] text-fs-500 text-bone ${outlineRow}`}
+              {...rowEvents('new')}
+              className={`flex w-full items-center justify-between gap-4 ${radiusBottom} ${hPad} ${stacked ? 'py-4' : 'py-[1rem]'} font-display font-bold leading-none tracking-[-0.015em] text-fs-500 ${rowMotion} ${newRow}`}
             >
               <span>{newGameLabel}</span>
               <span className="leading-none">→</span>
@@ -125,7 +142,8 @@ export const CtaCard: React.FC<CtaCardProps> = ({
             data-tour={dataTour}
             onClick={onClick}
             onKeyDown={(e) => onKeyDown(e, onClick)}
-            className={`flex h-full flex-1 flex-col justify-between gap-3 ${radius} ${hPad} ${vPad} ${legacyRow} ${highlighted ? filled : dark}`}
+            {...rowEvents('continue')}
+            className={`flex h-full flex-1 flex-col justify-between gap-3 ${radius} ${hPad} ${vPad} ${rowMotion} ${continueFilled ? filledRow : outlineRow}`}
           >
             <div className={titleCls}>{children}</div>
             <div className="flex items-end justify-between gap-4">

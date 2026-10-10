@@ -231,14 +231,14 @@ const Local: React.FC = () => {
             variants={container(0.07, 0.05)}
             initial="hidden"
             animate="visible"
-            className="flex flex-[48] min-h-0 flex-col gap-6"
+            className="flex min-h-0 min-w-0 flex-1 flex-col gap-6"
           >
             <motion.div variants={fadeUp}>
               <Title className="text-[clamp(2rem,4.5vw,3.25rem)]" />
             </motion.div>
             <motion.div variants={container(0.06)} data-tour="difficulty-list" className="flex min-h-0 flex-1 flex-col gap-3">{renderCards('lg')}</motion.div>
           </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex flex-[52] flex-col justify-center">
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex min-w-0 flex-1 flex-col justify-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={selected.id}
