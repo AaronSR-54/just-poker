@@ -32,6 +32,10 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 mode="${1:-release}"
 
 # --- Web + Capacitor -------------------------------------------------------
+# La WebView de Capacitor sirve la app desde localhost, así que el online debe
+# apuntar al despliegue de producción (el mismo dominio que sirve la API de
+# socket.io). En la web, en cambio, el valor vacío = mismo origen.
+export VITE_ONLINE_URL="${VITE_ONLINE_URL:-https://just-poker-delta.vercel.app}"
 npm run build
 npx cap sync android
 
