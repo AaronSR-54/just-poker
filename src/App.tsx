@@ -26,6 +26,7 @@ import { useSettingsStore } from './store/settingsStore';
 import { useLocaleStore } from './i18n';
 import { crtSupported } from './utils/crtSupport';
 import { useAndroidBackButton } from './hooks/useAndroidBackButton';
+import { useDeepLinks } from './hooks/useDeepLinks';
 
 /** Enlaces antiguos `/join/<code>` → pantalla única con el código rellenado. */
 function JoinRedirect() {
@@ -38,6 +39,7 @@ function AnimatedRoutes() {
   const location = useLocation();
   const navigate = useNavigate();
   useAndroidBackButton(navigate, location.pathname);
+  useDeepLinks(navigate);
   return (
     <AnimatePresence mode="wait">
       <motion.div

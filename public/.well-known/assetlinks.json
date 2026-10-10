@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.justpoker.app",
+      "sha256_cert_fingerprints": [
+        "5D:BB:7D:B0:EF:FC:B5:28:70:0C:F8:81:34:CC:80:5D:23:CE:CA:86:47:FD:F6:42:83:C9:9C:06:5D:36:56:6E"
+      ]
+    }
+  }
+]
