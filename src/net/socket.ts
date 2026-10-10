@@ -1,11 +1,12 @@
 import { io, type Socket } from 'socket.io-client';
 import { getPlayerId, setPlayerId } from './onlineSession';
+import { onlineOrigin } from '../config/online';
 
 let socket: Socket | null = null;
 
 /** URL del servidor online (vacío = mismo origen). */
 function socketUrl(): string {
-  return (import.meta.env.VITE_ONLINE_URL as string | undefined) ?? '';
+  return onlineOrigin();
 }
 
 /**
