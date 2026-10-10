@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { GameManager, MAX_PLAYERS, MIN_PLAYERS } from '../game/GameManager.js';
 import { MAX_NAME_LENGTH } from '../game/types.js';
 import type { Room, RoomPlayer } from '../game/types.js';
+import { log, logError } from '../log.js';
 
 type Ack = (res: unknown) => void;
 
@@ -94,6 +95,16 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
     socket.join(playerId);
     socket.emit('session:id', { playerId });
 
+    log('conn', 'connected', {
+      playerId,
+      socketId: socket.id,
+      transport: socket.conn.transport.name,
+      resumed: Boolean(provided),
+      origin: socket.handshake.headers.origin ?? null,
+    });
+
+    socket.on('error', (err) => logError('conn', 'socket error', err, { playerId }));
+
     // Respaldo del temporizador: cada evento comprueba la caducidad de la sala.
     socket.use((_event, next) => {
       void gameManager
@@ -152,21 +163,33 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       const room = await gameManager.createRoom(playerFromSocket(socket));
       socket.join(room.id);
       await broadcastRoom(room.id);
+      log('room', 'created', { playerId, roomId: room.id, code: room.code });
       ack?.({ ok: true, roomId: room.id, code: room.code, hostId: room.hostId });
     });
 
     socket.on('room:join', async (data: JoinData, ack?: Ack) => {
       if (data?.name) socket.data.username = data.name.toString().slice(0, MAX_NAME_LENGTH);
+      log('room', 'join requested', {
+        playerId,
+        roomId: data?.roomId ?? null,
+        code: data?.code ?? null,
+        name: socket.data.username,
+      });
       let room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
       if (!room && data?.code) room = await gameManager.getRoomByCode(data.code);
       if (!room) {
+        log('room', 'join failed: notFound', { playerId, roomId: data?.roomId ?? null, code: data?.code ?? null });
         ack?.({ ok: false, error: 'notFound' });
         return;
       }
 
       const result = await gameManager.joinRoom(room, playerFromSocket(socket));
-      if (!result.ok) {
-        ack?.({ ok: false, error: result.error });
+      // El compilador de la Function (sin `strict`) no estrecha la unión
+      // discriminada; extraemos el error con un accceso seguro.
+      const joinError = result.ok ? null : (result as { error: string }).error;
+      if (joinError) {
+        log('room', `join failed: ${joinError}`, { playerId, roomId: room.id, code: room.code });
+        ack?.({ ok: false, error: joinError });
         return;
       }
 
@@ -193,6 +216,14 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
           seats: gameManager.buildSeats(room),
         });
       }
+
+      log('room', 'joined', {
+        playerId,
+        roomId: room.id,
+        code: room.code,
+        started: room.started,
+        players: room.players.length,
+      });
 
       ack?.({
         ok: true,
@@ -228,23 +259,16 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
 
     socket.on('room:start', async (data: { roomId?: string }, ack?: Ack) => {
       const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
-      if (!room) {
-        ack?.({ ok: false, error: 'notFound' });
-        return;
-      }
-      if (room.hostId !== playerId) {
-        ack?.({ ok: false, error: 'host' });
-        return;
-      }
-      if (room.players.length < MIN_PLAYERS) {
-        ack?.({ ok: false, error: 'players' });
-        return;
-      }
-      if (room.players.length > MAX_PLAYERS) {
-        ack?.({ ok: false, error: 'max' });
-        return;
-      }
+      const reject = (error: string): void => {
+        log('room', `start rejected: ${error}`, { playerId, roomId: data?.roomId ?? null });
+        ack?.({ ok: false, error });
+      };
+      if (!room) return reject('notFound');
+      if (room.hostId !== playerId) return reject('host');
+      if (room.players.length < MIN_PLAYERS) return reject('players');
+      if (room.players.length > MAX_PLAYERS) return reject('max');
       await gameManager.markStarted(room);
+      log('room', 'started', { playerId, roomId: room.id, code: room.code, players: room.players.length });
       io.to(room.id).emit('room:starting', {
         roomId: room.id,
         hostId: room.hostId,
@@ -308,7 +332,8 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       socket.to(room.id).emit('game:restart');
     });
 
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', async (reason) => {
+      log('conn', 'disconnected', { playerId, reason });
       const room = await gameManager.getRoomByPlayer(playerId);
       if (!room) return;
       await handleDeparture(room.id, playerId);

@@ -4,6 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createRedisClient, roomRepositoryFrom } from '../game/roomRepository.js';
 import { GameManager } from '../game/GameManager.js';
 import { setupSocketHandlers } from './handlers.js';
+import { log, logError } from '../log.js';
 
 /**
  * Path de socket.io. Debe coincidir con la ruta de la Function en Vercel
@@ -23,6 +24,22 @@ export const SOCKET_PATH = '/api/socket-io';
  */
 export function createSocketServer(): HttpServer {
   const httpServer = createServer();
+
+  httpServer.on('request', (req) => {
+    log('http', 'request', {
+      method: req.method,
+      url: req.url,
+      upgrade: req.headers.upgrade ?? null,
+      origin: req.headers.origin ?? null,
+    });
+  });
+
+  httpServer.on('upgrade', (req) => {
+    log('http', 'upgrade', { url: req.url, origin: req.headers.origin ?? null });
+  });
+
+  httpServer.on('error', (err) => logError('http', 'server error', err));
+
   const io = new Server(httpServer, {
     path: SOCKET_PATH,
     cors: { origin: true, credentials: true },
@@ -33,6 +50,11 @@ export function createSocketServer(): HttpServer {
   if (redis) {
     io.adapter(createAdapter(redis, redis.duplicate()));
   }
+
+  log('socket', 'server created', { path: SOCKET_PATH, redis: Boolean(redis) });
+
+  process.on('unhandledRejection', (err) => logError('process', 'unhandledRejection', err));
+  process.on('uncaughtException', (err) => logError('process', 'uncaughtException', err));
 
   const gameManager = new GameManager(roomRepositoryFrom(redis));
   setupSocketHandlers(io, gameManager);
