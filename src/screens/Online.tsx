@@ -359,11 +359,13 @@ const Online: React.FC = () => {
   };
 
   const selectMode = (next: Mode) => {
-    if (next === mode) return;
+    // Con una sala abierta, cambiar (o repetir) de modo pide confirmación:
+    // saldrás de la sala actual antes de crear o unirte a otra.
     if (room) {
       setPendingMode(next);
       return;
     }
+    if (next === mode) return;
     setDir(next === 'join' ? 1 : -1);
     setMode(next);
     setError(null);
@@ -700,6 +702,13 @@ const Online: React.FC = () => {
     </motion.div>
   );
 
+  const confirmCopy =
+    pendingMode === 'create'
+      ? { title: t('online.newGameTitle'), message: t('online.newGameMessage'), confirm: t('online.newGameConfirm') }
+      : pendingMode === 'join'
+        ? { title: t('online.joinAnotherTitle'), message: t('online.joinAnotherMessage'), confirm: t('online.joinAnotherConfirm') }
+        : { title: t('online.leaveTitle'), message: t('online.leaveMessage'), confirm: t('online.leaveConfirm') };
+
   const overlays = (
     <>
       <QrDialog
@@ -712,9 +721,9 @@ const Online: React.FC = () => {
       />
       <ConfirmDialog
         open={blocker.state === 'blocked' || pendingMode !== null}
-        title={t('online.leaveTitle')}
-        message={t('online.leaveMessage')}
-        confirmLabel={t('online.leaveConfirm')}
+        title={confirmCopy.title}
+        message={confirmCopy.message}
+        confirmLabel={confirmCopy.confirm}
         cancelLabel={t('common.cancel')}
         danger
         onConfirm={confirmExit}
