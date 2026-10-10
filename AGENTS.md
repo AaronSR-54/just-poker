@@ -264,8 +264,8 @@ La misma web de Vite se despliega en Vercel con la **integración Git**: cada pu
 
 El multijugador privado anónimo se sirve desde el **mismo dominio**: una Function de WebSockets + Redis para compartir salas y fan-out entre instancias.
 
-- **Endpoint**: `api/socket-io.ts` exporta por defecto un `http.Server` con socket.io; la ruta pública es `/api/socket-io/socket.io`. El cliente (`src/net/socket.ts`) usa `path: '/api/socket-io/socket.io'` y `transports: ['websocket']` en producción; en desarrollo usa `/socket.io` a través del proxy de Vite.
-- **Servidor de desarrollo**: `npm run dev:server` (levanta `server/index.ts` en `:3001`). El proxy de Vite (`/socket.io` con `ws: true`) hace el resto. Para levantar web y servidor online juntos, `npm run dev:all`.
+- **Endpoint**: `api/socket-io.ts` exporta por defecto un `http.Server` con socket.io en `path: '/api/socket-io'` (la Function de Vercel solo enruta esa ruta exacta; no hay subpaths). El cliente (`src/net/socket.ts`) usa `path: '/api/socket-io'` y `transports: ['websocket']` tanto en producción como en desarrollo (proxy de Vite a `:3001`).
+- **Servidor de desarrollo**: `npm run dev:server` (levanta `server/index.ts` en `:3001`). El proxy de Vite (`/api` con `ws: true`) hace el resto. Para levantar web y servidor online juntos, `npm run dev:all`.
 - **Redis**: define `REDIS_URL` (Marketplace de Vercel / Upstash) en Preview y Production. Sin `REDIS_URL`, el servidor cae a un registro en memoria válido solo para una única instancia (desarrollo).
 - **Duración de conexión**: las conexiones WebSocket se cierran al alcanzar `maxDuration` (configurado a 300 s en `vercel.json`); el cliente reconecta con backoff y re-emite `room:join`/`game:sync`.
 - **Identidad**: anónima. El servidor asigna un `playerId` por conexión (el cliente lo guarda en `sessionStorage` para reconectar). No hay JWT, Prisma ni salas públicas.
