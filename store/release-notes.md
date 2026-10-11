@@ -1,5 +1,22 @@
 # Release notes
 
+## 1.5.0 (versionCode 12)
+
+<en-US>
+Feedback you can feel, and a table that fits any screen.
+
+• Added haptic feedback: subtle vibration when you act.
+• Timers now stay in sync with the game speed.
+• The online table adapts to short and narrow windows.
+</en-US>
+<es-ES>
+Respuesta que se siente, y una mesa que encaja en cualquier pantalla.
+
+• Añadida respuesta háptica: una vibración sutil al actuar.
+• Los temporizadores ahora se sincronizan con la velocidad de juego.
+• La mesa online se adapta a ventanas bajas y estrechas.
+</es-ES>
+
 ## 1.4.1 (versionCode 11)
 
 <en-US>
