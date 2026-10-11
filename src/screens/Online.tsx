@@ -58,11 +58,12 @@ const Online: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width: 767px)');
-  /** Pantallas muy estrechas (<300px). */
-  const isTiny = useMediaQuery('(max-width: 299px)');
-  /** Pantallas bajas (móviles 16:9): se compacta para evitar scroll vertical. */
+  /** Pantallas estrechas (móviles pequeños ~320px): se compacta para evitar recortes. */
+  const isNarrow = useMediaQuery('(max-width: 359px)');
+  /** Pantallas bajas (móviles y ventanas 16:9): se compacta para evitar scroll vertical. */
   const isShort = useMediaQuery('(max-height: 720px)');
-  const dense = isMobile && (isTiny || isShort);
+  /** Ventana pequeña (baja o estrecha): compacta en móvil y escritorio, no solo en móvil. */
+  const compact = isShort || isNarrow;
   const { t } = useI18n();
 
   const [mode, setMode] = useState<Mode>('create');
@@ -476,7 +477,7 @@ const Online: React.FC = () => {
         size={cardSize}
         stretch={!isMobile}
         stacked={isMobile}
-        dense={dense}
+        dense={compact}
         onClick={() => selectMode('create')}
       />
       <SelectableCard
@@ -486,14 +487,14 @@ const Online: React.FC = () => {
         size={cardSize}
         stretch={!isMobile}
         stacked={isMobile}
-        dense={dense}
+        dense={compact}
         onClick={() => selectMode('join')}
       />
     </>
   );
 
   const createPanel = (
-    <Panel compact={dense}>
+    <Panel compact={compact}>
       <div className="flex flex-col gap-1">
         <div className="font-display font-bold leading-none text-fs-700">{t('online.createPanelTitle')}</div>
         <div className="font-body leading-[1.45] mt-1 opacity-70">{t('online.createHint')}</div>
@@ -503,7 +504,7 @@ const Online: React.FC = () => {
         value={name}
         onChange={setName}
         placeholder={placeholderName}
-        compact={dense}
+        compact={compact}
       />
       <CtaButton disabled={busy} onClick={doCreate}>
         {t('online.create')}
@@ -512,7 +513,7 @@ const Online: React.FC = () => {
   );
 
   const joinPanel = (
-    <Panel compact={dense}>
+    <Panel compact={compact}>
       <div className="flex flex-col gap-1">
         <div className="font-display font-bold leading-none text-fs-700">{t('online.joinPanelTitle')}</div>
         <div className="font-body leading-[1.45] mt-1 opacity-70">{t('online.joinHint')}</div>
@@ -521,7 +522,7 @@ const Online: React.FC = () => {
         <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">
           {t('online.codeLabel')}
         </div>
-        <div className={`flex justify-center ${dense ? 'gap-2' : 'gap-3'}`}>
+        <div className={`flex justify-center ${compact ? 'gap-2' : 'gap-3'}`}>
           {code.map((d, i) => (
             <input
               key={i}
@@ -542,7 +543,7 @@ const Online: React.FC = () => {
               onPaste={handleCodePaste}
               className={[
                 'rounded-[14px] border-[1.5px] border-bone/20 bg-ink-700 text-center font-display font-bold leading-none text-bone outline-none transition-[border-color] duration-200 placeholder:opacity-[0.18] focus:border-2 focus:border-bone',
-                dense ? 'h-14 w-12 text-fs-500' : 'h-16 w-14 text-fs-600 sm:h-20 sm:w-16 sm:text-fs-700',
+                compact ? 'h-14 w-12 text-fs-500' : 'h-16 w-14 text-fs-600 sm:h-20 sm:w-16 sm:text-fs-700',
               ].join(' ')}
             />
           ))}
@@ -553,7 +554,7 @@ const Online: React.FC = () => {
         value={name}
         onChange={setName}
         placeholder={placeholderName}
-        compact={dense}
+        compact={compact}
       />
       <CtaButton disabled={!codeFilled || busy} onClick={doJoin}>
         {t('online.joinAction')}
@@ -562,7 +563,7 @@ const Online: React.FC = () => {
   );
 
   const roomPanel = room && (
-    <Panel compact={dense} className="gap-5! sm:gap-5! sm:p-7!">
+    <Panel compact={compact} className={compact ? undefined : 'gap-5! sm:gap-5! sm:p-7!'}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="font-display font-bold leading-none text-fs-700">{t('online.roomTitle')}</div>
         <div className="flex flex-wrap items-center gap-2">
@@ -631,8 +632,8 @@ const Online: React.FC = () => {
                 name={p.userId === myId ? `${p.username} (${t('online.youBadge')})` : p.username}
                 avatarName={p.userId === myId ? p.username : undefined}
                 strong={p.userId === myId}
-                avatarSize={dense ? 32 : 36}
-                compact={dense}
+                avatarSize={compact ? 32 : 36}
+                compact={compact}
               />
             </motion.div>
           ))}
@@ -649,9 +650,9 @@ const Online: React.FC = () => {
                 name={t('online.emptySeat')}
                 avatarName="?"
                 strong={false}
-                avatarSize={dense ? 32 : 36}
+                avatarSize={compact ? 32 : 36}
                 muted
-                compact={dense}
+                compact={compact}
               />
             </motion.div>
           ))}
@@ -735,24 +736,24 @@ const Online: React.FC = () => {
   if (isMobile) {
     return (
       <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
-        <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] ${dense ? 'pb-5 pt-5' : 'pb-7 pt-8'}`}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] ${compact ? 'pb-5 pt-5' : 'pb-7 pt-8'}`}>
           <PageHeader
             onBack={goMenu}
             backLabel={t('common.backToMenu')}
             className="flex w-full items-start justify-between gap-4"
-            wordmarkClassName={isTiny ? 'text-fs-500' : 'text-fs-600'}
+            wordmarkClassName={isNarrow ? 'text-fs-500' : 'text-fs-600'}
           />
           <motion.div
             variants={container(0.07, 0.05)}
             initial="hidden"
             animate="visible"
-            className={dense ? 'mt-auto flex flex-col gap-3 pt-3' : 'mt-auto flex flex-col gap-4 pt-5'}
+            className={compact ? 'mt-auto flex flex-col gap-3 pt-3' : 'mt-auto flex flex-col gap-4 pt-5'}
           >
             <motion.div variants={fadeUp}>
               <ScreenTitle
                 em={t('online.titleEm')}
                 rest={t('online.titleRest')}
-                className={isTiny ? 'text-fs-600' : 'text-[clamp(2rem,8.5vw,2.75rem)]'}
+                className={compact ? 'text-fs-600' : 'text-[clamp(2rem,8.5vw,2.75rem)]'}
               />
             </motion.div>
             <motion.div variants={container(0.06)} className="flex flex-col gap-2">
@@ -785,8 +786,14 @@ const Online: React.FC = () => {
     <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
       <PageHeader onBack={goMenu} backLabel={t('common.backToMenu')} />
 
-      <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 min-h-0 justify-center overflow-y-auto px-10 pb-[3.5rem] pt-4 lg:px-20">
-        <div className="m-auto flex w-full items-center justify-center gap-8 lg:gap-12">
+      <div
+        className={
+          compact
+            ? 'mx-auto flex w-full max-w-[87.5rem] flex-1 min-h-0 justify-center overflow-y-auto px-10 pb-6 pt-2 lg:px-20'
+            : 'mx-auto flex w-full max-w-[87.5rem] flex-1 min-h-0 justify-center overflow-y-auto px-10 pb-[3.5rem] pt-4 lg:px-20'
+        }
+      >
+        <div className={`m-auto flex w-full items-center justify-center ${compact ? 'gap-6' : 'gap-8 lg:gap-12'}`}>
           <motion.div
             variants={container(0.07, 0.05)}
             initial="hidden"
@@ -797,7 +804,7 @@ const Online: React.FC = () => {
               <ScreenTitle
                 em={t('online.titleEm')}
                 rest={t('online.titleRest')}
-                className="text-[clamp(2rem,4.5vw,3.25rem)]"
+                className={compact ? 'text-fs-700' : 'text-[clamp(2rem,4.5vw,3.25rem)]'}
               />
             </motion.div>
             <motion.div variants={container(0.06)} className="flex min-h-0 flex-1 flex-col gap-3">
