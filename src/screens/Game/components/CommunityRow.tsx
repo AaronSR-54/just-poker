@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PokerCard from '../../../components/PokerCard';
 import ChipIcon from '../../../components/ChipIcon';
 import { PHASE_LABEL_KEYS } from '../../../game/gameState';
-import { t as motionT } from '../../../animations/motion';
+import { motionT } from '../../../animations/motion';
 import { useI18n } from '../../../i18n';
 import type { GamePhase, CardRank, Suit } from '../../../types';
 

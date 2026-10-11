@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { t as motionT } from '../../../animations/motion';
+import { motionT } from '../../../animations/motion';
 import { useI18n } from '../../../i18n';
 import type { PokerState } from '../../../game/poker';
 

@@ -1,5 +1,4 @@
 import React from 'react';
-import { AnimatePresence } from 'framer-motion';
 import GameSettings from '../../../components/GameSettings';
 
 /** Overlays de la partida: ajustes. */
@@ -19,17 +18,14 @@ const GameOverlays: React.FC<{
   context = 'game',
 }) => {
   return (
-    <AnimatePresence>
-      {settingsOpen && (
-        <GameSettings
-          context={context}
-          onClose={onCloseSettings}
-          onTutorial={onTutorial}
-          onHandsGuide={onHandsGuide}
-          onLeave={onLeave}
-        />
-      )}
-    </AnimatePresence>
+    <GameSettings
+      open={settingsOpen}
+      context={context}
+      onClose={onCloseSettings}
+      onTutorial={onTutorial}
+      onHandsGuide={onHandsGuide}
+      onLeave={onLeave}
+    />
   );
 };
 

@@ -16,6 +16,7 @@ import MobileGameLayout from './layout/MobileGameLayout';
 import DesktopGameLayout from './layout/DesktopGameLayout';
 import OnlineGame from './OnlineGame';
 import type { GameLayoutProps } from './layout/types';
+import { buildGameLayoutProps } from './layout/buildGameLayoutProps';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useUserStore } from '../../store/userStore';
 import { useSettingsStore, speedFactor } from '../../store/settingsStore';
@@ -43,6 +44,8 @@ const LocalGame: React.FC = () => {
   const [gameOverModal, setGameOverModal] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const gameOverTimerRef = useRef<number | null>(null);
+  /** Instante objetivo de la espera de fin de partida (para reescalarla por velocidad). */
+  const gameOverEndsAtRef = useRef<number | null>(null);
   const gameSpeed = useSettingsStore((s) => s.gameSpeed);
   const speed = speedFactor(gameSpeed);
   /** Duración real (ms) del turno humano, escalada por la velocidad de juego. */
@@ -62,7 +65,7 @@ const LocalGame: React.FC = () => {
     return () => setMotionScale(1);
   }, [speed]);
 
-  const { commitState, streetTimerRef } = useCommitState({ gameRef, setGameState });
+  const { commitState, streetTimerRef, cancelStreet } = useCommitState({ gameRef, setGameState });
 
   const {
     potAward,
@@ -128,7 +131,7 @@ const LocalGame: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState]);
 
-  useTurnTimer({
+  const { remainingMs: turnRemainingMs } = useTurnTimer({
     gameRef,
     commitState,
     setShowRaise,
@@ -139,7 +142,6 @@ const LocalGame: React.FC = () => {
     currentPhase: gameState?.phase,
     isStreetPending: gameState?.streetPending,
     turnDurationMs,
-    initialSeconds: TURN_DURATION,
   });
 
   const { aiTurn } = useAiTurns({
@@ -170,35 +172,38 @@ const LocalGame: React.FC = () => {
         window.clearTimeout(gameOverTimerRef.current);
         gameOverTimerRef.current = null;
       }
+      gameOverEndsAtRef.current = null;
       return;
     }
-    if (gameOverTimerRef.current) return;
+    if (gameOverModal) return;
+    if (gameOverEndsAtRef.current === null) {
+      gameOverEndsAtRef.current = Date.now() + GAME_OVER_DELAY * speed;
+    }
+    const delay = Math.max(0, gameOverEndsAtRef.current - Date.now());
+    if (gameOverTimerRef.current) window.clearTimeout(gameOverTimerRef.current);
     gameOverTimerRef.current = window.setTimeout(() => {
       gameOverTimerRef.current = null;
+      gameOverEndsAtRef.current = null;
       setGameOverModal(true);
-    }, GAME_OVER_DELAY * speed);
+    }, delay);
     return () => {
       if (gameOverTimerRef.current) {
         window.clearTimeout(gameOverTimerRef.current);
         gameOverTimerRef.current = null;
       }
     };
-  }, [gameOverForHuman, settingsOpen, speed]);
+  }, [gameOverForHuman, settingsOpen, gameOverModal, speed]);
 
   // Al reanudar la partida, reactiva la pausa de calle que quedó pendiente.
   useEffect(() => {
     if (settingsOpen) {
-      if (streetTimerRef.current) {
-        window.clearTimeout(streetTimerRef.current);
-        streetTimerRef.current = null;
-      }
+      cancelStreet();
       return;
     }
     if (gameState?.streetPending && !streetTimerRef.current) {
       commitState();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsOpen, gameState?.streetPending, commitState]);
+  }, [settingsOpen, gameState?.streetPending, commitState, cancelStreet, streetTimerRef]);
 
   const handleAction = (action: 'fold' | 'check' | 'call' | 'raise') => {
     const g = gameRef.current;
@@ -261,7 +266,7 @@ const LocalGame: React.FC = () => {
 
   const state = gameState;
   const view = buildGameView(state, { potRemaining, awardProgress, gameId, isTutorial, t });
-  const { human, handOver } = view;
+  const { human } = view;
 
   const humanCards = (
     <HumanCards
@@ -275,90 +280,63 @@ const LocalGame: React.FC = () => {
     />
   );
 
-  const humanSeatProps = {
-    name: human.name,
-    isMobile,
-    role: view.humanRole,
-    isWinner: view.humanIsWinner,
-    folded: human.folded,
-    allIn: view.humanAllIn,
-    chips: view.displayedChips(0, human.chips),
-    net: view.humanNet,
-    bet: human.bet,
-    handOver,
-  };
-
-  const actionButtonProps = {
-    size: 'sm' as const,
-    handOver,
-    gameOver: state.gameOver,
-    activePlayer: view.activePlayer,
-    streetPending: view.streetPending,
-    canCheck: view.canCheck,
-    canRaise: view.canRaise,
-    callAmount: view.callAmount,
-    playerChips: human.chips,
+  const raise = {
+    show: showRaise,
+    amount: raiseAmount,
     minRaise: state.minRaise,
     maxRaise: view.maxRaise,
-    pot: view.pot,
-    isTutorial,
-    expectedAction,
-    showRaise,
-    raiseAmount,
-    raiseTouched,
-    onToggleRaise: () => setShowRaise(!showRaise),
-    onRaiseChange: handleRaiseChange,
+    potSize: view.pot,
+    playerChips: human.chips,
+    callAmount: view.callAmount,
+    confirmDisabled: isTutorial && !raiseTouched,
+    hideAllIn: isTutorial,
+    onChange: handleRaiseChange,
     onRaise: () => handleAction('raise'),
-    onAction: handleAction,
-    onNewHand: startNewHand,
+    onClose: () => setShowRaise(false),
   };
 
-  const layoutProps: GameLayoutProps = {
+  const layoutProps: GameLayoutProps = buildGameLayoutProps({
     state,
     view,
-    rivalTurn: aiTurn,
-    humanCards,
-    humanSeatProps,
-    actionButtonProps,
-    isShort,
-    isTablet,
-    isTutorial,
-    gameSpeed,
-    settingsOpen,
-    turnDurationMs,
-    raise: {
-      show: showRaise,
-      amount: raiseAmount,
-      minRaise: state.minRaise,
-      maxRaise: view.maxRaise,
-      potSize: view.pot,
-      playerChips: human.chips,
-      callAmount: view.callAmount,
-      confirmDisabled: isTutorial && !raiseTouched,
-      hideAllIn: isTutorial,
-      onChange: handleRaiseChange,
-      onRaise: () => handleAction('raise'),
-      onClose: () => setShowRaise(false),
+    isMobile,
+    action: {
+      isTutorial,
+      expectedAction,
+      raiseTouched,
+      onToggleRaise: () => setShowRaise(!showRaise),
+      onAction: handleAction,
+      onNewHand: startNewHand,
     },
-    onOpenSettings: openSettings,
-    gameOverModal,
-    onRestart: restartGame,
-    onSelectDifficulty: () => navigate('/local'),
-    onHome: () => navigate('/'),
-    potAward,
-    onPotAwardLanded: handlePotAwardLanded,
-    onPotAwardDone: finishPotAward,
-    overlays,
-    tutorial: {
-      run: tutorialRun,
-      onFinish: finishTutorial,
-      onRestart: restartTutorial,
-      onResume: () => setTutorialReady(true),
-      onRaisePanel: (open) => setShowRaise(open),
-      onExpectedAction: setExpectedAction,
-      onPause: setCoachPaused,
+    common: {
+      isShort,
+      isTablet,
+      gameSpeed,
+      settingsOpen,
+      turnDurationMs,
+      turnRemainingMs,
+      rivalTurn: aiTurn,
+      humanCards,
+      raise,
+      onOpenSettings: openSettings,
+      gameOverModal,
+      onRestart: restartGame,
+      onSelectDifficulty: () => navigate('/local'),
+      onHome: () => navigate('/'),
+      potAward,
+      onPotAwardLanded: handlePotAwardLanded,
+      onPotAwardDone: finishPotAward,
+      overlays,
+      tutorial: {
+        run: tutorialRun,
+        onFinish: finishTutorial,
+        onRestart: restartTutorial,
+        onResume: () => setTutorialReady(true),
+        onRaisePanel: (open) => setShowRaise(open),
+        onExpectedAction: setExpectedAction,
+        onPause: setCoachPaused,
+      },
     },
-  };
+  });
 
   return isMobile ? <MobileGameLayout {...layoutProps} /> : <DesktopGameLayout {...layoutProps} />;
 };

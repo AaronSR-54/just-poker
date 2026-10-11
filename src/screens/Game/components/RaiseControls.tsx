@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Button from '../../../components/Button';
-import { t as motionT } from '../../../animations/motion';
+import Modal from '../../../components/Modal';
+import SegmentedControl from '../../../components/SegmentedControl';
+import { motionT } from '../../../animations/motion';
 import { useI18n } from '../../../i18n';
 
 interface RaisePanelProps {
@@ -33,30 +35,25 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
     { label: t('game.quickPot'), value: Math.max(minRaise, potSize) },
     ...(hideAllIn ? [] : [{ label: t('game.quickAllIn'), value: allInAmount }]),
   ];
+  const clampedQuick = Math.min(raiseAmount, maxRaise);
+  const activeQuick = quickAmounts.reduce<number[]>((acc, qa, i) => {
+    if (Math.min(qa.value, maxRaise) === clampedQuick) acc.push(i);
+    return acc;
+  }, []);
 
   return (
     <div data-tour="raise-panel" className="flex w-full flex-col gap-2.5">
       <div data-tour="raise-amount" className="flex w-full flex-col gap-2.5">
-        <div
-          data-tour="raise-quick"
-          className={fill ? 'grid w-full grid-cols-4 gap-2' : 'flex flex-wrap justify-center gap-1'}
-        >
-          {quickAmounts.map((qa) => {
-            const val = Math.min(qa.value, maxRaise);
-            return (
-              <button
-                key={qa.label}
-                onClick={() => onRaiseChange(val)}
-                className={`flex cursor-pointer items-center justify-center rounded-full border bg-transparent font-display font-bold text-bone transition-[transform,border-color,background-color] duration-[160ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-                  fill ? 'py-2 text-fs-200' : 'px-2.5 py-1 text-fs-200'
-                } ${
-                  raiseAmount === val ? 'border-bone bg-bone/12' : 'border-bone/[0.18]'
-                }`}
-              >
-                {qa.label}
-              </button>
-            );
-          })}
+        <div data-tour="raise-quick">
+          <SegmentedControl
+            columns={hideAllIn ? 3 : 4}
+            variant="subtle"
+            size={fill ? 'md' : 'sm'}
+            ariaLabel={t('game.quickRaise')}
+            value={activeQuick}
+            onChange={(i) => onRaiseChange(Math.min(quickAmounts[i].value, maxRaise))}
+            options={quickAmounts.map((qa, i) => ({ value: i, label: qa.label }))}
+          />
         </div>
 
         <div data-tour="raise-slider" className="flex w-full items-center gap-2">
@@ -85,34 +82,18 @@ const RaisePanel: React.FC<RaisePanelProps> = (props) => (
     initial={{ opacity: 0, y: 8, scale: 0.97 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={motionT(0.2)}
-    className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 min-w-[12.5rem] max-w-72 origin-bottom-right rounded-[14px] border border-bone/[0.18] bg-ink p-4 shadow-[0_0.25rem_1rem_rgba(0,0,0,0.25)]"
+    className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 min-w-[12.5rem] max-w-72 origin-bottom-right rounded-[14px] border border-bone/[0.18] bg-ink p-4 shadow-lg"
   >
     <RaiseControls {...props} />
   </motion.div>
 );
 
-const RaiseSheet: React.FC<RaisePanelProps & { onClose: () => void }> = ({ onClose, ...props }) => {
+const RaiseSheet: React.FC<RaisePanelProps & { open: boolean; onClose: () => void }> = ({ open, onClose, ...props }) => {
   return (
-    <motion.div
-      className="fixed inset-0 z-200 flex items-end justify-center bg-black/60"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={motionT(0.2)}
-      onClick={onClose}
-    >
-      <motion.div
-        className="flex w-full max-w-[25rem] flex-col gap-4 rounded-t-[14px] border border-b-[0] border-bone/[0.18] bg-ink px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-6"
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={motionT(0.32)}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="h-1 w-9 self-center rounded-sm bg-bone/20" />
-        <RaiseControls {...props} fill />
-      </motion.div>
-    </motion.div>
+    <Modal open={open} onClose={onClose} variant="sheet">
+      <div className="h-1 w-9 self-center rounded-sm bg-bone/20" />
+      <RaiseControls {...props} fill />
+    </Modal>
   );
 };
 

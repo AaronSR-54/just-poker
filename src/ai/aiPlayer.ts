@@ -29,8 +29,9 @@ export function getAIAction(
   ai: AIPlayer,
   state: PokerState,
   delay = getActionDelay(ai.personality),
+  options: { signal?: AbortSignal; observe?: boolean } = {},
 ): Promise<AIDecision> {
-  observeHand(ai.mind, state, ai.playerIndex);
+  if (options.observe !== false) observeHand(ai.mind, state, ai.playerIndex);
 
   let info: DecisionInfo | undefined;
   const action = decideAction(
@@ -45,7 +46,15 @@ export function getAIAction(
 
   const complexity = info?.complexity ?? 0.5;
   const ms = Math.max(350, Math.round(delay * thinkScale(complexity)));
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(action), ms);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(action), ms);
+    options.signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException('AI action aborted', 'AbortError'));
+      },
+      { once: true },
+    );
   });
 }

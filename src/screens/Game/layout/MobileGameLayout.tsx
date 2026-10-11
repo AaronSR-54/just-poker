@@ -1,18 +1,14 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { t as motionT } from '../../../animations/motion';
+import Screen from '../../../components/Screen';
 import ActionLog from '../components/ActionLog';
 import SettingsButton from '../../../components/SettingsButton';
-import RivalSlot from '../components/RivalSlot';
-import ShowdownCards from '../components/ShowdownCards';
-import HandLabel from '../components/HandLabel';
 import CommunityRow from '../components/CommunityRow';
 import HumanSeat from '../components/HumanSeat';
 import ActionButtons from '../components/ActionButtons';
 import TimerBar from '../components/TimerBar';
-import GameOverOverlay from '../components/GameOverOverlay';
+import RivalList from '../components/RivalList';
+import GameTail from '../components/GameTail';
 import { RaiseSheet } from '../components/RaiseControls';
-import PotAward from '../../../components/PotAward';
 import TutorialCoach from '../../../components/TutorialCoach';
 import type { GameLayoutProps } from './types';
 
@@ -25,9 +21,9 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
   humanSeatProps,
   actionButtonProps,
   isTutorial,
-  gameSpeed,
   settingsOpen,
   turnDurationMs,
+  turnRemainingMs,
   raise,
   onOpenSettings,
   gameOverModal,
@@ -43,58 +39,31 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
   overlays,
   tutorial,
 }) => {
-  const { phase, activePlayer, winner, showdown, handOver, streetPending, visibleRivals, avatarTone, avatarRing, blindRoleFor, handNameFor, isDimmed, winnerLog, displayedChips, displayedPot, potEmpty, potAwarded } = view;
+  const { phase, activePlayer, handOver, streetPending, displayedPot, potEmpty, potAwarded } = view;
 
   return (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <Screen>
       <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto_1fr] overflow-y-auto px-[0.875rem]">
         <div className="flex flex-col self-start pt-[calc(0.75rem+env(safe-area-inset-top))] [@media(max-height:700px)]:pt-[calc(0.375rem+env(safe-area-inset-top))]">
           <div className="flex items-start justify-between gap-3 pb-1">
             <div className="pointer-events-none min-w-0 flex-1">
-              <ActionLog compact state={state} winnerName={winnerLog?.name} winnerHand={winnerLog?.hand} winnerIsHuman={winnerLog?.isHuman} />
+              <ActionLog compact state={state} winnerName={view.winnerLog?.name} winnerHand={view.winnerLog?.hand} winnerIsHuman={view.winnerLog?.isHuman} />
             </div>
             <SettingsButton onClick={onOpenSettings} inline />
           </div>
 
-          <div data-tour="rivals" className="flex flex-wrap justify-center gap-2 pt-2">
-          <AnimatePresence initial={false}>
-          {visibleRivals.map((r, i) => (
-            <motion.div
-              key={r.id}
-              layout="position"
-              exit={{ opacity: 0, scale: 0.85, transition: motionT(0.25) }}
-              className="flex flex-col items-center gap-1.5"
-            >
-              <RivalSlot
-                compact
-                enterDelay={i * 0.08}
-                name={r.name}
-                folded={r.folded}
-                eliminated={r.eliminated}
-                isActive={activePlayer === r.id}
-                isWinner={winner !== null && winner.includes(r.id)}
-                chips={displayedChips(r.id, r.chips)}
-                blindRole={blindRoleFor(r.id)} dataTour={`rival-${r.id}`}
-                delta={handOver ? (winner !== null && winner.includes(r.id) ? state.winAmounts[r.id] - state.committed[r.id] : 0) : -r.bet}
-                isAllIn={r.isAllIn}
-                handOver={handOver}
-                avatarTone={avatarTone.tone}
-                avatarImgClassName={avatarTone.imgClassName}
-                avatarRing={avatarRing}
-                timerDuration={rivalTurn?.playerIndex === r.id ? rivalTurn.duration : undefined}
-                timerKey={`${state.handNumber}-${phase}-${r.id}`}
-              />
-              <div className="flex min-h-[5.5rem] flex-col items-center gap-1.5">
-                {showdown && !r.folded && r.cards.length > 0 && (
-                  <>
-                    <ShowdownCards cards={r.cards} size="sm" isDimmed={isDimmed} />
-                    <HandLabel name={handNameFor(r.cards)} winner={winner !== null && winner.includes(r.id)} />
-                  </>
-                )}
-              </div>
-            </motion.div>
-          ))}
-          </AnimatePresence>
+          <div className="pt-2">
+            <RivalList
+              state={state}
+              view={view}
+              rivalTurn={rivalTurn}
+              settingsOpen={settingsOpen}
+              compact
+              containerClassName="flex flex-wrap justify-center gap-2"
+              itemGapClassName="gap-1.5"
+              showdownClassName="flex min-h-[5.5rem] flex-col items-center gap-1.5"
+              showdownSize="sm"
+            />
           </div>
         </div>
 
@@ -106,7 +75,7 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
             potAwarded={potEmpty}
             potLocked={potAwarded}
             cardSize="md"
-            isDimmed={isDimmed}
+            isDimmed={view.isDimmed}
           />
         </div>
 
@@ -122,19 +91,32 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
 
           <div className="h-[3px] w-full">
             {!isTutorial && activePlayer === 0 && !handOver && !streetPending && (
-              <TimerBar key={`${state.handNumber}-${phase}-${gameSpeed}`} duration={turnDurationMs} className="mx-2" paused={settingsOpen} />
+              <TimerBar key={`${state.handNumber}-${phase}`} remainingMs={turnRemainingMs} durationMs={turnDurationMs} className="mx-2" paused={settingsOpen} />
             )}
           </div>
         </div>
       </div>
 
-      <AnimatePresence>
-        {raise.show && activePlayer === 0 && !handOver && (
+      <GameTail
+        state={state}
+        gameOverModal={gameOverModal}
+        onRestart={onRestart}
+        onSelectDifficulty={onSelectDifficulty}
+        onHome={onHome}
+        gameOverRestartLabel={gameOverRestartLabel}
+        gameOverRestartDisabled={gameOverRestartDisabled}
+        gameOverWaitingLabel={gameOverWaitingLabel}
+        potAward={potAward}
+        onPotAwardLanded={onPotAwardLanded}
+        onPotAwardDone={onPotAwardDone}
+        overlays={overlays}
+        raiseSheet={
           <RaiseSheet
+            open={raise.show && activePlayer === 0 && !handOver}
+            onClose={raise.onClose}
             raiseAmount={raise.amount}
             onRaiseChange={raise.onChange}
             onRaise={raise.onRaise}
-            onClose={raise.onClose}
             minRaise={raise.minRaise}
             maxRaise={raise.maxRaise}
             potSize={raise.potSize}
@@ -143,38 +125,22 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
             confirmDisabled={raise.confirmDisabled}
             hideAllIn={raise.hideAllIn}
           />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {gameOverModal && (
-          <GameOverOverlay
+        }
+        tutorialCoach={isTutorial ? (
+          <TutorialCoach
+            key={tutorial.run}
             state={state}
-            onRestart={onRestart}
-            onSelectDifficulty={onSelectDifficulty}
-            onHome={onHome}
-            restartLabel={gameOverRestartLabel}
-            restartDisabled={gameOverRestartDisabled}
-            waitingLabel={gameOverWaitingLabel}
+            onFinish={tutorial.onFinish}
+            onRestart={tutorial.onRestart}
+            onResume={tutorial.onResume}
+            onRaisePanel={tutorial.onRaisePanel}
+            onExpectedAction={tutorial.onExpectedAction}
+            raiseOpen={raise.show}
+            onPause={tutorial.onPause}
           />
-        )}
-      </AnimatePresence>
-
-      {potAward && (
-        <PotAward key={potAward.handNumber} data={potAward} onLanded={onPotAwardLanded} onDone={onPotAwardDone} />
-      )}
-
-      {overlays}
-
-      {isTutorial && (
-        <TutorialCoach
-          key={tutorial.run}
-          state={state}
-          onFinish={tutorial.onFinish}
-          onRestart={tutorial.onRestart} onResume={tutorial.onResume} onRaisePanel={tutorial.onRaisePanel} onExpectedAction={tutorial.onExpectedAction} raiseOpen={raise.show} onPause={tutorial.onPause}
-        />
-      )}
-    </div>
+        ) : undefined}
+      />
+    </Screen>
   );
 };
 

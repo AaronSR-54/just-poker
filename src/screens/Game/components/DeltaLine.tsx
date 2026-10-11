@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { t as motionT } from '../../../animations/motion';
+import { motionT } from '../../../animations/motion';
 
 /** Delta de fichas ganadas/gastadas en la mano, mostrado bajo el total del jugador. */
 const DeltaLine: React.FC<{ amount: number; filled?: boolean; className?: string }> = ({ amount, filled = false, className = '' }) => {

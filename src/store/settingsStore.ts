@@ -1,17 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { clamp01 } from '../utils/math';
 
 /** Multiplicadores de velocidad de juego disponibles. */
 export type GameSpeed = 0.5 | 1 | 2 | 4;
 
 export const GAME_SPEEDS: GameSpeed[] = [0.5, 1, 2, 4];
-
-export const SPEED_LABELS: Record<GameSpeed, string> = {
-  0.5: '×0,5',
-  1: '×1',
-  2: '×2',
-  4: '×4',
-};
 
 interface SettingsState {
   /** Volumen de la música, 0..1. */
@@ -30,8 +24,6 @@ interface SettingsState {
   setGameSpeed: (v: GameSpeed) => void;
   setHapticsEnabled: (v: boolean) => void;
 }
-
-const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 
 export const useSettingsStore = create<SettingsState>()(
   persist(

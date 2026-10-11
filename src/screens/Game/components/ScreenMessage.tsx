@@ -1,8 +1,9 @@
 import React from 'react';
+import Screen from '../../../components/Screen';
 
 /** Pantalla a tamaño completo con un mensaje centrado (cargando, no disponible). */
 const ScreenMessage: React.FC<{ title: string; body?: string; action?: React.ReactNode }> = ({ title, body, action }) => (
-  <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+  <Screen>
     <div className={`flex flex-1 flex-col items-center justify-center ${action ? 'gap-4' : ''}`}>
       <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">{title}</div>
       {body !== undefined && (
@@ -10,7 +11,7 @@ const ScreenMessage: React.FC<{ title: string; body?: string; action?: React.Rea
       )}
       {action}
     </div>
-  </div>
+  </Screen>
 );
 
 export default ScreenMessage;

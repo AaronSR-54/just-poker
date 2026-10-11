@@ -1,4 +1,5 @@
 import { evaluateHand, getRelevantCards, HAND_RANKS } from '../../game/hands';
+import { smallBlindIndex, bigBlindIndex } from '../../game/engine/seats';
 import { DIFFICULTY_AVATAR_TONE } from '../../game/rivals';
 import { getDifficulty, DIFFICULTY_AVATAR_RING } from './gameConfig';
 import type { PokerState } from '../../game/poker';
@@ -70,13 +71,10 @@ export function buildGameView(
   // Roles de ciegas (con eliminaciones los índices vivos varían; los derivamos del dealer)
   const blindRoleFor = (playerId: number): 'dealer' | 'sb' | 'bb' | null => {
     if (playerId === state.dealer) return 'dealer';
-    const alive = state.players.filter(p => !p.eliminated).map(p => p.id);
-    if (alive.length < 2) return null;
-    const pos = alive.indexOf(state.dealer);
-    const sb = alive.length === 2 ? alive[pos] : alive[(pos + 1) % alive.length];
-    const bb = alive.length === 2 ? alive[(pos + 1) % alive.length] : alive[(pos + 2) % alive.length];
-    if (playerId === sb) return 'sb';
-    if (playerId === bb) return 'bb';
+    const aliveCount = state.players.filter(p => !p.eliminated).length;
+    if (aliveCount < 2) return null;
+    if (playerId === smallBlindIndex(state.players, state.dealer)) return 'sb';
+    if (playerId === bigBlindIndex(state.players, state.dealer)) return 'bb';
     return null;
   };
 

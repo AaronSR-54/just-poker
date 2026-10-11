@@ -17,7 +17,6 @@ export function useTurnTimer({
   currentPhase,
   isStreetPending,
   turnDurationMs,
-  initialSeconds,
 }: {
   gameRef: { current: PokerGame | null };
   commitState: () => void;
@@ -29,7 +28,6 @@ export function useTurnTimer({
   currentPhase: string | undefined;
   isStreetPending: boolean | undefined;
   turnDurationMs: number;
-  initialSeconds: number;
 }) {
   const active = !isTutorial && currentPlayerIdx === 0 && !isHandOver && !isStreetPending;
 
@@ -44,14 +42,13 @@ export function useTurnTimer({
     setShowRaise(false);
   }, [gameRef, commitState, setShowRaise]);
 
-  const { timerSeconds } = useTurnCountdown({
+  const { remainingMs } = useTurnCountdown({
     active,
     settingsOpen,
     turnDurationMs,
-    initialSeconds,
     turnKey: `${currentPhase}`,
     onExpire,
   });
 
-  return { timerSeconds };
+  return { remainingMs };
 }

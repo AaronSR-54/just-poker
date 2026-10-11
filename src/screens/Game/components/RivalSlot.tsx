@@ -1,12 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Avatar from '../../../components/Avatar';
-import ChipIcon from '../../../components/ChipIcon';
 import PositionChip from '../../../components/PositionChip';
 import TimerBar from './TimerBar';
-import DeltaLine from './DeltaLine';
+import ChipStackRow from './ChipStackRow';
 import { rivalAvatar, rivalAliasKey } from '../../../game/rivals';
-import { t as motionT } from '../../../animations/motion';
+import { motionT } from '../../../animations/motion';
 import { useI18n } from '../../../i18n';
 
 interface RivalSlotProps {
@@ -29,6 +28,10 @@ interface RivalSlotProps {
   avatarRing?: string;
   /** Duración (ms) del turno activo; si se define, se muestra la barra. */
   timerDuration?: number;
+  /** Ms restantes del turno activo (fuente de verdad de la barra). */
+  timerRemainingMs?: number;
+  /** Pausa la barra (p. ej. mientras Ajustes está abierto). */
+  timerPaused?: boolean;
   /** Cambia por turno para reiniciar la animación de la barra. */
   timerKey?: string;
   /** Retardo de entrada para escalonar los slots de la mesa. */
@@ -58,6 +61,8 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
   avatarImgClassName,
   avatarRing,
   timerDuration,
+  timerRemainingMs,
+  timerPaused = false,
   timerKey,
   enterDelay = 0,
   dataTour,
@@ -85,8 +90,14 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
             : 'border-bone/[0.18] bg-ink',
       ].join(' ')}
     >
-      {isActive && !handOver && timerDuration !== undefined && (
-        <TimerBar key={timerKey} duration={timerDuration} className="absolute -bottom-2 inset-x-4" />
+      {isActive && !handOver && timerDuration !== undefined && timerRemainingMs !== undefined && (
+        <TimerBar
+          key={timerKey}
+          remainingMs={timerRemainingMs}
+          durationMs={timerDuration}
+          paused={timerPaused}
+          className="absolute -bottom-2 inset-x-4"
+        />
       )}
 
       <span className={`inline-flex shrink-0 rounded-full ring-1 ${avatarRing ?? 'ring-bone/20'}`}>
@@ -108,21 +119,13 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
         <div className="max-w-full truncate font-body text-fs-100 italic opacity-70 leading-3 sm:leading-2 md:leading-4">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
       </div>
 
-      <div className="relative flex w-full items-center justify-center gap-0.5 py-2">
-        <span data-chips className="inline-flex">
-          <ChipIcon className={`size-5 ${filled ? 'text-ink' : 'text-bone'}`} />
-        </span>
-        <div className="relative flex flex-col items-center">
-          {showAllIn ? (
-            <span className={`flex h-5 items-center font-display font-bold text-fs-200 ${filled ? 'text-danger-bone' : 'text-danger'}`}>ALL-IN</span>
-          ) : (
-            <span className={`flex items-center whitespace-nowrap font-display font-bold leading-none tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
-          )}
-          <div className="absolute left-3 md:left-4 top-full -translate-x-1/2">
-            <DeltaLine amount={showAllIn ? 0 : delta} filled={filled} className="whitespace-nowrap" />
-          </div>
-        </div>
-      </div>
+      <ChipStackRow
+        variant="below"
+        filled={filled}
+        allIn={showAllIn}
+        chips={chips}
+        delta={showAllIn ? 0 : delta}
+      />
     </motion.div>
   );
 };

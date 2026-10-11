@@ -1,12 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getActionDelay } from '../../../ai/personalities';
 import { getAIAction, type AIPlayer } from '../../../ai/aiPlayer';
 import { tutorialAIAction } from '../../../game/tutorial';
 import type { PokerGame, PokerState } from '../../../game/poker';
 
+interface RivalTurn {
+  playerIndex: number;
+  duration: number;
+  remainingMs: number;
+}
+
 /**
  * Resuelve los turnos de la IA (partida normal y mano guiada) y expone el turno
- * activo para dibujar la barra del rival.
+ * activo para dibujar la barra del rival. El tiempo restante es la fuente de
+ * verdad de esa barra y se congela mientras Ajustes está abierto.
+ *
+ * La velocidad de juego se lee desde un ref para que cambiarla no reinicie la
+ * decisión ni el turno en curso.
  */
 export function useAiTurns({
   gameRef,
@@ -31,36 +41,82 @@ export function useAiTurns({
   tutorialReady: boolean;
   coachPaused: boolean;
 }) {
-  const [aiTurn, setAiTurn] = useState<{ playerIndex: number; duration: number } | null>(null);
+  const [aiTurn, setAiTurn] = useState<RivalTurn | null>(null);
+
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
+  const turnDurationRef = useRef(turnDurationMs);
+  turnDurationRef.current = turnDurationMs;
+
+  const barTimerRef = useRef<number | null>(null);
+  const barRemainingRef = useRef(0);
+  const barDurationRef = useRef(0);
+  const barKeyRef = useRef<string | null>(null);
+  const observedKeyRef = useRef<string | null>(null);
+
+  const clearBar = useCallback(() => {
+    if (barTimerRef.current !== null) {
+      window.clearInterval(barTimerRef.current);
+      barTimerRef.current = null;
+    }
+  }, []);
+
+  const runBar = useCallback((playerIndex: number, key: string) => {
+    if (barKeyRef.current !== key) {
+      barKeyRef.current = key;
+      barDurationRef.current = turnDurationRef.current;
+      barRemainingRef.current = barDurationRef.current;
+    }
+    if (barTimerRef.current !== null) return;
+    const endsAt = Date.now() + Math.max(0, barRemainingRef.current);
+    const tick = () => {
+      const remaining = Math.max(0, endsAt - Date.now());
+      barRemainingRef.current = remaining;
+      setAiTurn({ playerIndex, duration: barDurationRef.current, remainingMs: remaining });
+      if (remaining <= 0) clearBar();
+    };
+    tick();
+    barTimerRef.current = window.setInterval(tick, 100);
+  }, [clearBar]);
+
+  const freezeBar = useCallback((playerIndex: number) => {
+    clearBar();
+    setAiTurn({ playerIndex, duration: barDurationRef.current, remainingMs: barRemainingRef.current });
+  }, [clearBar]);
 
   // ---- Turnos de la IA ----
   useEffect(() => {
     const g = gameRef.current;
-    if (!g || !gameState || isTutorial) return;
-    if (settingsOpen) {
-      setAiTurn(null);
+    if (!g || !gameState || isTutorial) {
+      clearBar(); barKeyRef.current = null; setAiTurn(null);
       return;
     }
 
     const current = gameState.currentPlayer;
+    const key = `${gameState.handNumber}-${gameState.phase}-${current}`;
     if (current === 0 || gameState.handOver || gameState.streetPending) {
-      setAiTurn(null);
+      clearBar(); barKeyRef.current = null; setAiTurn(null);
+      return;
+    }
+
+    if (settingsOpen) {
+      freezeBar(current);
       return;
     }
 
     const ai = aiPlayers.find(a => a.playerIndex === current);
     if (!ai) return;
 
-    // El rival decide en el mismo tiempo que a ×1, escalado por la velocidad.
-    const delay = getActionDelay(ai.personality) * speed;
-    // Su barra dura lo mismo que la del jugador; como decide antes, nunca se agota.
-    setAiTurn({ playerIndex: current, duration: turnDurationMs });
+    runBar(current, key);
 
-    let cancelled = false;
+    const shouldObserve = observedKeyRef.current !== key;
+    observedKeyRef.current = key;
+
     let settled = false;
+    const controller = new AbortController();
 
     const applyAction = (type: string, amount?: number) => {
-      if (settled || cancelled || !gameRef.current) return;
+      if (settled || !gameRef.current) return;
       const currentState = gameRef.current.getState();
       if (currentState.currentPlayer !== current || currentState.handOver) return;
       settled = true;
@@ -71,12 +127,17 @@ export function useAiTurns({
       commitState();
     };
 
-    getAIAction(ai, gameState, delay).then((action) => applyAction(action.type, action.amount));
+    getAIAction(ai, gameState, getActionDelay(ai.personality) * speedRef.current, {
+      signal: controller.signal,
+      observe: shouldObserve,
+    })
+      .then((action) => applyAction(action.type, action.amount))
+      .catch(() => {});
 
     // Red de seguridad: si la barra llegara a fallar, el rival nunca se retira;
     // pasa o iguala.
     const safety = window.setTimeout(() => {
-      if (settled || cancelled) return;
+      if (settled) return;
       const g2 = gameRef.current;
       if (!g2) return;
       const s = g2.getState();
@@ -85,26 +146,32 @@ export function useAiTurns({
       if (g2.canCheck(current)) g2.check(current);
       else g2.call(current);
       commitState();
-    }, turnDurationMs);
+    }, turnDurationRef.current);
 
-    return () => { cancelled = true; window.clearTimeout(safety); };
-  }, [gameState, aiPlayers, isTutorial, commitState, settingsOpen, speed, turnDurationMs, gameRef]);
+    return () => { controller.abort(); window.clearTimeout(safety); };
+  }, [gameState, aiPlayers, isTutorial, commitState, settingsOpen, gameRef, runBar, freezeBar, clearBar]);
 
   // ---- Turnos de la IA en la mano guiada: siempre pasa o iguala ----
   useEffect(() => {
     const g = gameRef.current;
-    if (!g || !gameState || !isTutorial || !tutorialReady || coachPaused || settingsOpen) return;
+    if (!g || !gameState || !isTutorial) return;
 
     const current = gameState.currentPlayer;
+    const key = `tutorial-${gameState.handNumber}-${gameState.phase}-${current}`;
     if (current === 0 || gameState.handOver || gameState.streetPending) {
-      setAiTurn(null);
+      clearBar(); barKeyRef.current = null; setAiTurn(null);
+      return;
+    }
+
+    if (!tutorialReady || coachPaused || settingsOpen) {
+      freezeBar(current);
       return;
     }
 
     const ai = aiPlayers.find(a => a.playerIndex === current);
-    const delay = (ai ? getActionDelay(ai.personality) : 800) * speed;
-    // Su barra dura lo mismo que la del jugador; como decide antes, nunca se agota.
-    setAiTurn({ playerIndex: current, duration: turnDurationMs });
+    const delay = (ai ? getActionDelay(ai.personality) : 800) * speedRef.current;
+
+    runBar(current, key);
 
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -118,7 +185,10 @@ export function useAiTurns({
     }, delay);
 
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [gameState, isTutorial, tutorialReady, coachPaused, aiPlayers, commitState, settingsOpen, speed, turnDurationMs, gameRef]);
+  }, [gameState, isTutorial, tutorialReady, coachPaused, aiPlayers, commitState, settingsOpen, gameRef, runBar, freezeBar, clearBar]);
+
+  // Limpieza de la barra al desmontar.
+  useEffect(() => clearBar, [clearBar]);
 
   return { aiTurn };
 }

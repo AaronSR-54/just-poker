@@ -6,6 +6,7 @@ import { createAIPlayer, type AIPlayer } from '../../../ai/aiPlayer';
 import { saveGame, loadSavedGame, clearSavedGame } from '../../../game/saveGame';
 import { markPlayed } from '../../../utils/lastPlayed';
 import { buildTutorialDeck } from '../../../game/tutorial';
+import { DEFAULT_NAMES } from '../../../game/engine/constants';
 import { getDifficulty } from '../gameConfig';
 
 /**
@@ -34,7 +35,7 @@ export function useLocalGameInit({
     if (!isLocal || !gameId) return;
 
     if (isTutorial) {
-      const g = new PokerGame(4, 10, 20, ['Tú', 'Mia', 'Dan', 'Sam']);
+      const g = new PokerGame(4, 10, 20, DEFAULT_NAMES.slice(0, 4));
       g.setDeck(buildTutorialDeck());
       g.setAutoDeal(false);
       const ais = PERSONALITIES.easy.map((p, i) => createAIPlayer(i + 1, p));

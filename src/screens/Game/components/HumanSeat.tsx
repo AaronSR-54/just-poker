@@ -1,7 +1,7 @@
 import React from 'react';
-import ChipIcon from '../../../components/ChipIcon';
 import PositionChip from '../../../components/PositionChip';
-import DeltaLine from './DeltaLine';
+import ChipStackRow from './ChipStackRow';
+import { DEFAULT_NAMES } from '../../../game/engine/constants';
 import { useI18n } from '../../../i18n';
 
 export interface HumanSeatProps {
@@ -49,24 +49,20 @@ const HumanSeat: React.FC<HumanSeatProps> = ({
       ].join(' ')}
     >
       <div className="flex items-center gap-1.5">
-        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{name === 'Tú' ? t('common.you') : name}</span>
+        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{name === DEFAULT_NAMES[0] ? t('common.you') : name}</span>
         {role && (
           <span className="shrink-0" data-tour={role === 'dealer' ? 'dealer' : undefined}>
             <PositionChip role={role} filled={isWinner} />
           </span>
         )}
       </div>
-      <div className="flex items-center gap-0.5">
-        <span data-chips className="inline-flex">
-          <ChipIcon className={`size-5 ${isWinner ? 'text-ink' : 'text-bone'}`} />
-        </span>
-        {allIn ? (
-          <span className={`font-display font-bold text-fs-300 ${isWinner ? 'text-danger-bone' : 'text-danger'}`}>ALL-IN</span>
-        ) : (
-          <span className={`font-display font-bold tabular-nums text-fs-300 ${chips < 100 && !isWinner ? 'text-danger' : ''}`}>{chips}</span>
-        )}
-        <DeltaLine amount={allIn ? 0 : handOver ? (isWinner ? net : 0) : -bet} filled={isWinner} className="ml-1" />
-      </div>
+      <ChipStackRow
+        variant="inline"
+        filled={isWinner}
+        allIn={allIn}
+        chips={chips}
+        delta={allIn ? 0 : handOver ? (isWinner ? net : 0) : -bet}
+      />
     </div>
   );
 };

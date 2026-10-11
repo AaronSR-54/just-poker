@@ -9,6 +9,7 @@ import GameOverlays from './components/GameOverlays';
 import MobileGameLayout from './layout/MobileGameLayout';
 import DesktopGameLayout from './layout/DesktopGameLayout';
 import type { GameLayoutProps } from './layout/types';
+import { buildGameLayoutProps } from './layout/buildGameLayoutProps';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useI18n } from '../../i18n';
 import { useOnlineGame } from '../../net/useOnlineGame';
@@ -73,11 +74,10 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
 
   // Auto check/fold si el turno propio expira (el anfitrión además resuelve a los rivales).
   const isMyTurn = Boolean(state && state.currentPlayer === 0 && !state.handOver && !state.streetPending);
-  useTurnCountdown({
+  const { remainingMs: turnRemainingMs } = useTurnCountdown({
     active: isMyTurn,
     settingsOpen,
     turnDurationMs,
-    initialSeconds: TURN_DURATION,
     turnKey: `${state?.handNumber ?? 0}-${state?.phase ?? ''}`,
     onExpire: () => {
       if (!state) return;
@@ -86,6 +86,16 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       else online.handleAction('fold');
       setShowRaise(false);
     },
+  });
+
+  // Barra de tiempo del rival activo (turno remoto gestionado por el anfitrión).
+  const rivalActive = Boolean(state && !state.handOver && !state.streetPending && !state.gameOver && state.currentPlayer !== 0);
+  const { remainingMs: rivalRemainingMs } = useTurnCountdown({
+    active: rivalActive,
+    settingsOpen,
+    turnDurationMs,
+    turnKey: `${state?.handNumber ?? 0}-${state?.phase ?? ''}-${state?.currentPlayer ?? 0}`,
+    onExpire: () => {},
   });
 
   // Fin de partida: deja ver el showdown antes de abrir el overlay. Si aún
@@ -151,11 +161,11 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     isTutorial: false,
     t,
   });
-  const { human, handOver } = view;
+  const { human } = view;
 
   // Barra de tiempo del rival activo (turno remoto gestionado por el anfitrión).
-  const rivalTurn = !handOver && !view.streetPending && !state.gameOver && view.activePlayer !== 0
-    ? { playerIndex: view.activePlayer, duration: turnDurationMs }
+  const rivalTurn = rivalActive
+    ? { playerIndex: state.currentPlayer, duration: turnDurationMs, remainingMs: rivalRemainingMs }
     : null;
 
   const humanCards = (
@@ -170,113 +180,83 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     />
   );
 
-  const humanSeatProps = {
-    name: human.name,
-    isMobile,
-    role: view.humanRole,
-    isWinner: view.humanIsWinner,
-    folded: human.folded,
-    allIn: view.humanAllIn,
-    chips: view.displayedChips(0, human.chips),
-    net: view.humanNet,
-    bet: human.bet,
-    handOver,
-  };
+  const noop = () => {};
 
-  const actionButtonProps = {
-    size: 'sm' as const,
-    handOver,
-    gameOver: state.gameOver,
-    activePlayer: view.activePlayer,
-    streetPending: view.streetPending,
-    canCheck: view.canCheck,
-    canRaise: view.canRaise,
-    callAmount: view.callAmount,
-    playerChips: human.chips,
+  const raise = {
+    show: showRaise,
+    amount: raiseAmount,
     minRaise: state.minRaise,
     maxRaise: view.maxRaise,
-    pot: view.pot,
-    isTutorial: false,
-    expectedAction: null,
-    showRaise,
-    raiseAmount,
-    raiseTouched: true,
-    onToggleRaise: () => setShowRaise(!showRaise),
-    onRaiseChange: setRaiseAmount,
+    potSize: view.pot,
+    playerChips: human.chips,
+    callAmount: view.callAmount,
+    confirmDisabled: false,
+    hideAllIn: false,
+    onChange: setRaiseAmount,
     onRaise: () => {
       online.handleAction('raise', raiseAmount);
       setShowRaise(false);
     },
-    onAction: (action: 'fold' | 'check' | 'call' | 'raise') => {
-      if (action === 'raise') online.handleAction('raise', raiseAmount);
-      else online.handleAction(action);
-      setShowRaise(false);
-    },
-    onNewHand: startNewHand,
-    newHandEnabled: isHost,
+    onClose: () => setShowRaise(false),
   };
 
-  const noop = () => {};
-
-  const layoutProps: GameLayoutProps = {
+  const layoutProps: GameLayoutProps = buildGameLayoutProps({
     state,
     view,
-    rivalTurn,
-    humanCards,
-    humanSeatProps,
-    actionButtonProps,
-    isShort,
-    isTablet,
-    isTutorial: false,
-    gameSpeed: 1,
-    settingsOpen,
-    turnDurationMs,
-    raise: {
-      show: showRaise,
-      amount: raiseAmount,
-      minRaise: state.minRaise,
-      maxRaise: view.maxRaise,
-      potSize: view.pot,
-      playerChips: human.chips,
-      callAmount: view.callAmount,
-      confirmDisabled: false,
-      hideAllIn: false,
-      onChange: setRaiseAmount,
-      onRaise: () => {
-        online.handleAction('raise', raiseAmount);
+    isMobile,
+    action: {
+      isTutorial: false,
+      expectedAction: null,
+      raiseTouched: true,
+      onToggleRaise: () => setShowRaise(!showRaise),
+      onAction: (action) => {
+        if (action === 'raise') online.handleAction('raise', raiseAmount);
+        else online.handleAction(action);
         setShowRaise(false);
       },
-      onClose: () => setShowRaise(false),
+      onNewHand: startNewHand,
+      newHandEnabled: isHost,
     },
-    onOpenSettings: () => setSettingsOpen(true),
-    gameOverModal,
-    onRestart: restartGame,
-    onSelectDifficulty: undefined,
-    onHome: leave,
-    gameOverRestartLabel: t('game.rematch'),
-    gameOverRestartDisabled: !isHost,
-    gameOverWaitingLabel: t('game.waitingHost'),
-    potAward,
-    onPotAwardLanded: handlePotAwardLanded,
-    onPotAwardDone: finishPotAward,
-    overlays: (
-      <GameOverlays
-        context="online"
-        settingsOpen={settingsOpen}
-        onCloseSettings={() => setSettingsOpen(false)}
-        onLeave={leave}
-      />
-    ),
-    tutorial: {
-      run: 0,
-      onFinish: noop,
-      onRestart: noop,
-      onResume: noop,
-      onRaisePanel: noop,
-      onExpectedAction: noop,
-      onPause: noop,
+    common: {
+      isShort,
+      isTablet,
+      gameSpeed: 1,
+      settingsOpen,
+      turnDurationMs,
+      turnRemainingMs,
+      rivalTurn,
+      humanCards,
+      raise,
+      onOpenSettings: () => setSettingsOpen(true),
+      gameOverModal,
+      onRestart: restartGame,
+      onSelectDifficulty: undefined,
+      onHome: leave,
+      gameOverRestartLabel: t('game.rematch'),
+      gameOverRestartDisabled: !isHost,
+      gameOverWaitingLabel: t('game.waitingHost'),
+      potAward,
+      onPotAwardLanded: handlePotAwardLanded,
+      onPotAwardDone: finishPotAward,
+      overlays: (
+        <GameOverlays
+          context="online"
+          settingsOpen={settingsOpen}
+          onCloseSettings={() => setSettingsOpen(false)}
+          onLeave={leave}
+        />
+      ),
+      tutorial: {
+        run: 0,
+        onFinish: noop,
+        onRestart: noop,
+        onResume: noop,
+        onRaisePanel: noop,
+        onExpectedAction: noop,
+        onPause: noop,
+      },
     },
-  };
+  });
 
   return isMobile ? <MobileGameLayout {...layoutProps} /> : <DesktopGameLayout {...layoutProps} />;
 };

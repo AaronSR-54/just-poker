@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import PokerCard from '../../../components/PokerCard';
 import HandLabel from './HandLabel';
-import { t as motionT } from '../../../animations/motion';
+import { motionT } from '../../../animations/motion';
 import type { CardRank, Suit } from '../../../types';
 
 /** Cartas del jugador humano con la etiqueta de su jugada. */

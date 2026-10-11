@@ -10,7 +10,7 @@ export interface GameLayoutProps {
   state: PokerState;
   view: GameView;
   /** Turno en curso de un rival (IA en local, jugador remoto en online) para la barra de tiempo. */
-  rivalTurn: { playerIndex: number; duration: number } | null;
+  rivalTurn: { playerIndex: number; duration: number; remainingMs: number } | null;
   humanCards: React.ReactNode;
   humanSeatProps: HumanSeatProps;
   actionButtonProps: ActionButtonsProps;
@@ -20,6 +20,8 @@ export interface GameLayoutProps {
   gameSpeed: number;
   settingsOpen: boolean;
   turnDurationMs: number;
+  /** Ms restantes del turno humano, fuente de verdad de la barra visible. */
+  turnRemainingMs: number;
   raise: {
     show: boolean;
     amount: number;
