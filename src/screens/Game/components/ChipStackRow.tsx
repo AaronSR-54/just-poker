@@ -14,10 +14,12 @@ const ChipStackRow: React.FC<{
   allIn: boolean;
   chips: number;
   delta: number;
-}> = ({ variant, filled, allIn, chips, delta }) => {
+  /** Clases de tamaño del icono de ficha (por defecto `size-5`). */
+  iconClassName?: string;
+}> = ({ variant, filled, allIn, chips, delta, iconClassName = 'size-5' }) => {
   const icon = (
     <span data-chips className="inline-flex">
-      <ChipIcon className={`size-5 ${filled ? 'text-ink' : 'text-bone'}`} />
+      <ChipIcon className={`${iconClassName} ${filled ? 'text-ink' : 'text-bone'}`} />
     </span>
   );
 

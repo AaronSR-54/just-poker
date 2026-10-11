@@ -125,6 +125,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
         allIn={showAllIn}
         chips={chips}
         delta={showAllIn ? 0 : delta}
+        iconClassName="size-4"
       />
     </motion.div>
   );

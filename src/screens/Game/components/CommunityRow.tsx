@@ -80,10 +80,12 @@ const CommunityRow: React.FC<{
         transition={motionT(0.3)}
       >
         <span className="opacity-50">{t('game.pot')}</span>
-        <span data-chips className="inline-flex">
-          <ChipIcon className="size-5 text-bone" />
+        <span className="inline-flex items-center gap-1">
+          <span data-chips className="inline-flex">
+            <ChipIcon className="size-5 text-bone" />
+          </span>
+          <span className="tabular-nums text-fs-300">{pot}</span>
         </span>
-        <span>{pot}</span>
       </motion.div>
     </div>
   );
