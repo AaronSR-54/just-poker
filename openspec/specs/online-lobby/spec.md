@@ -58,11 +58,15 @@ El sistema SHALL permitir unirse a una partida abriendo un enlace de invitación
 - **THEN** el sistema muestra que la partida no está disponible y no lo incorpora
 
 ### Requirement: Invitación por QR
-El sistema SHALL mostrar en el lobby un QR que codifica el enlace directo de invitación a esa partida, de modo que pueda escanearse con la cámara del teléfono.
+El sistema SHALL mostrar en el lobby un QR que codifica el enlace directo de invitación a esa partida, de modo que pueda escanearse con la cámara del teléfono. El enlace SHALL usar el origen del despliegue de producción, de modo que el QR siga siendo válido aunque se muestre desde la app nativa; en la web, sin origen configurado, SHALL conservar el mismo origen de la página.
 
 #### Scenario: QR para invitar
 - **WHEN** el anfitrión está en el lobby de una partida privada
-- **THEN** el sistema muestra un QR cuyo contenido es el enlace directo al lobby de esa partida
+- **THEN** el sistema muestra un QR cuyo contenido es el enlace directo al lobby de esa partida en el despliegue de producción
+
+#### Scenario: QR mostrado desde la app nativa
+- **WHEN** el anfitrión muestra el QR desde la app nativa
+- **THEN** el QR codifica el enlace del despliegue de producción y no una dirección local de la app
 
 ### Requirement: Nombre temporal autogenerado y editable
 El sistema SHALL asignar a cada jugador un nombre aleatorio al entrar en una partida y SHALL permitirle cambiarlo antes de que la partida empiece, sin persistirlo como cuenta. El avatar de cada jugador SHALL derivarse de su nombre de forma genérica. El nombre SHALL tener una longitud máxima de 16 caracteres; al crear la partida, unirse o renombrar, cualquier nombre de más de 16 caracteres SHALL recortarse a 16 tanto en el cliente como en el servidor.
