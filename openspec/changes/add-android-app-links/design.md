@@ -5,6 +5,7 @@
 Ver `proposal.md - Why` para la motivación. Estado actual relevante:
 
 - El enlace/QR de invitación se construye en `Online.tsx:466` como `${window.location.origin}/online?code=${room.code}`; el mismo dominio (`https://just-poker-delta.vercel.app`) es el que usa el build nativo vía `VITE_ONLINE_URL` (`scripts/build-android.sh`) y el que sirve `api/socket-io.ts`.
+- Ese `window.location.origin` es el de la página que sirve la app; dentro de la app nativa (`webDir: dist`, sin `server.url`) es el origen local de la WebView, así que el QR mostrado desde la app codificaría una dirección inválida.
 - La app Android es la web empaquetada con Capacitor 8 (`webDir: dist`, sin `server.url`), por lo que la WebView carga el bundle local y **no** navega sola a la URL del enlace.
 - `@capacitor/app` ya es dependencia y ya se usa (`useAndroidBackButton.ts`, `audio/music.ts`); la `MainActivity` ya tiene `android:launchMode="singleTask"`.
 - `vercel.json` reescribe todo a `index.html` (SPA); el hosting sirve ficheros estáticos antes del *rewrite*.
@@ -14,7 +15,7 @@ Ver `proposal.md - Why` para la motivación. Estado actual relevante:
 
 **Goals:**
 
-- Reutilizar el mismo enlace/QR y el mismo flujo de `?code=` sin cambios en `Online.tsx`.
+- Reutilizar el mismo enlace/QR y el mismo flujo de `?code=` (el manejo de `?code=` en `Online.tsx` no cambia; solo se ajusta la base del enlace/QR al origen de producción).
 - Que un Android con la app instalada abra el enlace en la app (sin diálogo del sistema) y entre en la sala; sin la app, navegador como hoy.
 - Recibir el enlace tanto en arranque en frío como con la app ya en marcha.
 
@@ -47,11 +48,15 @@ Se añade a `android/app/src/main/AndroidManifest.xml` un `intent-filter` con `a
 
 Se sirve `public/.well-known/assetlinks.json` (Vite lo copia a `dist/`) con `package_name: com.justpoker.app` y las huellas `sha256_cert_fingerprints`. Vercel sirve ficheros estáticos antes del *rewrite* SPA, por lo que no lo intercepta (a verificar en el despliegue). Las huellas deben ser las de **Play App Signing** (Play Console → App integrity); para pruebas locales/pre-Play, la del keystore de release.
 
+### D6 — El enlace/QR usa el origen de producción
+
+El enlace de invitación se construye como `${onlineOrigin() || window.location.origin}/online?code=…`. En la app nativa `onlineOrigin()` es el despliegue de producción (`VITE_ONLINE_URL` = `https://just-poker-delta.vercel.app`, el mismo host de App Links), de modo que el QR mostrado desde la app codifica una URL válida; en la web, sin origen configurado, se conserva el mismo origen actual. Se reutiliza `onlineOrigin()` (`src/config/online.ts`) y no se duplica la construcción del enlace.
+
 ### Reutilización (regla del proyecto)
 
-- **Se reutiliza:** el manejo de `?code=` de `Online` (sin cambios), el patrón de `useAndroidBackButton.ts` y `Capacitor.isNativePlatform()`, la dependencia `@capacitor/app`, y el dominio ya compartido entre `Online.tsx` y `scripts/build-android.sh`.
+- **Se reutiliza:** el manejo de `?code=` de `Online` (sin cambios), el patrón de `useAndroidBackButton.ts` y `Capacitor.isNativePlatform()`, la dependencia `@capacitor/app`, el origen centralizado `onlineOrigin()` (`src/config/online.ts`) y el dominio ya compartido entre `Online.tsx` y `scripts/build-android.sh`.
 - **Se extrae/nueva:** un helper `resolveDeepLink` (`src/utils/deepLink.ts`) con su test, y un único hook `useDeepLinks` que lo usa; la lógica de parseo no se duplica en ningún otro sitio. `assetlinks.json` es la única definición de la asociación de dominio.
-- **No se extrae:** el `intent-filter` es configuración declarativa de plataforma y no puede ser un helper compartido; el QR y la URL de invitación ya viven en un solo punto (`Online.tsx:466`), que no se toca.
+- **No se extrae:** el `intent-filter` es configuración declarativa de plataforma y no puede ser un helper compartido; el QR y la URL de invitación siguen viviendo en un solo punto (`Online.tsx:466`), que ahora reutiliza `onlineOrigin()`.
 
 ## Risks / Trade-offs
 
@@ -60,10 +65,11 @@ Se sirve `public/.well-known/assetlinks.json` (Vite lo copia a `dist/`) con `pac
 - [El *rewrite* SPA de `vercel.json` intercepta `/.well-known/assetlinks.json`] → Verificar que el fichero responde JSON en el dominio real; si no, excluir la ruta.
 - [La app se abre pero la navegación llega antes de montar el router, o se repite en arranque en frío] → Manejar ambos caminos (`getLaunchUrl` + listener), ignorar URLs no `http(s)` y evitar navegar dos veces al mismo destino.
 - [Solo `/online` y `/join` abren la app; otras rutas van al navegador] → Aceptado y coherente con la spec (`app-links`); no es un defecto.
+- [En la web el origen de producción no está configurado (`VITE_ONLINE_URL` solo se fija en el build de Android), así que el QR usa `window.location.origin`] → Aceptado: en la web ese mismo origen es el despliegue que sirve la sala; en nativo se fija `VITE_ONLINE_URL` a producción.
 
 ## Migration Plan
 
-1. Añadir el `intent-filter` (D4), el hook (D2/D3) y `assetlinks.json` (D5) con la huella del keystore de release para pruebas.
+1. Añadir el `intent-filter` (D4), el hook (D2/D3) y `assetlinks.json` (D5) con la huella del keystore de release para pruebas; ajustar el enlace/QR de `Online.tsx` para usar `onlineOrigin()` (D6).
 2. Desplegar la web para que `/.well-known/assetlinks.json` quede servido.
 3. Al publicar en Play, sustituir las huellas por las de Play App Signing y verificar en un dispositivo real (instalar desde Play y comprobar apertura sin diálogo).
 4. Rollback: quitar el `intent-filter` y el `assetlinks.json`; los enlaces vuelven a abrirse en el navegador, sin migración de datos.

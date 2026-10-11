@@ -25,6 +25,11 @@
 - [x] 4.3 Prueba manual en dispositivo Android con build instalado: con la app instalada, abrir el enlace/QR de invitación abre la app y entra en la sala (arranque en frío y con la app en segundo plano), sin diálogo app/navegador; sin la app, el enlace abre la sala en el navegador. Verificar ambos casos o documentar el bloqueo si la verificación de dominio aún depende de la huella de Play.
   - **Bloqueo documentado:** no hay dispositivo ni AVD conectado (`adb devices` vacío, sin AVDs) y la web con `/.well-known/assetlinks.json` aún no está desplegada. Además, la apertura sin diálogo en un dispositivo con la app instalada desde Play requiere la huella de **Play App Signing** (ver `store/PUBLISHING.md` §6). Pendiente de la verificación en dispositivo tras desplegar y publicar.
 
+## 5. Enlace/QR al despliegue de producción
+
+- [x] 5.1 Construir el enlace de invitación en `Online.tsx` (hoy `window.location.origin`, línea 466) con `onlineOrigin()` y `window.location.origin` como alternativa, reutilizando `src/config/online.ts`; verificar con `npx tsc --noEmit`.
+- [x] 5.2 Verificar con `npx oxlint src/` y `npm run build` que el QR y el copiado usan ese enlace, que en la web sin `VITE_ONLINE_URL` se mantiene el mismo origen y que no se duplica la construcción del enlace (grep de `online?code=`).
+
 ## Workflow follow-up
 
 - Tras publicar en Play, sustituir las huellas por las de Play App Signing y revalidar en un dispositivo real.
