@@ -30,7 +30,7 @@ import {
 import { randomName } from '../utils/randomName';
 import { markPlayed } from '../utils/lastPlayed';
 import { onlineError } from '../utils/onlineError';
-import { MAX_PLAYER_NAME_LENGTH } from '../config/online';
+import { MAX_PLAYER_NAME_LENGTH, onlineOrigin } from '../config/online';
 
 type Mode = 'create' | 'join';
 
@@ -463,7 +463,7 @@ const Online: React.FC = () => {
   const host = room ? room.hostId === myId : false;
   const count = room?.players.length ?? 0;
   const hostName = room?.players.find((p) => p.userId === room.hostId)?.username ?? t('online.hostBadge');
-  const inviteUrl = room ? `${window.location.origin}/online?code=${room.code}` : '';
+  const inviteUrl = room ? `${onlineOrigin() || window.location.origin}/online?code=${room.code}` : '';
   const emptyCount = room ? Math.max(0, MAX_SLOTS - count) : 0;
   const cardSize = isMobile ? 'sm' : 'lg';
 
