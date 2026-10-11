@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Button from '../../../components/Button';
+import ChipIcon from '../../../components/ChipIcon';
 import Modal from '../../../components/Modal';
 import SegmentedControl from '../../../components/SegmentedControl';
 import { motionT } from '../../../animations/motion';
@@ -41,9 +42,11 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
     return acc;
   }, []);
 
+  const gapCls = fill ? 'gap-6' : 'gap-2.5';
+
   return (
-    <div data-tour="raise-panel" className="flex w-full flex-col gap-2.5">
-      <div data-tour="raise-amount" className="flex w-full flex-col gap-2.5">
+    <div data-tour="raise-panel" className={`flex w-full flex-col ${gapCls}`}>
+      <div data-tour="raise-amount" className={`flex w-full flex-col ${gapCls}`}>
         <div data-tour="raise-quick">
           <SegmentedControl
             columns={hideAllIn ? 3 : 4}
@@ -57,7 +60,7 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
         </div>
 
         <div data-tour="raise-slider" className="flex w-full items-center gap-2">
-          <span className="font-body tracking-[0.04em] opacity-70 min-w-6 text-fs-100">{minRaise}</span>
+          <span className="font-display font-bold text-fs-300">{minRaise}</span>
           <input
             type="range"
             min={minRaise}
@@ -66,12 +69,18 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
             onChange={(e) => onRaiseChange(Number(e.target.value))}
             className="flex-1 cursor-pointer"
           />
-          <span className="min-w-[1.875rem] text-center font-display font-bold text-fs-300">{playerChips}</span>
+          <span className="font-display font-bold text-fs-300">{playerChips}</span>
         </div>
       </div>
 
-      <Button data-tour="raise-confirm" variant="primary" size="sm" block onClick={onRaise} disabled={confirmDisabled}>
-        {raiseAmount >= allInAmount ? t('game.allInAmount', { amount: playerChips }) : t('game.raiseAmount', { amount: raiseAmount })}
+      <Button data-tour="raise-confirm" variant="primary" size="sm" block className="text-fs-300!" onClick={onRaise} disabled={confirmDisabled}>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="font-body">{raiseAmount >= allInAmount ? t('game.quickAllIn') : t('game.raise')}</span>
+          <span className="inline-flex items-center gap-0.5">
+            <ChipIcon className="size-4.5" />
+            <span className="font-display font-bold tabular-nums">{raiseAmount >= allInAmount ? playerChips : raiseAmount}</span>
+          </span>
+        </span>
       </Button>
     </div>
   );

@@ -26,7 +26,6 @@ const game = {
   quickAllIn: 'All-in',
   quickRaise: 'Quick raise',
   raise: 'Raise',
-  raiseAmount: 'Raise {amount}',
   allInAmount: 'All-in {amount}',
   check: 'Check',
   fold: 'Fold',
