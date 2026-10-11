@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playSfx } from '../../../audio/sfx';
+import { playHaptic } from '../../../haptics/haptics';
 
 /**
  * Núcleo de la cuenta atrás del turno: gestiona los segundos restantes, los
@@ -85,8 +86,13 @@ export function useTurnCountdown({
     if (settingsOpen) return;
     if (timerSeconds === lastTimerCue.current) return;
     lastTimerCue.current = timerSeconds;
-    if (timerSeconds === 0) playSfx('time_expire');
-    else if (timerSeconds <= 5) playSfx('timer_tick');
+    if (timerSeconds === 0) {
+      playSfx('time_expire');
+      playHaptic('expire');
+    } else if (timerSeconds <= 5) {
+      playSfx('timer_tick');
+      playHaptic('tick');
+    }
   }, [timerSeconds, settingsOpen]);
 
   return { timerSeconds };

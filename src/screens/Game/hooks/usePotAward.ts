@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playSfx } from '../../../audio/sfx';
+import { playHaptic } from '../../../haptics/haptics';
 import type { PotAwardData } from '../../../components/PotAward';
 import type { PokerState } from '../../../game/poker';
 
@@ -22,6 +23,7 @@ export function usePotAward(gameState: PokerState | null) {
     if (!handOver || !winner || winner.length === 0 || pot <= 0) return;
     if (awardedHandRef.current === handNumber) return;
     awardedHandRef.current = handNumber;
+    if (winner.includes(0)) playHaptic('win');
     setAwardProgress({});
     setPotRemaining(pot);
     setPotAward({

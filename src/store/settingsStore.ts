@@ -22,10 +22,13 @@ interface SettingsState {
   crtAmount: number;
   /** Velocidad general de la partida. */
   gameSpeed: GameSpeed;
+  /** Vibración háptica en pulsaciones, turno, tiempo agotado y victoria. */
+  hapticsEnabled: boolean;
   setMusicVolume: (v: number) => void;
   setSfxVolume: (v: number) => void;
   setCrtAmount: (v: number) => void;
   setGameSpeed: (v: GameSpeed) => void;
+  setHapticsEnabled: (v: boolean) => void;
 }
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
@@ -37,10 +40,12 @@ export const useSettingsStore = create<SettingsState>()(
       sfxVolume: 0.8,
       crtAmount: 0,
       gameSpeed: 1,
+      hapticsEnabled: true,
       setMusicVolume: (v) => set({ musicVolume: clamp01(v) }),
       setSfxVolume: (v) => set({ sfxVolume: clamp01(v) }),
       setCrtAmount: (v) => set({ crtAmount: clamp01(v) }),
       setGameSpeed: (v) => set({ gameSpeed: v }),
+      setHapticsEnabled: (v) => set({ hapticsEnabled: v }),
     }),
     { name: 'just-poker-settings' }
   )

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import Button from './Button';
 import SettingSlider from './SettingSlider';
+import SegmentedControl from './SegmentedControl';
 import { GAME_SPEEDS, useSettingsStore, type GameSpeed } from '../store/settingsStore';
 import { playSfx } from '../audio/sfx';
 import { t as motionT } from '../animations/motion';
@@ -43,10 +44,12 @@ const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHand
   const sfxVolume = useSettingsStore((s) => s.sfxVolume);
   const crtAmount = useSettingsStore((s) => s.crtAmount);
   const gameSpeed = useSettingsStore((s) => s.gameSpeed);
+  const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const setMusicVolume = useSettingsStore((s) => s.setMusicVolume);
   const setSfxVolume = useSettingsStore((s) => s.setSfxVolume);
   const setCrtAmount = useSettingsStore((s) => s.setCrtAmount);
   const setGameSpeed = useSettingsStore((s) => s.setGameSpeed);
+  const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
 
   // Preview del volumen de efectos mientras se arrastra, con límite de frecuencia.
   const lastPreview = useRef(0);
@@ -100,47 +103,38 @@ const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHand
           {showSpeed && (
             <div className="flex flex-col gap-2">
               <span className="font-display font-bold text-fs-200 text-bone">{t('settings.speed')}</span>
-              <div className="grid grid-cols-4 gap-2">
-                {GAME_SPEEDS.map((speed: GameSpeed) => {
-                  const active = speed === gameSpeed;
-                  return (
-                    <button
-                      key={speed}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setGameSpeed(speed)}
-                      className={`cursor-pointer rounded-full border-[1.5px] py-2 font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-                        active ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone'
-                      }`}
-                    >
-                      {speedLabel(speed)}
-                    </button>
-                  );
-                })}
-              </div>
+              <SegmentedControl
+                columns={4}
+                ariaLabel={t('settings.speed')}
+                value={gameSpeed}
+                onChange={setGameSpeed}
+                options={GAME_SPEEDS.map((speed: GameSpeed) => ({ value: speed, label: speedLabel(speed) }))}
+              />
             </div>
           )}
         </Section>
 
+        <Section title={t('settings.haptics')}>
+          <SegmentedControl
+            columns={2}
+            ariaLabel={t('settings.haptics')}
+            value={hapticsEnabled}
+            onChange={setHapticsEnabled}
+            options={[
+              { value: true, label: t('settings.hapticsOn') },
+              { value: false, label: t('settings.hapticsOff') },
+            ]}
+          />
+        </Section>
+
         <Section title={t('settings.language')}>
-          <div className="grid grid-cols-2 gap-2">
-            {LOCALES.map((code) => {
-              const active = code === locale;
-              return (
-                <button
-                  key={code}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setLocale(code)}
-                  className={`cursor-pointer rounded-full border-[1.5px] py-2 font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-                    active ? 'border-bone bg-bone text-ink' : 'border-bone/40 text-bone'
-                  }`}
-                >
-                  {LOCALE_LABELS[code]}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            columns={2}
+            ariaLabel={t('settings.language')}
+            value={locale}
+            onChange={setLocale}
+            options={LOCALES.map((code) => ({ value: code, label: LOCALE_LABELS[code] }))}
+          />
         </Section>
 
         {(onHandsGuide || onTutorial) && (

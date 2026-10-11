@@ -21,6 +21,7 @@ import Background from './components/Background';
 import CrtOverlay from './components/CrtOverlay';
 import { page } from './animations/motion';
 import { playSfx, preloadSounds } from './audio/sfx';
+import { playHaptic } from './haptics/haptics';
 import { initMusic } from './audio/music';
 import { useSettingsStore } from './store/settingsStore';
 import { useLocaleStore } from './i18n';
@@ -81,6 +82,7 @@ function RootLayout() {
       const target = e.target as Element | null;
       const button = target?.closest('button, [role="button"]');
       if (!button || (button as HTMLButtonElement).disabled) return;
+      playHaptic('tap');
       if (button.closest('[data-tour="actions"], [data-tour="raise-panel"]')) return;
       playSfx('ui_click');
     };

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { PokerState } from '../game/poker';
 import { playSfx, playSfxSequence } from '../audio/sfx';
+import { playHaptic } from '../haptics/haptics';
 import { useSettingsStore } from '../store/settingsStore';
 
 interface Snapshot {
@@ -30,7 +31,8 @@ export function useGameSounds(state: PokerState | null): void {
       playSfx('chips_bet', { delay: 0.42 });
     };
 
-    if (!initialized.current) {
+    const wasInitialized = initialized.current;
+    if (!wasInitialized) {
       initialized.current = true;
       if (sfxVolume > 0 && !state.handOver && state.actions.length === 0 && state.handNumber > 0) {
         openingDeal();
@@ -52,6 +54,7 @@ export function useGameSounds(state: PokerState | null): void {
 
     if (state.currentPlayer === 0 && p.currentPlayer !== 0 && !state.handOver && !state.streetPending) {
       playSfx('turn_tick');
+      if (wasInitialized) playHaptic('turn');
     }
 
     p.handNumber = state.handNumber;
