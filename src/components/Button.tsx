@@ -14,7 +14,7 @@ type ButtonProps<T extends React.ElementType> = ButtonOwnProps & {
 
 const base =
   'inline-flex items-center justify-center gap-2 min-h-12 px-[1.375rem] py-[0.875rem] ' +
-  'rounded-full font-display font-bold text-fs-200 tracking-[0.12em] uppercase ' +
+  'rounded-full font-body font-bold text-fs-200 tracking-[0.12em] uppercase ' +
   'border-[1.5px] cursor-pointer select-none whitespace-nowrap ' +
   'transition-[translate,border-color,background-color,color,filter] duration-[240ms] ease-brand ' +
   'enabled:hover:-translate-y-0.5 enabled:active:translate-y-px ' +

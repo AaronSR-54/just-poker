@@ -604,7 +604,7 @@ const Online: React.FC = () => {
             className="flex h-8 cursor-pointer items-center gap-2 rounded-[10px] transition-opacity duration-200 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone"
           >
             {room.code.split('').map((c, i) => (
-              <span key={i} className="font-display font-bold leading-none text-fs-700">{c}</span>
+              <span key={i} className="font-body font-bold leading-none text-fs-700">{c}</span>
             ))}
           </button>
           <button

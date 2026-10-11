@@ -55,7 +55,7 @@ function SegmentedControl<T extends string | number | boolean>({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(option.value)}
-            className={`flex cursor-pointer items-center justify-center rounded-full border-[1.5px] font-display font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${SIZES[size]} ${
+            className={`flex cursor-pointer items-center justify-center rounded-full border-[1.5px] font-body font-bold text-fs-200 transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${SIZES[size]} ${
               active ? styles.active : styles.idle
             }`}
           >

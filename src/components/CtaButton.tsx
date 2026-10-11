@@ -27,7 +27,7 @@ const CtaButton: React.FC<CtaButtonProps> = ({ children, onClick, disabled = fal
     className={`justify-between! ${compact ? 'min-h-12!' : 'min-h-14!'}`}
   >
     <span>{children}</span>
-    <span className={`font-display font-bold leading-none ${compact ? 'text-fs-400' : 'text-fs-500'}`}>→</span>
+    <span className={`font-body font-bold leading-none ${compact ? 'text-fs-400' : 'text-fs-500'}`}>→</span>
   </Button>
 );
 

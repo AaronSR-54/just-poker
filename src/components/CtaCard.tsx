@@ -66,8 +66,8 @@ export const CtaCard: React.FC<CtaCardProps> = ({
   const hPad = stacked ? 'px-7' : 'px-[7.6cqw]';
   const vPad = stacked ? 'py-6' : 'py-[6.8cqw]';
   const gameVPad = stacked ? 'py-5' : 'py-[4cqw]';
-  const titleCls = `font-display font-bold leading-[0.96] tracking-[-0.015em] ${stacked ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,10.5cqw,3.75rem)]'}`;
-  const arrowCls = `font-display font-bold leading-none ${stacked ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,7.2cqw,2.5rem)]'}`;
+  const titleCls = `font-body font-bold leading-[0.96] tracking-[-0.015em] ${stacked ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,10.5cqw,3.75rem)]'}`;
+  const arrowCls = `font-body font-bold leading-none ${stacked ? 'text-[1.5rem]' : 'text-[clamp(1.75rem,7.2cqw,2.5rem)]'}`;
 
   const rowMotion = 'cursor-pointer transition-[translate,border-color,background-color,color] duration-[240ms] ease-brand hover:translate-x-2 active:translate-x-0 focus-visible:outline-2 focus-visible:-outline-offset-2';
   const filledRow = 'bg-bone text-ink focus-visible:outline-ink';
@@ -128,7 +128,7 @@ export const CtaCard: React.FC<CtaCardProps> = ({
               onClick={onNewGame}
               onKeyDown={(e) => onKeyDown(e, onNewGame ?? (() => {}))}
               {...rowEvents('new')}
-              className={`flex w-full items-center justify-between gap-4 ${radiusBottom} ${hPad} ${stacked ? 'py-4' : 'py-[1rem]'} font-display font-bold leading-none tracking-[-0.015em] text-fs-500 ${rowMotion} ${newRow}`}
+              className={`flex w-full items-center justify-between gap-4 ${radiusBottom} ${hPad} ${stacked ? 'py-4' : 'py-[1rem]'} font-body font-bold leading-none tracking-[-0.015em] text-fs-500 ${rowMotion} ${newRow}`}
             >
               <span>{newGameLabel}</span>
               <span className="leading-none">→</span>

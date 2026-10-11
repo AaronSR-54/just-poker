@@ -25,7 +25,7 @@ const LinkRow: React.FC<{ label: string; hint: string; onClick: () => void }> = 
       <span>{label}</span>
       <span className="font-body text-fs-100 leading-[1.35] tracking-[0.04em] normal-case opacity-60">{hint}</span>
     </span>
-    <span className="shrink-0 font-display font-bold leading-none text-fs-500">→</span>
+    <span className="shrink-0 font-body font-bold leading-none text-fs-500">→</span>
   </Button>
 );
 
