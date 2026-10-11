@@ -1,4 +1,5 @@
 import type { PokerState } from '../game/poker';
+import { clamp01 } from '../utils/math';
 
 /**
  * Estado de ánimo de un rival. Es la capa "humana" que el paper descarta: un
@@ -16,10 +17,6 @@ export interface Mind {
 
 export function createMind(): Mind {
   return { mood: 0, lastHand: -1, lastChips: null };
-}
-
-function clamp01(x: number): number {
-  return Math.max(0, Math.min(1, x));
 }
 
 /**

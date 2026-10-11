@@ -1,27 +1,10 @@
 import type { PokerState } from '../game/poker';
 import { calculateEquity } from '../game/equity';
-import { clamp01 } from './aiMath';
+import { nextAlive, bigBlindIndex } from '../game/engine/seats';
+import { clamp01 } from '../utils/math';
 
 export function activeOpponents(state: PokerState, playerIndex: number): number {
   return state.players.filter((p, i) => i !== playerIndex && !p.folded && !p.eliminated).length;
-}
-
-export function nextAliveIdx(state: PokerState, from: number): number {
-  let i = from;
-  do {
-    i = (i + 1) % state.players.length;
-  } while (state.players[i].eliminated);
-  return i;
-}
-
-export function sbIdx(state: PokerState): number {
-  const alive = state.players.filter(p => !p.eliminated).length;
-  return alive === 2 ? state.dealer : nextAliveIdx(state, state.dealer);
-}
-
-export function bbIdx(state: PokerState): number {
-  const alive = state.players.filter(p => !p.eliminated).length;
-  return alive === 2 ? nextAliveIdx(state, state.dealer) : nextAliveIdx(state, sbIdx(state));
 }
 
 /** 0 = primero en hablar (peor posición), 1 = último (botón). */
@@ -32,8 +15,8 @@ export function positionFactor(state: PokerState, idx: number): number {
   if (active.length <= 1) return 1;
   const n = state.players.length;
   const start = state.community.length === 0
-    ? nextAliveIdx(state, bbIdx(state))
-    : nextAliveIdx(state, state.dealer);
+    ? nextAlive(state.players, bigBlindIndex(state.players, state.dealer))
+    : nextAlive(state.players, state.dealer);
   const ordered = [...active].sort((a, b) => ((a - start + n) % n) - ((b - start + n) % n));
   const pos = ordered.indexOf(idx);
   return pos <= 0 ? 0 : pos / (ordered.length - 1);

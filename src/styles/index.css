@@ -106,7 +106,6 @@
   --animate-jp-pulse: jp-pulse 1.4s ease-in-out infinite;
   --animate-turn-pulse: turn-pulse 1.6s ease-in-out infinite;
   --animate-lobby-pulse: lobby-pulse 1.6s ease-out infinite;
-  --animate-timer-drain: jp-timer-drain 2.2s linear forwards;
   --animate-jp-float: jp-float 7s ease-in-out infinite;
 
   @keyframes jp-float {
@@ -149,15 +148,6 @@
     100% {
       transform: scale(2.2);
       opacity: 0;
-    }
-  }
-
-  @keyframes jp-timer-drain {
-    from {
-      width: 100%;
-    }
-    to {
-      width: 0%;
     }
   }
 }

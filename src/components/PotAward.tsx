@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
 import ChipIcon from './ChipIcon';
-import { t } from '../animations/motion';
+import { motionT } from '../animations/motion';
 
 export interface PotAwardWinner {
   id: number;
@@ -206,7 +206,7 @@ const FlyingChip: React.FC<FlyingChipProps> = ({
     <div className="fixed -translate-x-1/2 -translate-y-1/2" style={{ left: startX, top: startY }}>
       <motion.div style={{ x, y, scale, opacity }}>
         <ChipIcon
-          className={`${size} ${inverted ? 'text-ink' : lightColor} drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)] transition-colors duration-150 ease-brand`}
+          className={`${size} ${inverted ? 'text-ink' : lightColor} drop-shadow-md transition-colors duration-150 ease-brand`}
         />
       </motion.div>
     </div>
@@ -284,8 +284,8 @@ const PotAward: React.FC<PotAwardProps> = ({ data, onLanded, onDone }) => {
       const fromY = origin.y;
 
       const distance = chipEl ? Math.hypot(centerOf(chipEl).x - fromX, centerOf(chipEl).y - fromY) : 0;
-      const delay = t(FLIGHT, POT_AWARD_HOLD + i * STAGGER).delay as number;
-      const duration = t(FLIGHT).duration as number;
+      const delay = motionT(FLIGHT, POT_AWARD_HOLD + i * STAGGER).delay as number;
+      const duration = motionT(FLIGHT).duration as number;
       maxEnd = Math.max(maxEnd, delay + duration);
 
       const value = valueQueues[winnerIdx][valueCursor[winnerIdx]++];

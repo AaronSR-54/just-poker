@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Screen from '../components/Screen';
 import CtaButton from '../components/CtaButton';
 import PageHeader from '../components/PageHeader';
 import Panel from '../components/Panel';
@@ -170,7 +171,7 @@ const Local: React.FC = () => {
     ));
 
   const shell = (children: React.ReactNode) => (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <Screen>
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">{children}</div>
       <ConfirmDialog
         open={confirmNew}
@@ -182,7 +183,7 @@ const Local: React.FC = () => {
         onConfirm={confirmStartGame}
         onCancel={() => setConfirmNew(false)}
       />
-    </div>
+    </Screen>
   );
 
   if (isMobile) {

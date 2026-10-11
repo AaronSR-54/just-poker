@@ -1,15 +1,16 @@
 import React, { useRef } from 'react';
-import { motion } from 'framer-motion';
 import Button from './Button';
+import Modal from './Modal';
+import Wordmark from './Wordmark';
 import SettingSlider from './SettingSlider';
 import SegmentedControl from './SegmentedControl';
 import { GAME_SPEEDS, useSettingsStore, type GameSpeed } from '../store/settingsStore';
 import { playSfx } from '../audio/sfx';
-import { t as motionT } from '../animations/motion';
 import { crtSupported } from '../utils/crtSupport';
 import { LOCALES, LOCALE_LABELS, useI18n } from '../i18n';
 
 interface GameSettingsProps {
+  open?: boolean;
   onClose: () => void;
   onTutorial?: () => void;
   onHandsGuide?: () => void;
@@ -35,7 +36,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   </section>
 );
 
-const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHandsGuide, onLeave, context = 'game' }) => {
+const GameSettings: React.FC<GameSettingsProps> = ({ open = true, onClose, onTutorial, onHandsGuide, onLeave, context = 'game' }) => {
   const { t, locale, setLocale } = useI18n();
   const inGame = context !== 'home';
   const showSpeed = context !== 'online';
@@ -62,127 +63,115 @@ const GameSettings: React.FC<GameSettingsProps> = ({ onClose, onTutorial, onHand
   };
 
   return (
-    <motion.div
-      className="fixed inset-0 z-[420] flex items-end justify-center bg-ink-900/85 sm:items-center sm:p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={motionT(0.2)}
-      onClick={onClose}
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelId="settings-title"
+      panelClassName="max-h-[92dvh]! max-w-[30rem]! gap-5! overflow-y-auto"
     >
-      <motion.div
-        className="flex max-h-[92dvh] w-full max-w-[30rem] flex-col gap-5 overflow-y-auto rounded-t-[14px] border border-bone/[0.18] bg-ink px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6 sm:rounded-[14px] sm:px-7 sm:py-7"
-        initial={{ y: '6%', scale: 0.98, opacity: 0 }}
-        animate={{ y: 0, scale: 1, opacity: 1 }}
-        exit={{ y: '4%', scale: 0.98, opacity: 0 }}
-        transition={motionT(0.3)}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('settings.title')}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">{inGame ? t('settings.paused') : 'Just Poker'}</div>
-            <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">{t('settings.title')}</div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">
+            {inGame ? t('settings.paused') : <Wordmark className="text-fs-100 tracking-[0.14em]" />}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={inGame ? t('settings.resume') : t('settings.close')}
-            className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-bone/[0.18] bg-bone/[0.06] text-fs-400 text-bone transition-[transform,background-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone"
-          >
-            ✕
-          </button>
+          <div id="settings-title" className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">{t('settings.title')}</div>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={inGame ? t('settings.resume') : t('settings.close')}
+          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-bone/[0.18] bg-bone/[0.06] text-fs-400 text-bone transition-[transform,background-color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:bg-bone/12 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone"
+        >
+          ✕
+        </button>
+      </div>
 
-        <Section title={t('settings.title')}>
-          <SettingSlider label={t('settings.music')} value={musicVolume} onChange={setMusicVolume} />
-          <SettingSlider label={t('settings.sfx')} value={sfxVolume} onChange={handleSfxVolume} />
-          {crtSupported && <SettingSlider label={t('settings.crt')} value={crtAmount} onChange={setCrtAmount} />}
-          {showSpeed && (
-            <div className="flex flex-col gap-2">
-              <span className="font-display font-bold text-fs-200 text-bone">{t('settings.speed')}</span>
-              <SegmentedControl
-                columns={4}
-                ariaLabel={t('settings.speed')}
-                value={gameSpeed}
-                onChange={setGameSpeed}
-                options={GAME_SPEEDS.map((speed: GameSpeed) => ({ value: speed, label: speedLabel(speed) }))}
-              />
-            </div>
-          )}
-        </Section>
-
-        <Section title={t('settings.haptics')}>
-          <SegmentedControl
-            columns={2}
-            ariaLabel={t('settings.haptics')}
-            value={hapticsEnabled}
-            onChange={setHapticsEnabled}
-            options={[
-              { value: true, label: t('settings.hapticsOn') },
-              { value: false, label: t('settings.hapticsOff') },
-            ]}
-          />
-        </Section>
-
-        <Section title={t('settings.language')}>
-          <SegmentedControl
-            columns={2}
-            ariaLabel={t('settings.language')}
-            value={locale}
-            onChange={setLocale}
-            options={LOCALES.map((code) => ({ value: code, label: LOCALE_LABELS[code] }))}
-          />
-        </Section>
-
-        {(onHandsGuide || onTutorial) && (
-          <Section title={t('settings.learn')}>
-            {onHandsGuide && <LinkRow label={t('settings.handsGuide')} hint={t('settings.handsGuideHint')} onClick={onHandsGuide} />}
-            {onTutorial && <LinkRow label={t('settings.tutorial')} hint={t('settings.tutorialHint')} onClick={onTutorial} />}
-          </Section>
+      <Section title={t('settings.title')}>
+        <SettingSlider label={t('settings.music')} value={musicVolume} onChange={setMusicVolume} />
+        <SettingSlider label={t('settings.sfx')} value={sfxVolume} onChange={handleSfxVolume} />
+        {crtSupported && <SettingSlider label={t('settings.crt')} value={crtAmount} onChange={setCrtAmount} />}
+        {showSpeed && (
+          <div className="flex flex-col gap-2">
+            <span className="font-display font-bold text-fs-200 text-bone">{t('settings.speed')}</span>
+            <SegmentedControl
+              columns={4}
+              ariaLabel={t('settings.speed')}
+              value={gameSpeed}
+              onChange={setGameSpeed}
+              options={GAME_SPEEDS.map((speed: GameSpeed) => ({ value: speed, label: speedLabel(speed) }))}
+            />
+          </div>
         )}
+      </Section>
 
-        <Section title={t('settings.support')}>
-          <div className="flex flex-col gap-3 rounded-[14px] border border-blind-bb/40 bg-blind-bb/[0.08] p-4">
-            <div className="flex flex-col gap-1">
-              <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-blind-bb">{t('settings.buyMeCoffee')}</div>
-              <div className="font-display font-bold leading-none text-fs-500">{t('settings.support')}</div>
-            </div>
-            <p className="font-body text-fs-200 leading-[1.45] opacity-70">
-              {t('settings.supportText')}
-            </p>
-            <Button
-              as="a"
-              href="https://buymeacoffee.com/sanz_aar"
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="outline"
-              block
-              className="border-blind-bb/40! text-blind-bb!"
-            >
-              {t('settings.supportCta')}
-            </Button>
-          </div>
+      <Section title={t('settings.haptics')}>
+        <SegmentedControl
+          columns={2}
+          ariaLabel={t('settings.haptics')}
+          value={hapticsEnabled}
+          onChange={setHapticsEnabled}
+          options={[
+            { value: true, label: t('settings.hapticsOn') },
+            { value: false, label: t('settings.hapticsOff') },
+          ]}
+        />
+      </Section>
+
+      <Section title={t('settings.language')}>
+        <SegmentedControl
+          columns={2}
+          ariaLabel={t('settings.language')}
+          value={locale}
+          onChange={setLocale}
+          options={LOCALES.map((code) => ({ value: code, label: LOCALE_LABELS[code] }))}
+        />
+      </Section>
+
+      {(onHandsGuide || onTutorial) && (
+        <Section title={t('settings.learn')}>
+          {onHandsGuide && <LinkRow label={t('settings.handsGuide')} hint={t('settings.handsGuideHint')} onClick={onHandsGuide} />}
+          {onTutorial && <LinkRow label={t('settings.tutorial')} hint={t('settings.tutorialHint')} onClick={onTutorial} />}
         </Section>
+      )}
 
-        <div className="flex flex-col gap-2 pt-1">
-          <Button variant="primary" block onClick={onClose}>{inGame ? t('settings.resume') : t('settings.back')}</Button>
-          {onLeave && (
-            <Button
-              variant="ghost"
-              size="sm"
-              block
-              onClick={onLeave}
-              className="text-danger! hover:opacity-80"
-            >
-              {t('settings.leave')}
-            </Button>
-          )}
+      <Section title={t('settings.support')}>
+        <div className="flex flex-col gap-3 rounded-[14px] border border-blind-bb/40 bg-blind-bb/[0.08] p-4">
+          <div className="flex flex-col gap-1">
+            <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-blind-bb">{t('settings.buyMeCoffee')}</div>
+            <div className="font-display font-bold leading-none text-fs-500">{t('settings.support')}</div>
+          </div>
+          <p className="font-body text-fs-200 leading-[1.45] opacity-70">
+            {t('settings.supportText')}
+          </p>
+          <Button
+            as="a"
+            href="https://buymeacoffee.com/sanz_aar"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="outline"
+            block
+            className="border-blind-bb/40! text-blind-bb!"
+          >
+            {t('settings.supportCta')}
+          </Button>
         </div>
-      </motion.div>
-    </motion.div>
+      </Section>
+
+      <div className="flex flex-col gap-2 pt-1">
+        <Button variant="primary" block onClick={onClose}>{inGame ? t('settings.resume') : t('settings.back')}</Button>
+        {onLeave && (
+          <Button
+            variant="ghost"
+            size="sm"
+            block
+            onClick={onLeave}
+            className="text-danger! hover:opacity-80"
+          >
+            {t('settings.leave')}
+          </Button>
+        )}
+      </div>
+    </Modal>
   );
 };
 

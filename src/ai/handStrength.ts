@@ -1,5 +1,5 @@
 import type { Card, Suit } from '../types';
-import { evaluateHand } from '../game/hands';
+import { evaluateHand, rankValue } from '../game/hands';
 import { RANKS_LIST } from '../game/deck';
 
 /**
@@ -10,15 +10,6 @@ import { RANKS_LIST } from '../game/deck';
  * percentil y agrupamos los tableros por textura. Es la materia prima sobre la
  * que el motor construye rangos y decisiones mixtas.
  */
-
-const RANK_VALUE: Record<string, number> = {
-  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-  'J': 11, 'Q': 12, 'K': 13, 'A': 14,
-};
-
-export function rankValue(rank: Card['rank']): number {
-  return RANK_VALUE[rank] ?? 0;
-}
 
 // ---------------------------------------------------------------------------
 // Clasificación preflop (169 clases de mano)
@@ -54,7 +45,7 @@ function classKey(a: Card, b: Card): string {
 }
 
 const CLASS_PCT: Map<string, number> = (() => {
-  const values = RANKS_LIST.map(r => RANK_VALUE[r]).sort((a, b) => b - a);
+  const values = RANKS_LIST.map(r => rankValue(r)).sort((a, b) => b - a);
   const list: Array<{ key: string; score: number }> = [];
   for (let i = 0; i < values.length; i++) {
     for (let j = i; j < values.length; j++) {

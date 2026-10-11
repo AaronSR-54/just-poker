@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../store/settingsStore';
+import { clamp01 } from '../utils/math';
 import { duckMusic } from './music';
 
 export type SfxName =
@@ -43,10 +44,6 @@ const GAIN: Record<SfxName, number> = {
   turn_tick: 0.5,
   ui_click: 1,
 };
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
 
 function pickSource(name: SfxName): string {
   const list = SOURCES[name];

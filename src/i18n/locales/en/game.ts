@@ -24,6 +24,7 @@ const game = {
   quickHalf: '½',
   quickPot: 'Pot',
   quickAllIn: 'All-in',
+  quickRaise: 'Quick raise',
   raise: 'Raise',
   raiseAmount: 'Raise {amount}',
   allInAmount: 'All-in {amount}',

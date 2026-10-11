@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { CardRank, CardSize, Suit } from '../types';
 import PageHeader from '../components/PageHeader';
 import PokerCard from '../components/PokerCard';
+import Screen from '../components/Screen';
+import ScreenTitle from '../components/ScreenTitle';
+import SegmentedControl from '../components/SegmentedControl';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { container, fadeIn, slideSwap } from '../animations/motion';
 import { useI18n } from '../i18n';
@@ -15,9 +18,12 @@ import { useI18n } from '../i18n';
 const Title: React.FC<{ className?: string }> = ({ className }) => {
   const { t } = useI18n();
   return (
-    <div className={`font-display font-bold leading-[0.96] tracking-[-0.015em] ${className ?? ''}`}>
-      {t('handsGuide.titleMain')} <em className="font-light italic tracking-normal">{t('handsGuide.titleEm')}</em>
-    </div>
+    <ScreenTitle
+      em={t('handsGuide.titleEm')}
+      rest={t('handsGuide.titleMain')}
+      emLast
+      className={`leading-[0.96] ${className ?? ''}`}
+    />
   );
 };
 
@@ -68,31 +74,54 @@ const HandDetail: React.FC<{ hand: HandExample; size?: keyof typeof detailSizes;
   );
 };
 
-const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; size?: 'sm' | 'lg'; fill?: boolean; dense?: boolean }> = ({ selected, onSelect, size = 'sm', fill = false, dense = false }) => {
+const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; fill?: boolean }> = ({ selected, onSelect, fill }) => {
   const { t } = useI18n();
-  const large = size === 'lg';
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () =>
+      setEdges({
+        top: el.scrollTop > 1,
+        bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 1,
+      });
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [fill]);
+
   return (
-    <motion.div
-      variants={container(0.04)}
-      initial="hidden"
-      animate="visible"
-      className={`${dense ? 'grid grid-cols-2 gap-1' : 'flex flex-col gap-1'} ${fill ? 'h-full' : ''}`}
-    >
-      {HANDS.map((h, i) => (
-        <motion.button
-          key={h.rank}
-          variants={fadeIn}
-          type="button"
-          onClick={() => onSelect(i)}
-          className={`flex w-full cursor-pointer items-center rounded-full border-[1.5px] text-left transition-[transform,border-color,background-color,color] duration-[240ms] ease-brand hover:-translate-y-0.5 hover:border-bone active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-bone ${
-            dense ? 'gap-1.5 px-2 py-1.5' : large ? 'gap-3 px-4 py-2.5' : 'gap-3 px-3 py-1.5'
-          } ${fill && !dense ? 'flex-1' : ''} ${i === selected ? 'border-bone bg-bone text-ink' : 'border-bone/[0.18] bg-ink text-bone'}`}
-        >
-          <span className={`font-display font-bold opacity-70 ${dense ? 'w-4 text-fs-200 min-[300px]:text-fs-300' : large ? 'w-6 text-fs-300' : 'w-[18px] text-fs-200 min-[300px]:text-fs-300'}`}>{10 - i}</span>
-          <span className={`flex-1 font-display font-bold ${large ? 'text-fs-300' : 'text-fs-200 min-[300px]:text-fs-300'}`}>{t(`handName.${h.rank}`)}</span>
-        </motion.button>
-      ))}
-    </motion.div>
+    <div className={`flex min-h-0 gap-2 ${fill ? 'h-full' : ''}`}>
+      <div className="relative min-h-0 flex-1">
+        <div className={`pointer-events-none absolute inset-x-0 -top-px z-10 h-6 bg-gradient-to-b from-ink to-ink/0 transition-opacity duration-200 ${edges.top ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
+        <div className={`pointer-events-none absolute inset-x-0 -bottom-px z-10 h-6 bg-gradient-to-t from-ink to-ink/0 transition-opacity duration-200 ${edges.bottom ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
+        <div ref={scrollRef} className="h-full overflow-y-auto">
+          <SegmentedControl
+            columns={1}
+            fill={fill}
+            ariaLabel={t('handsGuide.listLabel')}
+            value={selected}
+            onChange={onSelect}
+            options={HANDS.map((h, i) => ({ value: i, label: t(`handName.${h.rank}`) }))}
+          />
+        </div>
+      </div>
+      {/* Indicador de orden: de mejor mano (arriba) a peor mano (abajo). */}
+      <div className="flex w-4 shrink-0 flex-col items-center py-1 text-bone/45" aria-hidden="true">
+        <span className="font-display font-bold text-fs-100 uppercase tracking-[0.14em] [writing-mode:vertical-rl]">{t('handsGuide.best')}</span>
+        <span className="mt-1 w-px flex-1 bg-bone/25" />
+        <span className="my-0.5 font-display font-bold leading-none text-fs-300">↓</span>
+        <span className="mb-1 w-px flex-1 bg-bone/25" />
+        <span className="font-display font-bold text-fs-100 uppercase tracking-[0.14em] [writing-mode:vertical-rl]">{t('handsGuide.worst')}</span>
+      </div>
+    </div>
   );
 };
 
@@ -104,8 +133,6 @@ const HandsGuide: React.FC = () => {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const isWide = useMediaQuery('(min-width: 1280px)');
   const isMobile = useMediaQuery('(max-width: 767px)');
-  /** Pantallas bajas (móviles 16:9): lista de manos a dos columnas para evitar scroll. */
-  const isShort = useMediaQuery('(max-height: 720px)');
   const { t } = useI18n();
   const hand = HANDS[selected];
 
@@ -147,7 +174,7 @@ const HandsGuide: React.FC = () => {
 
   if (!isDesktop) {
     return (
-      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <Screen>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-[1.375rem] pb-7 pt-8">
           {header}
           <motion.div
@@ -162,16 +189,16 @@ const HandsGuide: React.FC = () => {
             </motion.div>
             <motion.div variants={fadeIn} className="shrink-0">{detail(isMobile ? 'sm' : 'md')}</motion.div>
             <motion.div variants={fadeIn} className="flex min-h-0 flex-1 flex-col">
-              <HandList selected={selected} onSelect={selectHand} fill dense={isShort} />
+              <HandList selected={selected} onSelect={selectHand} fill />
             </motion.div>
           </motion.div>
         </div>
-      </div>
+      </Screen>
     );
   }
 
   return (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <Screen>
       <PageHeader
         onBack={back}
         backLabel={t('common.back')}
@@ -190,7 +217,7 @@ const HandsGuide: React.FC = () => {
               <Title className="text-[clamp(2rem,4.5vw,3.25rem)]" />
               <p className="max-w-[440px] font-body leading-[1.45] opacity-70">{t('handsGuide.intro')}</p>
             </motion.div>
-            <HandList selected={selected} onSelect={selectHand} size="lg" />
+            <HandList selected={selected} onSelect={selectHand} />
           </motion.div>
           <motion.div
             variants={fadeIn}
@@ -202,7 +229,7 @@ const HandsGuide: React.FC = () => {
           </motion.div>
         </div>
       </div>
-    </div>
+    </Screen>
   );
 };
 

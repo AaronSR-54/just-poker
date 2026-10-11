@@ -24,7 +24,7 @@ export interface HandResult {
   name: string;
 }
 
-function rankValue(rank: CardRank): number {
+export function rankValue(rank: CardRank): number {
   return RANK_ORDER[rank] || 0;
 }
 

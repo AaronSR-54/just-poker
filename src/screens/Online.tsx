@@ -11,9 +11,10 @@ import Panel from '../components/Panel';
 import PersonCard from '../components/PersonCard';
 import QrCode from '../components/QrCode';
 import QrDialog from '../components/QrDialog';
+import Screen from '../components/Screen';
 import ScreenTitle from '../components/ScreenTitle';
 import SelectableCard from '../components/SelectableCard';
-import { container, fadeDown, fadeUp, slideSwap, t as motionT } from '../animations/motion';
+import { container, fadeDown, fadeUp, slideSwap, motionT } from '../animations/motion';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useI18n } from '../i18n';
 import { connectSocket, getSocket } from '../net/socket';
@@ -735,7 +736,7 @@ const Online: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <Screen>
         <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto px-[1.375rem] ${compact ? 'pb-5 pt-5' : 'pb-7 pt-8'}`}>
           <PageHeader
             onBack={goMenu}
@@ -778,12 +779,12 @@ const Online: React.FC = () => {
           </motion.div>
         </div>
         {overlays}
-      </div>
+      </Screen>
     );
   }
 
   return (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <Screen>
       <PageHeader onBack={goMenu} backLabel={t('common.backToMenu')} />
 
       <div
@@ -835,7 +836,7 @@ const Online: React.FC = () => {
         </div>
       </div>
       {overlays}
-    </div>
+    </Screen>
   );
 };
 

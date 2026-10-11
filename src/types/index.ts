@@ -33,47 +33,11 @@ export interface Rank {
   max: number;
 }
 
-export interface GameState {
-  id: string;
-  phase: GamePhase;
-  players: Player[];
-  community: Card[];
-  pot: number;
-  currentPlayer: number;
-  dealer: number;
-  smallBlind: number;
-  bigBlind: number;
-  minRaise: number;
-  winner: number[] | null;
-  showdown: boolean;
-}
-
 export interface Action {
   playerIndex: number;
   type: ActionType;
   amount?: number;
   timestamp: number;
-}
-
-export interface GameHistory {
-  place: 1 | 2 | 3 | 4;
-  pts: number;
-  when: string;
-  rivals: string;
-}
-
-export interface Milestone {
-  rank: Rank;
-  reached: boolean;
-  when: string | null;
-}
-
-export interface User {
-  id: string;
-  username: string;
-  avatar: string;
-  points: number;
-  rank: string;
 }
 
 export const RANKS: Rank[] = [
@@ -90,4 +54,3 @@ export function rankFor(points: number): Rank {
 }
 
 export const SUITS: Record<Suit, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
-export const isRed = (s: Suit): boolean => s === 'h' || s === 'd';

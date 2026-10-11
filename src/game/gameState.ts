@@ -1,5 +1,6 @@
 import type { GamePhase } from '../types';
 import { PokerGame, type PokerState } from './poker';
+import { DEFAULT_NAMES } from './engine/constants';
 
 export interface GameSession {
   game: PokerGame;
@@ -10,7 +11,7 @@ export interface GameSession {
 }
 
 export function createLocalGame(playerCount: number, difficulty: string, names?: string[]): GameSession {
-  const defaultNames = ['Tú', 'Mia', 'Dan', 'Sam'];
+  const defaultNames = DEFAULT_NAMES.slice(0, 4);
 
   if (difficulty === 'medium') {
     defaultNames[1] = 'Leo'; defaultNames[2] = 'Nora'; defaultNames[3] = 'Kai';

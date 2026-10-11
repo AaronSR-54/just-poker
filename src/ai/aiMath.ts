@@ -1,9 +1,5 @@
 import type { ActionKind } from './personalityTypes';
 
-export function clamp01(x: number): number {
-  return Math.max(0, Math.min(1, x));
-}
-
 export function logistic(x: number, k: number, x0: number): number {
   return 1 / (1 + Math.exp(-k * (x - x0)));
 }

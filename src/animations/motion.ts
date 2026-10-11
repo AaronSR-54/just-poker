@@ -24,7 +24,7 @@ export const setMotionScale = (scale: number): void => {
 };
 
 /** Atajo para transiciones coherentes en toda la app. */
-export const t = (duration: number = DUR.base, delay = 0, ease = EASE_OUT): Transition => ({
+export const motionT = (duration: number = DUR.base, delay = 0, ease = EASE_OUT): Transition => ({
   duration: duration * motionScale,
   delay: delay * motionScale,
   ease,
@@ -57,21 +57,6 @@ export const fadeDown: Variants = {
   visible: { opacity: 1, y: 0 },
 };
 
-export const slideInLeft: Variants = {
-  hidden: { opacity: 0, x: -24 },
-  visible: { opacity: 1, x: 0 },
-};
-
-export const slideInRight: Variants = {
-  hidden: { opacity: 0, x: 24 },
-  visible: { opacity: 1, x: 0 },
-};
-
-export const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: 0.96 },
-  visible: { opacity: 1, scale: 1 },
-};
-
 export const popIn: Variants = {
   hidden: { opacity: 0, scale: 0.94, y: 8 },
   visible: { opacity: 1, scale: 1, y: 0 },
@@ -84,20 +69,13 @@ export const popIn: Variants = {
 /** Transición de pantalla: elevación sutil + fundido. */
 export const page: Variants = {
   initial: { opacity: 0, y: 14, scale: 0.994 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: t(0.42, 0, EASE_OUT) },
-  exit: { opacity: 0, y: -10, scale: 0.994, transition: t(0.22, 0, EASE_BRAND) },
-};
-
-/** Cambio de modo/paso con salida, sin desplazamiento lateral. */
-export const swap: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: t(0.32, 0, EASE_OUT) },
-  exit: { opacity: 0, y: -10, transition: t(0.18, 0, EASE_BRAND) },
+  animate: { opacity: 1, y: 0, scale: 1, transition: motionT(0.42, 0, EASE_OUT) },
+  exit: { opacity: 0, y: -10, scale: 0.994, transition: motionT(0.22, 0, EASE_BRAND) },
 };
 
 /** Cambio lateral direccional (pasos, mesas…). `dir` > 0 avanza. */
 export const slideSwap = (dir: number, distance = 32): Variants => ({
   hidden: { opacity: 0, x: dir >= 0 ? distance : -distance },
-  visible: { opacity: 1, x: 0, transition: t(0.34, 0, EASE_OUT) },
-  exit: { opacity: 0, x: dir >= 0 ? -distance : distance, transition: t(0.2, 0, EASE_BRAND) },
+  visible: { opacity: 1, x: 0, transition: motionT(0.34, 0, EASE_OUT) },
+  exit: { opacity: 0, x: dir >= 0 ? -distance : distance, transition: motionT(0.2, 0, EASE_BRAND) },
 });

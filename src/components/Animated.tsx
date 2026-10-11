@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
-import { EASE_OUT, container, fadeUp, t } from '../animations/motion';
+import { EASE_OUT, container, fadeUp, motionT } from '../animations/motion';
 
 interface FadeInProps extends HTMLMotionProps<'div'> {
   /** Retardo en segundos. */
@@ -22,7 +22,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
     initial={{ opacity: 0, y: offset }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -offset * 0.6 }}
-    transition={t(0.34, delay, EASE_OUT)}
+    transition={motionT(0.34, delay, EASE_OUT)}
     className={className}
     {...rest}
   >

@@ -1,11 +1,19 @@
 import React from 'react';
 import type { Suit, CardRank, CardSize } from '../types';
+import { useI18n } from '../i18n';
 
 const SUIT_DIR: Record<Suit, string> = {
   s: 'spades',
   h: 'hearts',
   d: 'diamonds',
   c: 'clubs',
+};
+
+const SUIT_KEY: Record<Suit, string> = {
+  s: 'common.suitSpades',
+  h: 'common.suitHearts',
+  d: 'common.suitDiamonds',
+  c: 'common.suitClubs',
 };
 
 const sizes: Record<CardSize, string> = {
@@ -35,6 +43,7 @@ function cardSrc(rank: string, suit: Suit): string | undefined {
 }
 
 const PokerCard: React.FC<PokerCardProps> = ({ rank, suit, size = 'md', dimmed = false, style }) => {
+  const { t } = useI18n();
   const cls = `block shrink-0 box-border rounded-[8%_/_5.714%] bg-bone ${sizes[size]}${dimmed ? ' brightness-40 saturate-50 transition-[filter] duration-300' : ''}`;
 
   if (!rank || !suit) return null;
@@ -47,7 +56,7 @@ const PokerCard: React.FC<PokerCardProps> = ({ rank, suit, size = 'md', dimmed =
       src={src}
       className={cls}
       style={style}
-      alt={`${rank} de ${suit}`}
+      alt={t('common.cardAlt', { rank, suit: t(SUIT_KEY[suit]) })}
     />
   );
 };

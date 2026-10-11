@@ -1,7 +1,8 @@
 import type { PokerState } from '../game/poker';
 import { detectDraws, handCategory } from './handStrength';
 import { tableRespect } from './range';
-import { clamp01, logistic, weightedPick } from './aiMath';
+import { logistic, weightedPick } from './aiMath';
+import { clamp01 } from '../utils/math';
 import { activeOpponents } from './aiTable';
 import type { Choice } from './personalityTypes';
 

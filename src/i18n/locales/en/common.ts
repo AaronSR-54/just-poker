@@ -9,6 +9,11 @@ const common = {
   finish: 'Finish',
   backToMenu: 'Back to menu',
   pressHighlighted: 'Press the highlighted button.',
+  cardAlt: '{rank} of {suit}',
+  suitSpades: 'spades',
+  suitHearts: 'hearts',
+  suitDiamonds: 'diamonds',
+  suitClubs: 'clubs',
 };
 
 export default common;

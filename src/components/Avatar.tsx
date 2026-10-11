@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { AvatarSize } from '../types';
+import { initials } from '../utils/text';
 
 interface AvatarProps {
   name: string;
@@ -35,10 +36,7 @@ const Avatar: React.FC<AvatarProps> = ({
   imgClassName,
   style,
 }) => {
-  const initials = useMemo(() => {
-    const parts = name.trim().split(/\s+/).slice(0, 2);
-    return parts.map(p => p[0]).join('').toUpperCase() || '?';
-  }, [name]);
+  const displayInitials = initials(name);
 
   const cls = [
     'inline-flex items-center justify-center shrink-0 overflow-hidden rounded-full font-display font-bold',
@@ -52,14 +50,14 @@ const Avatar: React.FC<AvatarProps> = ({
 
   if (src) {
     return (
-      <span className={`${cls} ${ring ? 'bg-transparent' : 'bg-transparent'} relative`} style={style}>
+      <span className={`${cls} bg-transparent relative`} style={style}>
         {!ring && <span className={`absolute inset-0 ${tone ?? 'bg-bone'}`} aria-hidden="true" />}
         <img src={src} alt={name} className={`relative size-full object-cover ${imgClassName ?? ''}`} />
       </span>
     );
   }
 
-  return <span className={cls} style={style}>{initials}</span>;
+  return <span className={cls} style={style}>{displayInitials}</span>;
 };
 
 export default Avatar;

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { loadSavedGame } from '../game/saveGame';
 import SettingsButton from '../components/SettingsButton';
+import Screen from '../components/Screen';
 import GameSettings from '../components/GameSettings';
 import Hero from '../components/Hero';
 import CtaCard from '../components/CtaCard';
@@ -21,16 +22,13 @@ const Menu: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const settingsOverlay = (
-    <AnimatePresence>
-      {settingsOpen && (
-        <GameSettings
-          context="home"
-          onClose={() => setSettingsOpen(false)}
-          onTutorial={() => navigate('/game/guide')}
-          onHandsGuide={() => navigate('/hands')}
-        />
-      )}
-    </AnimatePresence>
+    <GameSettings
+      open={settingsOpen}
+      context="home"
+      onClose={() => setSettingsOpen(false)}
+      onTutorial={() => navigate('/game/guide')}
+      onHandsGuide={() => navigate('/hands')}
+    />
   );
 
   const cards = (
@@ -79,7 +77,7 @@ const Menu: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+      <Screen>
         <SettingsButton onClick={() => setSettingsOpen(true)} />
         <div className="flex min-h-0 flex-1 flex-col justify-between gap-5 overflow-y-auto px-[1.375rem] pb-7 pt-8">
           <Hero size="mobile" />
@@ -93,12 +91,12 @@ const Menu: React.FC = () => {
           </motion.div>
         </div>
         {settingsOverlay}
-      </div>
+      </Screen>
     );
   }
 
   return (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden font-body text-fs-300 leading-[1.25] text-bone">
+    <Screen>
       <SettingsButton onClick={() => setSettingsOpen(true)} />
       <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[4.375rem] pt-15 lg:px-20">
         <div className="flex w-full items-stretch justify-center gap-12 lg:gap-32">
@@ -114,7 +112,7 @@ const Menu: React.FC = () => {
         </div>
       </div>
       {settingsOverlay}
-    </div>
+    </Screen>
   );
 };
 

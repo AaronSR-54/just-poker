@@ -1,6 +1,7 @@
 import type { Card, GamePhase, Action as ActionType } from '../../types';
 import type { PokerPlayer, PokerState, PokerSaveData } from './types';
-import { STARTING_CHIPS, DEFAULT_NAMES, initials } from './constants';
+import { STARTING_CHIPS, DEFAULT_NAMES } from './constants';
+import { initials } from '../../utils/text';
 import { clonePlayer, cloneSaveData } from './serialization';
 import { activeNotFolded, maxBet } from './seats';
 
