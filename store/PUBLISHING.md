@@ -20,11 +20,14 @@ Checklist para dejar la ficha y la app publicadas. Web/Política:
 - Icono: `store/icon-512.png` (512×512).
 - Gráfico destacado: `store/feature-graphic-1024x500.png` (1024×500).
 - Capturas (1080×1920, subir mínimo 2): `store/screenshots/en/*.png` para la
-  ficha inglesa y `store/screenshots/es/*.png` para la española. Las de la raíz
-  (`store/screenshots/*.png`) son las antiguas y muestran el modo online ya oculto.
+  ficha inglesa y `store/screenshots/es/*.png` para la española.
+  - `01-menu`, `02-seleccion`, `03-mesa`, `04-manos`, `05-online` (lobby del
+    multijugador privado: código, QR y jugadores reales).
 - Regenerar icono + gráfico: `npm run store:assets`.
 - Regenerar capturas: `npm run store:screenshots` (inglés) o
   `npm run store:screenshots es` (español). Requiere `npx playwright install chromium`.
+  La captura `05-online` levanta también el servidor online de desarrollo
+  (`server/index.ts` en `:3001`) y crea una sala con jugadores para el lobby.
 - Política de privacidad: `public/privacy-policy.html` (se sirve en la URL web).
 
 ## 2. Crear la app (una sola vez)
