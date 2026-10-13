@@ -106,6 +106,31 @@ export function getActiveOnlineSession(): OnlineSession | null {
   return s;
 }
 
+/**
+ * Normaliza un código de sala para compararlo o rellenarlo: mayúsculas, solo
+ * alfanuméricos y hasta 4 caracteres.
+ */
+export function normalizeRoomCode(code: string | null | undefined): string {
+  return String(code ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
+}
+
+/**
+ * Indica si unirse al `code` indicado supone entrar en una sala **distinta** a
+ * la partida en curso. Sin partida en curso, o con el mismo código, devuelve
+ * `false`. `current` puede ser la sesión online o la sala abierta: ambas
+ * exponen `code`.
+ */
+export function isOtherRoomJoin(
+  current: { code: string } | null | undefined,
+  code: string | null | undefined,
+): boolean {
+  const target = normalizeRoomCode(code);
+  if (!target) return false;
+  const currentCode = normalizeRoomCode(current?.code);
+  if (!currentCode) return false;
+  return target !== currentCode;
+}
+
 /** Id anónimo de sesión: permite reconectar y recuperar el asiento. */
 export function getPlayerId(): string | null {
   if (playerId) return playerId;

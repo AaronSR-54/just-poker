@@ -52,3 +52,36 @@ describe('onlineSession — ventana de reanudación', () => {
     expect(mod.getOnlineSession()).toBeNull();
   });
 });
+
+describe('onlineSession — isOtherRoomJoin', () => {
+  beforeEach(() => {
+    installStorage();
+    vi.resetModules();
+  });
+
+  it('detecta entrar en otra sala con una partida en curso', async () => {
+    const { isOtherRoomJoin } = await import('./onlineSession');
+    expect(isOtherRoomJoin({ code: 'ABCD' }, 'WXYZ')).toBe(true);
+  });
+
+  it('no avisa con el mismo código (normalizado)', async () => {
+    const { isOtherRoomJoin } = await import('./onlineSession');
+    expect(isOtherRoomJoin({ code: 'ABCD' }, 'aBcD')).toBe(false);
+  });
+
+  it('no avisa sin partida en curso', async () => {
+    const { isOtherRoomJoin } = await import('./onlineSession');
+    expect(isOtherRoomJoin(null, 'ABCD')).toBe(false);
+  });
+
+  it('no avisa con un código vacío', async () => {
+    const { isOtherRoomJoin } = await import('./onlineSession');
+    expect(isOtherRoomJoin({ code: 'ABCD' }, '')).toBe(false);
+  });
+
+  it('normaliza el código (mayúsculas, sin caracteres extraños, hasta 4)', async () => {
+    const { isOtherRoomJoin, normalizeRoomCode } = await import('./onlineSession');
+    expect(normalizeRoomCode(' ab-cd1 ')).toBe('ABCD');
+    expect(isOtherRoomJoin({ code: 'ABCD' }, 'wxyz9')).toBe(true);
+  });
+});

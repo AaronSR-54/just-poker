@@ -25,6 +25,9 @@ import {
   setPlayerName,
   getActiveOnlineSession,
   clearOnlineSession,
+  isOtherRoomJoin,
+  normalizeRoomCode,
+  type OnlineSession,
   type RoomState,
   type StartingPayload,
 } from '../net/onlineSession';
@@ -36,6 +39,9 @@ import { MAX_PLAYER_NAME_LENGTH, onlineOrigin } from '../config/online';
 type Mode = 'create' | 'join';
 
 const MAX_SLOTS = 4;
+
+/** Reparte un código normalizado (máx. 4) en las cuatro casillas. */
+const codeToChars = (code: string): string[] => [0, 1, 2, 3].map((i) => code[i] ?? '');
 
 /**
  * Entrada/salida de una plaza. Con `popLayout` la plaza que sale deja su hueco
@@ -79,8 +85,12 @@ const Online: React.FC = () => {
   const [name, setName] = useState('');
   const [placeholderName] = useState(() => getPlayerName() ?? randomName());
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
+  /** Código de otra sala pendiente de confirmación (enlace o escrito). */
+  const [pendingJoin, setPendingJoin] = useState<{ code: string; fromLink: boolean } | null>(null);
   const [connected, setConnected] = useState(true);
   const [reconnected, setReconnected] = useState(false);
+  /** La conexión y los listeners ya están listos (habilitan resolver la entrada). */
+  const [ready, setReady] = useState(false);
 
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
   const nameRef = useRef(placeholderName);
@@ -90,13 +100,20 @@ const Online: React.FC = () => {
   const bypassBlockRef = useRef(false);
   const startedRef = useRef(false);
   const copyTimerRef = useRef<number | null>(null);
+  /** Último código de la dirección ya gestionado (evita repetir el aviso). */
+  const handledCodeRef = useRef<string | null>(null);
 
   // Bloquea la salida de la pantalla mientras hay sala (atrás del navegador/Android,
-  // acción de volver, enlaces…). Se permiten las escrituras `replace` del `?code=`.
-  const blocker = useBlocker(
-    ({ historyAction }) =>
-      Boolean(roomRef.current) && !bypassBlockRef.current && historyAction !== 'REPLACE',
-  );
+  // acción de volver, enlaces…). Se permiten las escrituras `replace` del `?code=`
+  // y los enlaces de invitación a **otra** sala, que resuelve el efecto reactivo.
+  const blocker = useBlocker(({ currentLocation, nextLocation, historyAction }) => {
+    if (!roomRef.current || bypassBlockRef.current || historyAction === 'REPLACE') return false;
+    const currentCode = new URLSearchParams(currentLocation.search).get('code');
+    const joinCode = /^\/join\/([^/]+)$/.exec(nextLocation.pathname)?.[1] ?? null;
+    const nextCode = new URLSearchParams(nextLocation.search).get('code') ?? joinCode;
+    const isInvite = Boolean(nextCode) && (nextCode !== currentCode || nextLocation.pathname !== currentLocation.pathname);
+    return !isInvite;
+  });
   const blockerRef = useRef(blocker);
   blockerRef.current = blocker;
 
@@ -113,13 +130,38 @@ const Online: React.FC = () => {
     );
   };
 
+  const codeParam = params.get('code');
+
+  /** Reanuda la sala de una sesión activa (reincorpora al lobby o reentra en la partida). */
+  const attachSession = (session: OnlineSession) => {
+    setMode(session.isHost ? 'create' : 'join');
+    setRoom({
+      roomId: session.roomId,
+      code: session.code,
+      hostId: session.hostId,
+      started: false,
+      players: session.seats.map((s) => ({ userId: s.userId, username: s.username })),
+    });
+    getSocket()?.emit(
+      'room:join',
+      { roomId: session.roomId, name: session.playerName },
+      (res: { ok: boolean; error?: string } | undefined) => {
+        if (!res?.ok) {
+          clearOnlineSession();
+          setRoom(null);
+          setError(onlineError(res?.error, 'online.roomGone'));
+          clearCodeParam();
+        }
+      },
+    );
+  };
+
   // Conexión, listeners de sala y resolución de la entrada (?code= o sesión activa).
   useEffect(() => {
     let cancelled = false;
     // Quita solo los listeners propios; `off(evento)` sin handler borraría
     // también los de otros módulos (p. ej. `session:id` en `socket.ts`).
     let detach: (() => void) | null = null;
-    const codeParam = params.get('code');
     const session = getActiveOnlineSession();
     // Intención explícita de empezar una partida nueva: no reanudar la sesión.
     const wantsNewGame = Boolean((location.state as { newGame?: boolean } | null)?.newGame);
@@ -212,48 +254,12 @@ const Online: React.FC = () => {
           sock.off('disconnect', handleDisconnect);
         };
 
-        if (codeParam) {
-          // El código/enlace explícito manda sobre cualquier sesión previa: si no,
-          // abrir una invitación nueva devolvería al jugador a su partida anterior.
-          const chars = codeParam.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
-          setCode([0, 1, 2, 3].map((i) => chars[i] ?? ''));
-          setMode('join');
-          // Reincorpora directamente a quien ya tiene un nombre guardado (p. ej.
-          // tras recargar); un invitado nuevo ve el flujo de unirse con el código.
-          const knownName = getPlayerName();
-          if (knownName) {
-            nameRef.current = knownName;
-            sock.emit(
-              'room:join',
-              { code: chars, name: knownName },
-              (res: { ok: boolean; error?: string } | undefined) => {
-                if (cancelled) return;
-                if (!res?.ok) setError(onlineError(res?.error, 'online.roomGone'));
-              },
-            );
-          }
-        } else if (session && !wantsNewGame) {
-          setMode(session.isHost ? 'create' : 'join');
-          setRoom({
-            roomId: session.roomId,
-            code: session.code,
-            hostId: session.hostId,
-            started: false,
-            players: session.seats.map((s) => ({ userId: s.userId, username: s.username })),
-          });
-          sock.emit(
-            'room:join',
-            { roomId: session.roomId, name: session.playerName },
-            (res: { ok: boolean; error?: string } | undefined) => {
-              if (cancelled) return;
-              if (!res?.ok) {
-                clearOnlineSession();
-                setRoom(null);
-                setError(onlineError(res?.error, 'online.roomGone'));
-                clearCodeParam();
-              }
-            },
-          );
+        setReady(true);
+
+        // Un `?code=` lo gestiona el efecto reactivo (con confirmación si hay
+        // partida en curso); aquí solo se reanuda la sesión si no hay código.
+        if (session && !wantsNewGame && !codeParam) {
+          attachSession(session);
         }
       } catch {
         if (!cancelled) {
@@ -273,6 +279,59 @@ const Online: React.FC = () => {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  // Resuelve la entrada por enlace/código de forma reactiva (también cuando ya
+  // se está en `/online`): si hay partida en curso y el código es de otra sala,
+  // pide confirmación antes de abandonar la anterior.
+  useEffect(() => {
+    if (!ready) return;
+    if (!codeParam) {
+      handledCodeRef.current = null;
+      return;
+    }
+    const normalized = normalizeRoomCode(codeParam);
+    if (!normalized || handledCodeRef.current === normalized) return;
+    handledCodeRef.current = normalized;
+
+    const inRoom = roomRef.current;
+    if (inRoom) {
+      if (isOtherRoomJoin(inRoom, normalized)) {
+        setCode(codeToChars(normalized));
+        setMode('join');
+        setPendingJoin({ code: normalized, fromLink: true });
+      }
+      return;
+    }
+
+    const session = getActiveOnlineSession();
+    if (session) {
+      if (isOtherRoomJoin(session, normalized)) {
+        setCode(codeToChars(normalized));
+        setMode('join');
+        setPendingJoin({ code: normalized, fromLink: true });
+      } else {
+        // Mismo código: reincorpora a la partida en curso.
+        attachSession(session);
+      }
+      return;
+    }
+
+    // Sin partida en curso: rellena el código y únete si ya hay nombre guardado.
+    setCode(codeToChars(normalized));
+    setMode('join');
+    const knownName = getPlayerName();
+    if (knownName) {
+      nameRef.current = knownName;
+      getSocket()?.emit(
+        'room:join',
+        { code: normalized, name: knownName },
+        (res: { ok: boolean; error?: string } | undefined) => {
+          if (!res?.ok) setError(onlineError(res?.error, 'online.roomGone'));
+        },
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, codeParam]);
 
   // Refleja el código de la sala en la dirección (replace para no apilar historial).
   const roomCode = room?.code ?? null;
@@ -309,12 +368,11 @@ const Online: React.FC = () => {
   const codeFilled = code.every((d) => d !== '');
 
   const setCodeChars = (raw: string) => {
-    const chars = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
-    setCode([0, 1, 2, 3].map((i) => chars[i] ?? ''));
+    setCode(codeToChars(normalizeRoomCode(raw)));
   };
 
   const handleCodeChange = (index: number, raw: string) => {
-    const chars = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const chars = normalizeRoomCode(raw);
     if (!chars) {
       setCode((prev) => prev.map((d, i) => (i === index ? '' : d)));
       return;
@@ -345,7 +403,7 @@ const Online: React.FC = () => {
   };
 
   const handleCodePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const text = e.clipboardData.getData('text').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
+    const text = normalizeRoomCode(e.clipboardData.getData('text'));
     if (!text) return;
     e.preventDefault();
     setCodeChars(text);
@@ -395,9 +453,15 @@ const Online: React.FC = () => {
       return;
     }
     const chosenName = (name.trim() || placeholderName).slice(0, MAX_PLAYER_NAME_LENGTH);
-    setBusy(true);
     setError(null);
     submitName(chosenName);
+    // Con una partida en curso, un código de otra sala pide confirmación antes
+    // de abandonarla.
+    if (isOtherRoomJoin(getActiveOnlineSession() ?? room, codeValue)) {
+      setPendingJoin({ code: codeValue, fromLink: false });
+      return;
+    }
+    setBusy(true);
     getSocket()?.emit(
       'room:join',
       { code: codeValue, name: chosenName },
@@ -433,12 +497,59 @@ const Online: React.FC = () => {
     navigate('/');
   };
 
+  /** Confirma entrar en otra sala: el servidor abandona la anterior al unir y,
+   * si falla el ingreso, se conserva la partida en curso. */
+  const confirmJoin = () => {
+    const target = pendingJoin;
+    if (!target) return;
+    setPendingJoin(null);
+    setError(null);
+    const previous = getActiveOnlineSession();
+    getSocket()?.emit(
+      'room:join',
+      { code: target.code, name: nameRef.current },
+      (res: { ok: boolean; error?: string; roomId?: string; started?: boolean } | undefined) => {
+        if (!res?.ok) {
+          setError(onlineError(res?.error, 'online.roomGone'));
+          return;
+        }
+        if (previous && !res.started && res.roomId !== previous.roomId) {
+          clearOnlineSession();
+        }
+      },
+    );
+  };
+
+  /** Cancela la entrada en otra sala: mantiene la partida en curso. */
+  const cancelJoin = () => {
+    const target = pendingJoin;
+    setPendingJoin(null);
+    if (!target?.fromLink) return;
+    handledCodeRef.current = null;
+    if (roomRef.current) {
+      setMode(roomRef.current.hostId === (getPlayerId() ?? '') ? 'create' : 'join');
+      clearCodeParam();
+      return;
+    }
+    const session = getActiveOnlineSession();
+    clearCodeParam();
+    if (session) attachSession(session);
+  };
+
   const cancelExit = () => {
+    if (pendingJoin) {
+      cancelJoin();
+      return;
+    }
     setPendingMode(null);
     if (blockerRef.current.state === 'blocked') blockerRef.current.reset();
   };
 
   const confirmExit = () => {
+    if (pendingJoin) {
+      confirmJoin();
+      return;
+    }
     if (blockerRef.current.state === 'blocked') {
       // Salida controlada al menú: limpiamos la sala (emite `room:leave`) y
       // descartamos la navegación bloqueada, que en carga directa apuntaría a
@@ -704,8 +815,9 @@ const Online: React.FC = () => {
     </motion.div>
   );
 
-  const confirmCopy =
-    pendingMode === 'create'
+  const confirmCopy = pendingJoin
+    ? { title: t('online.leaveForAnotherTitle'), message: t('online.leaveForAnotherMessage'), confirm: t('online.leaveForAnotherConfirm') }
+    : pendingMode === 'create'
       ? { title: t('online.newGameTitle'), message: t('online.newGameMessage'), confirm: t('online.newGameConfirm') }
       : pendingMode === 'join'
         ? { title: t('online.joinAnotherTitle'), message: t('online.joinAnotherMessage'), confirm: t('online.joinAnotherConfirm') }
@@ -722,7 +834,7 @@ const Online: React.FC = () => {
         onClose={() => setQrOpen(false)}
       />
       <ConfirmDialog
-        open={blocker.state === 'blocked' || pendingMode !== null}
+        open={blocker.state === 'blocked' || pendingMode !== null || pendingJoin !== null}
         title={confirmCopy.title}
         message={confirmCopy.message}
         confirmLabel={confirmCopy.confirm}
