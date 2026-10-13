@@ -25,6 +25,8 @@ export interface OnlineSession {
   isHost: boolean;
   playerId: string;
   playerName: string;
+  /** La partida ya empezó. Ausente en sesiones antiguas: se trata como empezada. */
+  started?: boolean;
   /** Marca temporal de la última vez que se guardó la sesión. */
   savedAt: number;
 }
@@ -168,6 +170,33 @@ export interface RoomState {
   hostId: string | null;
   started: boolean;
   players: LobbyPlayer[];
+}
+
+/**
+ * Construye la sesión de una sala aún sin empezar a partir de su estado público,
+ * lista para persistir y poder reincorporarse (p. ej. al recargar).
+ */
+export function lobbySessionFromRoom(
+  room: RoomState,
+  playerId: string,
+  playerName: string,
+): Omit<OnlineSession, 'savedAt'> {
+  const seats: OnlineSeat[] = room.players.map((p, seat) => ({
+    seat,
+    userId: p.userId,
+    username: p.username,
+  }));
+  return {
+    roomId: room.roomId,
+    code: room.code,
+    hostId: room.hostId,
+    seats,
+    mySeat: Math.max(0, room.players.findIndex((p) => p.userId === playerId)),
+    isHost: room.hostId === playerId,
+    playerId,
+    playerName,
+    started: false,
+  };
 }
 
 export interface StartingPayload {

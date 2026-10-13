@@ -75,6 +75,8 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       io.to(roomId).emit('room:closed');
       return;
     }
+    const remaining = await gameManager.getRoom(roomId);
+    if (remaining) io.to(roomId).emit('room:state', publicState(remaining));
     io.to(roomId).emit('room:host', { hostId: left.hostId });
   };
 
@@ -124,12 +126,24 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       io.to(roomId).emit('room:state', publicState(room));
     };
 
-    /** Salida de un jugador (abandono o desconexión), con failover si procede. */
-    const handleDeparture = async (roomId: string, who: string): Promise<void> => {
+    /**
+     * Salida de un jugador. Un abandono explícito desde una sala sin empezar
+     * (`immediate`) libera la plaza al instante; una desconexión (recarga, corte
+     * o cierre) entra en la ventana de gracia conservando el asiento. Para no
+     * resucitar a quien ya reconectó, la desconexión ignora el socket reemplazado.
+     */
+    const handleDeparture = async (
+      roomId: string,
+      who: string,
+      opts: { immediate?: boolean; fromSocketId?: string } = {},
+    ): Promise<void> => {
       const room = await gameManager.getRoom(roomId);
       if (!room) return;
 
-      if (!room.started) {
+      const player = room.players.find((p) => p.userId === who);
+      if (opts.fromSocketId && player?.socketId && player.socketId !== opts.fromSocketId) return;
+
+      if (!room.started && opts.immediate) {
         const left = await gameManager.leaveRoom(roomId, who);
         if (left) {
           await broadcastRoom(roomId);
@@ -142,6 +156,14 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
 
       await gameManager.markDisconnected(room, who);
       scheduleAbsenceExpiry(roomId, who);
+
+      // Una sala sin empezar conserva el asiento (y el rol) durante la ventana;
+      // el resto ve el estado actualizado. El failover del anfitrión solo aplica
+      // a partidas ya empezadas, que deben continuar.
+      if (!room.started) {
+        await broadcastRoom(roomId);
+        return;
+      }
 
       if (room.hostId === who) {
         const next = room.players.find((p) => p.userId !== who && p.socketId);
@@ -256,7 +278,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
     socket.on('room:leave', async (data: { roomId?: string }) => {
       if (!data?.roomId) return;
       socket.leave(data.roomId);
-      await handleDeparture(data.roomId, playerId);
+      await handleDeparture(data.roomId, playerId, { immediate: true });
     });
 
     socket.on('room:start', async (data: { roomId?: string }, ack?: Ack) => {
@@ -341,7 +363,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       log('conn', 'disconnected', { playerId, reason });
       const room = await gameManager.getRoomByPlayer(playerId);
       if (!room) return;
-      await handleDeparture(room.id, playerId);
+      await handleDeparture(room.id, playerId, { fromSocketId: socket.id });
     });
   });
 }

@@ -57,7 +57,15 @@ const Menu: React.FC = () => {
           stacked={isMobile}
           fill={!isMobile}
           dataTour="play-friends"
-          onClick={() => navigate(onlineSession ? `/game/online-${onlineSession.roomId}` : '/online')}
+          onClick={() =>
+            navigate(
+              onlineSession
+                ? onlineSession.started === false
+                  ? '/online'
+                  : `/game/online-${onlineSession.roomId}`
+                : '/online',
+            )
+          }
           label={onlineSession ? t('menu.continue') : t('menu.newGame')}
           hint={t('menu.friendsHint')}
           status={onlineSession ? t('menu.continueGame') : undefined}

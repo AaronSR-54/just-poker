@@ -27,6 +27,7 @@ import {
   clearOnlineSession,
   isOtherRoomJoin,
   normalizeRoomCode,
+  lobbySessionFromRoom,
   type OnlineSession,
   type RoomState,
   type StartingPayload,
@@ -178,6 +179,14 @@ const Online: React.FC = () => {
         const onState = (state: RoomState) => {
           codeRef.current = state.code;
           setRoom(state);
+          // Persiste la sala en curso (aún sin empezar) para reincorporarse al
+          // recargar sin perder el rastro. Una partida ya empezada la fija
+          // `room:starting`.
+          if (!state.started) {
+            const id = getPlayerId() ?? '';
+            setOnlineSession(lobbySessionFromRoom(state, id, nameRef.current));
+            markPlayed('online');
+          }
         };
         const onHost = (data: { hostId: string | null }) => {
           setRoom((prev) => (prev ? { ...prev, hostId: data.hostId } : prev));
@@ -196,6 +205,7 @@ const Online: React.FC = () => {
             isHost: data.hostId === id,
             playerId: id,
             playerName: nameRef.current,
+            started: true,
           });
           markPlayed('online');
           bypassBlockRef.current = true;
@@ -497,25 +507,19 @@ const Online: React.FC = () => {
     navigate('/');
   };
 
-  /** Confirma entrar en otra sala: el servidor abandona la anterior al unir y,
-   * si falla el ingreso, se conserva la partida en curso. */
+  /** Confirma entrar en otra sala: el servidor abandona la anterior al unir y
+   * publica el estado de la nueva (que pasa a ser la sesión persistida). Si
+   * falla el ingreso, se conserva la partida en curso. */
   const confirmJoin = () => {
     const target = pendingJoin;
     if (!target) return;
     setPendingJoin(null);
     setError(null);
-    const previous = getActiveOnlineSession();
     getSocket()?.emit(
       'room:join',
       { code: target.code, name: nameRef.current },
-      (res: { ok: boolean; error?: string; roomId?: string; started?: boolean } | undefined) => {
-        if (!res?.ok) {
-          setError(onlineError(res?.error, 'online.roomGone'));
-          return;
-        }
-        if (previous && !res.started && res.roomId !== previous.roomId) {
-          clearOnlineSession();
-        }
+      (res: { ok: boolean; error?: string } | undefined) => {
+        if (!res?.ok) setError(onlineError(res?.error, 'online.roomGone'));
       },
     );
   };

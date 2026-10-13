@@ -85,3 +85,56 @@ describe('onlineSession — isOtherRoomJoin', () => {
     expect(isOtherRoomJoin({ code: 'ABCD' }, 'wxyz9')).toBe(true);
   });
 });
+
+describe('onlineSession — lobbySessionFromRoom', () => {
+  beforeEach(() => {
+    installStorage();
+    vi.resetModules();
+  });
+
+  it('construye la sesión de un lobby sin empezar (anfitrión)', async () => {
+    const { lobbySessionFromRoom } = await import('./onlineSession');
+    const session = lobbySessionFromRoom(
+      {
+        roomId: 'r1',
+        code: 'ABCD',
+        hostId: 'me',
+        started: false,
+        players: [
+          { userId: 'me', username: 'Me' },
+          { userId: 'you', username: 'You' },
+        ],
+      },
+      'me',
+      'Me',
+    );
+    expect(session.started).toBe(false);
+    expect(session.isHost).toBe(true);
+    expect(session.mySeat).toBe(0);
+    expect(session.seats).toEqual([
+      { seat: 0, userId: 'me', username: 'Me' },
+      { seat: 1, userId: 'you', username: 'You' },
+    ]);
+  });
+
+  it('marca mySeat según el jugador y no anfitrión', async () => {
+    const { lobbySessionFromRoom } = await import('./onlineSession');
+    const session = lobbySessionFromRoom(
+      {
+        roomId: 'r2',
+        code: 'WXYZ',
+        hostId: 'host',
+        started: false,
+        players: [
+          { userId: 'host', username: 'Host' },
+          { userId: 'me', username: 'Me' },
+        ],
+      },
+      'me',
+      'Me',
+    );
+    expect(session.isHost).toBe(false);
+    expect(session.mySeat).toBe(1);
+    expect(session.playerId).toBe('me');
+  });
+});

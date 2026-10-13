@@ -193,3 +193,90 @@ describe('handlers — límite de longitud del nombre', () => {
     expect(stored).toBe(longName.slice(0, MAX_NAME_LENGTH));
   });
 });
+
+describe('handlers — continuidad de salas sin empezar', () => {
+  it('conserva el asiento al desconectarse y lo recupera al volver dentro de la ventana', async () => {
+    const host = await connect('grace-host');
+    const guest = await connect('grace-guest');
+    const created = await emitAck(host, 'room:create', { name: 'Host' });
+    await emitAck(guest, 'room:join', { code: created.code, name: 'Guest' });
+
+    guest.disconnect();
+    await waitFor(async () => {
+      const r = await gm.getRoom(created.roomId!);
+      return r?.players.find((p) => p.userId === 'grace-guest')?.socketId === '';
+    });
+
+    // La sala no se borra ni pierde al jugador desconectado.
+    const held = await gm.getRoom(created.roomId!);
+    expect(held).not.toBeNull();
+    expect(held!.players.map((p) => p.userId).sort()).toEqual(['grace-guest', 'grace-host']);
+
+    // Vuelve con el mismo playerId dentro de la ventana.
+    const back = await connect('grace-guest');
+    const rejoin = await emitAck(back, 'room:join', { roomId: created.roomId, name: 'Guest' });
+    expect(rejoin.ok).toBe(true);
+    const after = await gm.getRoom(created.roomId!);
+    expect(after!.players.find((p) => p.userId === 'grace-guest')?.socketId).toBeTruthy();
+    expect(after!.players).toHaveLength(2);
+  });
+
+  it('no borra una sala en solitario al desconectarse el anfitrión y la conserva al volver', async () => {
+    const solo = await connect('solo-host');
+    const created = await emitAck(solo, 'room:create', { name: 'Solo' });
+
+    solo.disconnect();
+    await waitFor(async () => {
+      const r = await gm.getRoom(created.roomId!);
+      return r?.players.find((p) => p.userId === 'solo-host')?.socketId === '';
+    });
+
+    const held = await gm.getRoom(created.roomId!);
+    expect(held).not.toBeNull();
+    expect(held!.hostId).toBe('solo-host');
+
+    const back = await connect('solo-host');
+    const rejoin = await emitAck(back, 'room:join', { roomId: created.roomId, name: 'Solo' });
+    expect(rejoin.ok).toBe(true);
+    const after = await gm.getRoom(created.roomId!);
+    expect(after!.players).toHaveLength(1);
+    expect(after!.hostId).toBe('solo-host');
+  });
+
+  it('conserva el rol de anfitrión al desconectarse y volver dentro de la ventana', async () => {
+    const host = await connect('role-host');
+    const guest = await connect('role-guest');
+    const created = await emitAck(host, 'room:create', { name: 'Host' });
+    await emitAck(guest, 'room:join', { code: created.code, name: 'Guest' });
+
+    host.disconnect();
+    await waitFor(async () => {
+      const r = await gm.getRoom(created.roomId!);
+      return r?.players.find((p) => p.userId === 'role-host')?.socketId === '';
+    });
+    const held = await gm.getRoom(created.roomId!);
+    expect(held!.hostId).toBe('role-host');
+
+    const back = await connect('role-host');
+    const rejoin = await emitAck(back, 'room:join', { roomId: created.roomId, name: 'Host' });
+    expect(rejoin.ok).toBe(true);
+    const after = await gm.getRoom(created.roomId!);
+    expect(after!.hostId).toBe('role-host');
+  });
+
+  it('libera la plaza de inmediato con un abandono explícito en una sala sin empezar', async () => {
+    const host = await connect('leave-host');
+    const guest = await connect('leave-guest');
+    const created = await emitAck(host, 'room:create', { name: 'Host' });
+    await emitAck(guest, 'room:join', { code: created.code, name: 'Guest' });
+
+    guest.emit('room:leave', { roomId: created.roomId });
+    await waitFor(async () => {
+      const r = await gm.getRoom(created.roomId!);
+      return !r?.players.some((p) => p.userId === 'leave-guest');
+    });
+
+    const after = await gm.getRoom(created.roomId!);
+    expect(after!.players.map((p) => p.userId)).toEqual(['leave-host']);
+  });
+});
