@@ -22,7 +22,7 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
-  const isShort = useMediaQuery('(max-height: 720px)');
+  const isShort = useMediaQuery('(max-height: 860px)');
   const { t } = useI18n();
 
   const online = useOnlineGame(roomId);

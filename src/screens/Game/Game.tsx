@@ -33,7 +33,7 @@ const LocalGame: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
   /** Pantallas bajas (tablet apaisada o ventanas compactas): comprime la mesa para que quepa de alto. */
-  const isShort = useMediaQuery('(max-height: 720px)');
+  const isShort = useMediaQuery('(max-height: 860px)');
   const user = useUserStore(s => s.user);
   const completeOnboarding = useUserStore(s => s.completeOnboarding);
   const { t } = useI18n();
