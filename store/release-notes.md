@@ -1,50 +1,20 @@
 # Release notes
 
-## 1.6.0 (versionCode 13)
+Una release por fichero, con **solo** los bloques `<en-US>`/`<es-ES>` de esa
+versión, listos para pasar a Play con `--notes`:
 
-<en-US>
-A round that knows how it ended.
+```bash
+node ~/.config/opencode/skills/google-play-console/scripts/play.mjs upload \
+  --bundle android/app/build/outputs/bundle/release/app-release.aab \
+  --track alpha \
+  --notes store/release-notes/1.6.0.md \
+  --name "1.6.0" \
+  --mapping android/app/build/outputs/mapping/release/mapping.txt
+```
 
-• Game over now shows how long you played, the hands played and a celebration.
-• Online games warn you before leaving an in-progress match to join another room.
-• Chip symbol on the raise button, plus UI fixes (home cards on tablet, rival countdown, alignments).
-</en-US>
-<es-ES>
-Una partida que sabe cómo terminó.
+Al añadir una versión nueva, crea `store/release-notes/<version>.md` con sus
+bloques y enlázala aquí.
 
-• El fin de partida ahora muestra cuánto has jugado, las manos y una celebración.
-• En online, aviso antes de abandonar una partida en curso para entrar en otra sala.
-• Símbolo de ficha en el botón de subida y arreglos de interfaz (portada en tablet, cuenta atrás de rivales, alineaciones).
-</es-ES>
-
-## 1.5.0 (versionCode 12)
-
-<en-US>
-Feedback you can feel, and a table that fits any screen.
-
-• Added haptic feedback: subtle vibration when you act.
-• Timers now stay in sync with the game speed.
-• The online table adapts to short and narrow windows.
-</en-US>
-<es-ES>
-Respuesta que se siente, y una mesa que encaja en cualquier pantalla.
-
-• Añadida respuesta háptica: una vibración sutil al actuar.
-• Los temporizadores ahora se sincronizan con la velocidad de juego.
-• La mesa online se adapta a ventanas bajas y estrechas.
-</es-ES>
-
-## 1.4.1 (versionCode 11)
-
-<en-US>
-Invite links now open the app reliably.
-
-• Fixed app linking: scanning or tapping an invite link opens the app straight to the table, including installs from Google Play.
-• Still no accounts: invite friends with a 4-character code or a QR.
-</en-US>
-<es-ES>
-Los enlaces de invitación ahora abren la app de forma fiable.
-
-• Corregido el enlace de la app: escanear o tocar una invitación abre directamente la app en la mesa, también en instalaciones desde Google Play.
-• Sigue sin cuentas: invita con un código de 4 caracteres o un QR.
-</es-ES>
+- [1.6.0 (versionCode 13)](release-notes/1.6.0.md)
+- [1.5.0 (versionCode 12)](release-notes/1.5.0.md)
+- [1.4.1 (versionCode 11)](release-notes/1.4.1.md)
