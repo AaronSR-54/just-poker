@@ -48,9 +48,23 @@ Al confirmar, se emite `room:join` con el código nuevo y **solo al recibir ack 
 - **Extraído:** una única función pura `isOtherRoomJoin` en `src/net/onlineSession.ts`, compartida por las dos vías y con test unitario.
 - **Sin duplicar:** no se replica markup ni lógica de diálogo; `pendingJoin` reusa el mismo `ConfirmDialog` que `pendingMode` y `blocker`.
 
+### 6. Persistir la sala (lobby y partida) para sobrevivir a la recarga
+
+La entrada en una sala (`room:state`) persiste la sesión con `setOnlineSession` + `markPlayed('online')`, tanto si no ha empezado como si ya empezó. Se añade a `OnlineSession` un indicador `started?: boolean` (ausente = empezada, por compatibilidad con sesiones ya guardadas). Con la sala en curso guardada, al recargar `getActiveOnlineSession()` devuelve **esa** sala, el efecto reactivo ve el mismo código y reentra por `roomId` sin preguntar; una sesión vieja de otra partida queda sobrescrita por el estado de la sala actual, así que no genera falso aviso. No se persiste una sesión de lobby cuando `state.started` es `true` (esa la fija `room:starting`). Alternativa descartada: no persistir y deducir la sala de la URL — no distingue «recargar mi sala» de «abrir el enlace de otra».
+
+### 7. Enrutar «Continuar partida» según el estado de la sesión
+
+El menú decide el destino con `session.started === false`: una sala sin empezar lleva a `/online` (lobby) y una partida empezada a `/game/online-<roomId>` (mesa). Evita el parpadeo del lobby al continuar una partida en marcha y cumple que «continuar un lobby» reentre en el lobby.
+
+### 8. Ventana de gracia en el servidor para salas sin empezar
+
+`handleDeparture` gana un modo `immediate`: `room:leave` (abandono explícito desde el lobby) libera la plaza al instante; la **desconexión** del socket entra en la ventana de gracia con el patrón ya existente (`markDisconnected` + `scheduleAbsenceExpiry` + `expireAbsent`, reutilizados de las partidas empezadas). Para no resucitar a quien ya reconectó, la desconexión ignora el socket si el jugador ya tiene otro `socketId` activo. En salas sin empezar se **conserva el rol de anfitrión** durante la ventana (vuelve como anfitrión); al expirar, `expireAbsent` libera el asiento y difunde `room:state` (además de `room:host`) para que el lobby del resto se actualice. El objetivo de las partidas empezadas se mantiene sin cambios.
+
 ## Risks / Trade-offs
 
 - **Aviso repetido por el efecto reactivo del `?code=`** → `ref` con el último código gestionado y comparación contra `session.code` (la misma sala no avisa).
 - **El `?code=` se reescribe al entrar en una sala** (efecto existente que refleja `room.code`) → la comparación con `session.code`/`room.code` evita falsos avisos.
 - **Sala anterior ya empezada no recibe el aviso inmediato** de la marcha al confirmar (el `leaveRoom` interno de `joinRoom` no difunde) → comportamiento preexistente al cambiar de sala; queda fuera de alcance, pero se documenta. Mitigación opcional futura: difundir el estado de la sala previa.
 - **Cancelar tras abrir un enlace** debe devolver al humano a su partida anterior → se reutiliza la reanudación por `roomId`; si la sesión ya caducó (ventana de 2 min), se trata como sin sesión y se muestra el selector.
+- **Asiento fantasma durante la ventana de gracia** en salas sin empezar (hasta 2 min) → trade-off conocido, igual que en las partidas empezadas; a cambio, recargar deja de expulsar y de borrar la sala. Un abandono explícito sigue siendo inmediato.
+- **El `started` ausente en sesiones antiguas** → se interpreta como empezada (`started !== false`), de modo que las sesiones ya guardadas siguen enrutando a la mesa.
