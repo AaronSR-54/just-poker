@@ -49,7 +49,7 @@ const HumanSeat: React.FC<HumanSeatProps> = ({
       ].join(' ')}
     >
       <div className="flex items-center gap-1.5">
-        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold leading-none text-fs-400'}>{name === DEFAULT_NAMES[0] ? t('common.you') : name}</span>
+        <span className={isMobile ? 'font-display font-bold text-fs-300 tracking-normal normal-case' : 'font-display font-bold text-fs-400'}>{name === DEFAULT_NAMES[0] ? t('common.you') : name}</span>
         {role && (
           <span className="shrink-0" data-tour={role === 'dealer' ? 'dealer' : undefined}>
             <PositionChip role={role} filled={isWinner} />

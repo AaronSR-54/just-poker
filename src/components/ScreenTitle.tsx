@@ -16,7 +16,7 @@ interface ScreenTitleProps {
  * la Guía de manos.
  */
 const ScreenTitle: React.FC<ScreenTitleProps> = ({ em, rest, className, emLast = false }) => (
-  <div className={`font-display font-bold leading-[0.94] tracking-[-0.015em] ${className ?? ''}`}>
+  <div className={`font-display font-bold tracking-[-0.015em] ${className ?? ''}`}>
     <span className="whitespace-nowrap">
       {emLast ? (
         <>

@@ -53,7 +53,7 @@ const CoachCard: React.FC<CoachCardProps> = ({
         style={position ? { top: position.top, left: position.left } : { top: edge, left: edge }}
         className="fixed z-[402] max-h-[calc(100dvh-1.5rem)] w-[calc(100%-2rem)] max-w-[26rem] overflow-y-auto rounded-[14px] border border-bone/[0.18] bg-ink px-5 py-4 shadow-xl"
       >
-        <div className="font-display font-bold leading-none text-fs-500">{title}</div>
+        <div className="font-display font-bold text-fs-500">{title}</div>
         <p className="mt-2 font-body text-fs-200 leading-[1.45] opacity-80">{body}</p>
         <div className="mt-3 flex items-center justify-between gap-3">
           {act ? (

@@ -34,7 +34,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   return (
     <Modal open={open} onClose={onCancel} role="alertdialog" labelId={titleId} describedById={messageId}>
       <div className="flex flex-col gap-2">
-        <div id={titleId} className="font-display font-bold leading-none tracking-[-0.01em] text-fs-600">
+        <div id={titleId} className="font-display font-bold tracking-[-0.01em] text-fs-600">
           {title}
         </div>
         <p id={messageId} className="font-body leading-[1.45] text-fs-300 opacity-70">

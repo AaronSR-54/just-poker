@@ -31,7 +31,7 @@ const ON_LIGHT: Record<PositionRole, string> = {
 /** Chip de posición abreviado (BTN/SB/BB) para encajar en la card de jugador. */
 const PositionChip: React.FC<PositionChipProps> = ({ role, filled = false, className = '' }) => (
   <span
-    className={`inline-flex shrink-0 items-center rounded-pill px-1.5 py-px font-display font-bold text-fs-100 leading-none tracking-[0.08em] uppercase max-md:px-1 max-md:tracking-[0.06em] ${
+    className={`inline-flex shrink-0 items-center rounded-pill px-1.5 py-px font-display font-bold text-fs-100 tracking-[0.08em] uppercase max-md:px-1 max-md:tracking-[0.06em] ${
       filled ? ON_LIGHT[role] : ON_DARK[role]
     } ${className}`}
   >

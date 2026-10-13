@@ -23,7 +23,7 @@ const QrDialog: React.FC<QrDialogProps> = ({ open, title, value, hint, closeLabe
       labelId={titleId}
       panelClassName="max-h-full items-center overflow-y-auto text-center sm:max-w-[20rem]"
     >
-      <div id={titleId} className="font-display font-bold leading-none tracking-[-0.01em] text-fs-600">
+      <div id={titleId} className="font-display font-bold tracking-[-0.01em] text-fs-600">
         {title}
       </div>
       <div className="mx-auto rounded-[14px] bg-bone p-3">

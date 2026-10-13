@@ -53,7 +53,7 @@ const PersonCard: React.FC<PersonCardProps> = ({
       muted={muted}
     />
     <div className={`flex min-w-0 flex-1 flex-col gap-1 ${muted ? 'opacity-50' : ''}`}>
-      <div className={`truncate font-display leading-none text-fs-300 ${strong ? 'font-bold' : 'font-normal'}`}>
+      <div className={`truncate font-display text-fs-300 ${strong ? 'font-bold' : 'font-normal'}`}>
         {name}
         {quip && <> <em className="font-light italic opacity-80">“{quip}”</em></>}
       </div>

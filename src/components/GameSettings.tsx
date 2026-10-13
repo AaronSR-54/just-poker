@@ -74,7 +74,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open = true, onClose, onTut
           <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">
             {inGame ? t('settings.paused') : <Wordmark className="text-fs-100 tracking-[0.14em]" />}
           </div>
-          <div id="settings-title" className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">{t('settings.title')}</div>
+          <div id="settings-title" className="font-display font-bold tracking-[-0.01em] text-fs-700">{t('settings.title')}</div>
         </div>
         <button
           type="button"
@@ -138,7 +138,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open = true, onClose, onTut
         <div className="flex flex-col gap-3 rounded-[14px] border border-blind-bb/40 bg-blind-bb/[0.08] p-4">
           <div className="flex flex-col gap-1">
             <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase text-blind-bb">{t('settings.buyMeCoffee')}</div>
-            <div className="font-display font-bold leading-none text-fs-500">{t('settings.support')}</div>
+            <div className="font-display font-bold text-fs-500">{t('settings.support')}</div>
           </div>
           <p className="font-body text-fs-200 leading-[1.45] opacity-70">
             {t('settings.supportText')}

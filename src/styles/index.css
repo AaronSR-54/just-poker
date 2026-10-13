@@ -82,6 +82,7 @@
   --leading-tight: 1;
   --leading-snug: 1.1;
   --leading-body: 1.4;
+  --leading-display: 0.85;
 
   /* Radii */
   --radius-xs: 2px;
@@ -158,6 +159,12 @@
 @layer base {
   :root {
     color-scheme: dark;
+  }
+
+  /* Todo texto en la fuente display se compone con leading 0.85 por defecto.
+     Cualquier utilidad `leading-*` explícita sigue ganando (capa utilities). */
+  .font-display {
+    line-height: var(--leading-display);
   }
 
   html {

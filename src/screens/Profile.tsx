@@ -208,7 +208,7 @@ const Profile: React.FC = () => {
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-[1.125rem] py-6">
           <div className="flex flex-col items-center gap-3">
             <Avatar name={user.username} size={80} />
-            <div className="font-display font-bold leading-none text-[1.25rem]">{user.username}</div>
+            <div className="font-display font-bold text-[1.25rem]">{user.username}</div>
             <RankBlock rank={currentRank} />
             <div className="flex items-baseline gap-2">
               <span className="font-display font-bold text-[1.75rem]">{points}</span>
@@ -253,7 +253,7 @@ const Profile: React.FC = () => {
         <FadeIn className="flex flex-[0_0_20rem] flex-col gap-5">
           <div className="flex flex-col items-start gap-4">
             <Avatar name={user.username} size={120} />
-            <div className="font-display font-bold leading-none text-[2rem]">{user.username}</div>
+            <div className="font-display font-bold text-[2rem]">{user.username}</div>
             <RankBlock rank={currentRank} />
             <div className="flex items-baseline gap-2">
               <span className="font-display font-bold text-[2.625rem]">{points}</span>

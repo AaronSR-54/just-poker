@@ -30,8 +30,8 @@ const Hero: React.FC<HeroProps> = ({ size = 'desktop' }) => {
           layout="stack"
           className={
             mobile
-              ? 'flex flex-col uppercase text-[clamp(2.5rem,min(30vw,14vh),12rem)] leading-[0.86] tracking-[-0.015em]'
-              : 'flex flex-col uppercase text-[clamp(6rem,18vw,15rem)] leading-[0.825] tracking-[-0.015em]'
+              ? 'flex flex-col uppercase text-[clamp(2.5rem,min(30vw,14vh),12rem)] tracking-[-0.015em]'
+              : 'flex flex-col uppercase text-[clamp(6rem,18vw,15rem)] tracking-[-0.015em]'
           }
         />
       </motion.div>

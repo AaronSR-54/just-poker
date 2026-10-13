@@ -249,7 +249,7 @@ const TutorialCoach: React.FC<TutorialCoachProps> = ({ state, onFinish, onRestar
               animate={{ scale: 1, y: 0 }}
               transition={motionT(0.36)}
             >
-              <div className="font-display font-bold leading-[0.98] text-fs-600">{t('tutorial.finishTitle')}</div>
+              <div className="font-display font-bold text-fs-600">{t('tutorial.finishTitle')}</div>
               <p className="font-body text-fs-200 leading-[1.5] opacity-75">{renderRich(resultSentence(state, t))}</p>
               <div className="flex w-full flex-col gap-2 pt-1">
                 <Button variant="primary" block onClick={onFinish}>{t('tutorial.chooseTable')}</Button>
