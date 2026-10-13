@@ -38,6 +38,8 @@ export interface GameLayoutProps {
   };
   onOpenSettings: () => void;
   gameOverModal: boolean;
+  /** Tiempo total jugado de la partida (ms) para el resumen de fin de partida. */
+  gameOverDurationMs: number;
   onRestart: () => void;
   onSelectDifficulty?: () => void;
   onHome: () => void;

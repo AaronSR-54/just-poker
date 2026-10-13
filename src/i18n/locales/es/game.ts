@@ -37,9 +37,15 @@ const game = {
   rematch: 'Revancha',
   selectDifficulty: 'Seleccionar dificultad',
   backHome: 'Volver a inicio',
-  overEyebrow: 'Fin de la partida · {n} manos',
   overWon: 'Has ganado',
   overLost: 'Has perdido',
+  overWonSupport: 'Has dominado la mesa de principio a fin.',
+  overLostSupport: 'Casi. La próxima mesa es tuya.',
+  summary: {
+    title: 'Resumen de la partida',
+    duration: 'Duración',
+    hands: 'Manos',
+  },
   place: '{n}.º',
   and: ' e ',
 };

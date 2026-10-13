@@ -100,6 +100,13 @@ export class GameManager {
 
   async markStarted(room: Room): Promise<void> {
     room.started = true;
+    room.gameStartedAt = Date.now();
+    await this.repo.updateRoom(room);
+  }
+
+  /** Reinicia el instante de inicio de la partida (revancha). */
+  async markRestarted(room: Room): Promise<void> {
+    room.gameStartedAt = Date.now();
     await this.repo.updateRoom(room);
   }
 

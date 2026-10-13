@@ -91,6 +91,7 @@ export type GameLayoutCommonProps = Pick<
   | 'raise'
   | 'onOpenSettings'
   | 'gameOverModal'
+  | 'gameOverDurationMs'
   | 'onRestart'
   | 'onHome'
   | 'gameOverRestartLabel'

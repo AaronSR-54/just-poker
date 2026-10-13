@@ -28,6 +28,7 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
   const online = useOnlineGame(roomId);
   const state = online.state;
 
+  const [finalDurationMs, setFinalDurationMs] = useState(0);
   const [raiseAmount, setRaiseAmount] = useState(20);
   const [showRaise, setShowRaise] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -127,6 +128,13 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       }
     };
   }, [gameOverForHuman, settingsOpen]);
+
+  // Congela la duración compartida al terminar la partida, antes de abrir el modal.
+  useEffect(() => {
+    if (!gameOverForHuman) return;
+    const startedAt = online.gameStartedAt;
+    setFinalDurationMs(startedAt != null ? Date.now() - startedAt : 0);
+  }, [gameOverForHuman, online.gameStartedAt]);
 
   if (online.loading) {
     return <ScreenMessage title={t('online.connectingTable')} />;
@@ -229,6 +237,7 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       raise,
       onOpenSettings: () => setSettingsOpen(true),
       gameOverModal,
+      gameOverDurationMs: finalDurationMs,
       onRestart: restartGame,
       onSelectDifficulty: undefined,
       onHome: leave,

@@ -22,6 +22,8 @@ const REMOTE_TURN_MS = TURN_DURATION * 1000;
 export interface OnlineGameApi {
   state: PokerState | null;
   session: OnlineSession | null;
+  /** Instante de inicio de la partida (epoch ms) compartido por la sala. */
+  gameStartedAt: number | null;
   loading: boolean;
   error: string | null;
   handleAction: (action: 'fold' | 'check' | 'call' | 'raise', amount?: number) => void;
@@ -33,6 +35,7 @@ export interface OnlineGameApi {
 export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
   const [state, setState] = useState<PokerState | null>(null);
   const [session, setSession] = useState<OnlineSession | null>(null);
+  const [gameStartedAt, setGameStartedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -221,6 +224,7 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
           sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef, absentRef,
           applyRotated, broadcast, hostApply, hostPush, setState,
           onHostChange, onResume,
+          onGameStartedAt: setGameStartedAt,
         });
 
         // Al reconectar (corte o fin de duración de la Function), vuelve a la sala.
@@ -314,5 +318,5 @@ export function useOnlineGame(roomId: string | undefined): OnlineGameApi {
     cancelStreetResolve();
   }, [clearRemoteTimers, cancelStreetResolve]);
 
-  return { state, session, loading, error, handleAction, startNewHand, restartGame, leave };
+  return { state, session, gameStartedAt, loading, error, handleAction, startNewHand, restartGame, leave };
 }

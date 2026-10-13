@@ -7,6 +7,7 @@ import { useCommitState } from './hooks/useCommitState';
 import { useTurnTimer } from './hooks/useTurnTimer';
 import { useAiTurns } from './hooks/useAiTurns';
 import { usePotAward } from './hooks/usePotAward';
+import { useGameDuration } from './hooks/useGameDuration';
 import { useTutorialRun } from './hooks/useTutorialRun';
 import { buildGameView, maxRaiseFor } from './gameView';
 import HumanCards from './components/HumanCards';
@@ -51,11 +52,18 @@ const LocalGame: React.FC = () => {
   /** Duración real (ms) del turno humano, escalada por la velocidad de juego. */
   const turnDurationMs = TURN_DURATION * 1000 * speed;
 
-  const { gameRef, gameState, setGameState, aiPlayers, isTutorial, isLocal } = useLocalGameInit({
+  const { gameRef, gameState, setGameState, aiPlayers, isTutorial, isLocal, isResume } = useLocalGameInit({
     gameId,
     username: user.username,
     setRaiseAmount,
   });
+
+  const duration = useGameDuration({
+    key: `local:${gameId ?? ''}`,
+    isResume,
+    ready: Boolean(gameState) && !isTutorial,
+  });
+  const [finalDurationMs, setFinalDurationMs] = useState(0);
 
   useGameSounds(gameState);
 
@@ -96,6 +104,7 @@ const LocalGame: React.FC = () => {
     if (!g) return;
     resetPotAward();
     setPotRemaining(null);
+    duration.reset();
     g.reset();
     g.startHand();
     updateState();
@@ -193,6 +202,11 @@ const LocalGame: React.FC = () => {
       }
     };
   }, [gameOverForHuman, settingsOpen, gameOverModal, speed]);
+
+  // Congela el tiempo jugado al terminar la partida, antes de abrir el modal.
+  useEffect(() => {
+    if (gameOverForHuman) setFinalDurationMs(duration.getElapsedMs());
+  }, [gameOverForHuman, duration]);
 
   // Al reanudar la partida, reactiva la pausa de calle que quedó pendiente.
   useEffect(() => {
@@ -319,6 +333,7 @@ const LocalGame: React.FC = () => {
       raise,
       onOpenSettings: openSettings,
       gameOverModal,
+      gameOverDurationMs: finalDurationMs,
       onRestart: restartGame,
       onSelectDifficulty: () => navigate('/local'),
       onHome: () => navigate('/'),

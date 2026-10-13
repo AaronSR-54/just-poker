@@ -26,6 +26,8 @@ export function useLocalGameInit({
   const gameRef = useRef<PokerGame | null>(null);
   const [gameState, setGameState] = useState<PokerState | null>(null);
   const [aiPlayers, setAiPlayers] = useState<AIPlayer[]>([]);
+  /** `true` si la partida se ha restaurado de un guardado (no es nueva). */
+  const [isResume, setIsResume] = useState(false);
 
   const isTutorial = gameId === 'guide';
   const isLocal = (!!gameId && gameId.startsWith('local-')) || isTutorial;
@@ -43,6 +45,7 @@ export function useLocalGameInit({
       setAiPlayers(ais);
       g.startHand();
       setRaiseAmount(g.getState().minRaise);
+      setIsResume(false);
       setGameState(g.getState());
       return;
     }
@@ -69,6 +72,7 @@ export function useLocalGameInit({
         if (g.getState().streetPending) g.resolveStreet();
         const resumed = g.getState();
         setRaiseAmount(resumed.minRaise);
+        setIsResume(true);
         setGameState(resumed);
         return;
       } catch {
@@ -90,6 +94,7 @@ export function useLocalGameInit({
     clearSavedGame();
     const initial = g.getState();
     setRaiseAmount(initial.minRaise);
+    setIsResume(false);
     setGameState(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, isLocal]);
@@ -110,5 +115,5 @@ export function useLocalGameInit({
     markPlayed('local');
   }, [gameState, isLocal, gameId, isTutorial]);
 
-  return { gameRef, gameState, setGameState, aiPlayers, isTutorial, isLocal };
+  return { gameRef, gameState, setGameState, aiPlayers, isTutorial, isLocal, isResume };
 }

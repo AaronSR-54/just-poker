@@ -28,6 +28,7 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
   raise,
   onOpenSettings,
   gameOverModal,
+  gameOverDurationMs,
   onRestart,
   onSelectDifficulty,
   onHome,
@@ -108,6 +109,7 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
       <GameTail
         state={state}
         gameOverModal={gameOverModal}
+        gameOverDurationMs={gameOverDurationMs}
         onRestart={onRestart}
         onSelectDifficulty={onSelectDifficulty}
         onHome={onHome}

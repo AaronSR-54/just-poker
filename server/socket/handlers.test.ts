@@ -153,6 +153,32 @@ describe('handlers — expulsión por inactividad', () => {
   });
 });
 
+describe('handlers — duración compartida', () => {
+  it('difunde el instante de inicio en room:starting y lo reinicia en game:restart', async () => {
+    const host = await connect('host-dur');
+    const guest = await connect('guest-dur');
+
+    const created = await emitAck(host, 'room:create', { name: 'Host' });
+    const startingGuest = once<{ gameStartedAt: number | null }>(guest, 'room:starting');
+    await emitAck(guest, 'room:join', { code: created.code, name: 'Guest' });
+    const startingHost = once<{ gameStartedAt: number | null }>(host, 'room:starting');
+    await emitAck(host, 'room:start', { roomId: created.roomId });
+
+    const [guestStart, hostStart] = await Promise.all([startingGuest, startingHost]);
+    expect(typeof guestStart.gameStartedAt).toBe('number');
+    expect(hostStart.gameStartedAt).toBe(guestStart.gameStartedAt);
+
+    const restartedHost = once<{ gameStartedAt: number }>(host, 'game:restart');
+    const restartedGuest = once<{ gameStartedAt: number }>(guest, 'game:restart');
+    await delay(2);
+    host.emit('game:restart', { roomId: created.roomId });
+
+    const [hostRestart, guestRestart] = await Promise.all([restartedHost, restartedGuest]);
+    expect(hostRestart.gameStartedAt).toBe(guestRestart.gameStartedAt);
+    expect(hostRestart.gameStartedAt).toBeGreaterThan(guestStart.gameStartedAt!);
+  });
+});
+
 describe('handlers — límite de longitud del nombre', () => {
   it('recorta a 16 caracteres el nombre recibido al crear la sala', async () => {
     const erin = await connect('erin');

@@ -30,6 +30,7 @@ function publicState(room: Room) {
     code: room.code,
     hostId: room.hostId,
     started: room.started,
+    gameStartedAt: room.gameStartedAt ?? null,
     players: room.players.map((p) => ({
       userId: p.userId,
       username: p.username,
@@ -213,6 +214,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
         socket.emit('room:starting', {
           roomId: room.id,
           hostId: room.hostId,
+          gameStartedAt: room.gameStartedAt ?? null,
           seats: gameManager.buildSeats(room),
         });
       }
@@ -272,6 +274,7 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
       io.to(room.id).emit('room:starting', {
         roomId: room.id,
         hostId: room.hostId,
+        gameStartedAt: room.gameStartedAt ?? null,
         seats: gameManager.buildSeats(room),
       });
       ack?.({ ok: true });
@@ -329,7 +332,9 @@ export function setupSocketHandlers(io: Server, gameManager: GameManager): void 
     socket.on('game:restart', async (data: { roomId?: string }) => {
       const room = data?.roomId ? await gameManager.getRoom(data.roomId) : null;
       if (!room || room.hostId !== playerId) return;
-      socket.to(room.id).emit('game:restart');
+      await gameManager.markRestarted(room);
+      // A toda la sala (incluido el anfitrión): todos reciben el nuevo instante de inicio.
+      io.to(room.id).emit('game:restart', { gameStartedAt: room.gameStartedAt ?? null });
     });
 
     socket.on('disconnect', async (reason) => {

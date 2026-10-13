@@ -16,6 +16,8 @@ export interface Room {
   hostId: string | null;
   started: boolean;
   createdAt: number;
+  /** Instante (epoch ms) en que empezó la partida en curso; se reinicia en la revancha. */
+  gameStartedAt?: number;
 }
 
 export interface SeatInfo {

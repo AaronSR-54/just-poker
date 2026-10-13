@@ -8,6 +8,7 @@ import type { GameLayoutProps } from '../layout/types';
 const GameTail: React.FC<{
   state: PokerState;
   gameOverModal: boolean;
+  gameOverDurationMs: number;
   onRestart: () => void;
   onSelectDifficulty?: () => void;
   onHome: () => void;
@@ -23,6 +24,7 @@ const GameTail: React.FC<{
 }> = ({
   state,
   gameOverModal,
+  gameOverDurationMs,
   onRestart,
   onSelectDifficulty,
   onHome,
@@ -42,6 +44,7 @@ const GameTail: React.FC<{
     <GameOverOverlay
       open={gameOverModal}
       state={state}
+      durationMs={gameOverDurationMs}
       onRestart={onRestart}
       onSelectDifficulty={onSelectDifficulty}
       onHome={onHome}

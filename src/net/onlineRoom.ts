@@ -19,6 +19,8 @@ export interface RoomListenerContext {
   setState: Dispatch<SetStateAction<PokerState | null>>;
   onHostChange: (hostId: string | null) => void;
   onResume: (snapshot: PokerSaveData | null) => void;
+  /** Instante de inicio de la partida (epoch ms) compartido por la sala. */
+  onGameStartedAt: (ts: number | null) => void;
 }
 
 /** Registra los listeners de una sala online y devuelve el cleanup. */
@@ -26,7 +28,7 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
   const {
     sock, sess, seatsRef, gameRef, holeCardsRef, isHostRef, absentRef,
     applyRotated, broadcast, hostApply, hostPush, setState,
-    onHostChange, onResume,
+    onHostChange, onResume, onGameStartedAt,
   } = ctx;
 
   const onState = (data: { state: PokerState }) => {
@@ -84,13 +86,20 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
     hostPush();
   };
 
-  /** La sala informa de quién sigue presente: se refresca la ausencia. */
-  const onRoomState = (state: { players: LobbyPlayer[] }) => {
+  /** La sala informa de quién sigue presente y del inicio de partida compartido. */
+  const onRoomState = (state: { players: LobbyPlayer[]; gameStartedAt?: number | null }) => {
+    if (state.gameStartedAt != null) onGameStartedAt(state.gameStartedAt);
     if (!isHostRef.current) return;
     absentRef.current = new Set(state.players.filter((p) => p.absent).map((p) => p.userId));
   };
 
-  const onRestart = () => {
+  /** La sala anuncia el inicio de partida: se sincroniza el instante compartido. */
+  const onStarting = (data: { gameStartedAt?: number | null }) => {
+    if (data?.gameStartedAt != null) onGameStartedAt(data.gameStartedAt);
+  };
+
+  const onRestart = (data: { gameStartedAt?: number | null }) => {
+    if (data?.gameStartedAt != null) onGameStartedAt(data.gameStartedAt);
     if (isHostRef.current) return;
     holeCardsRef.current = [];
     sock.emit('game:sync', { roomId: sess.roomId });
@@ -111,6 +120,7 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
   sock.on('game:peer-left', onPeerLeft);
   sock.on('game:peer-expelled', onPeerExpelled);
   sock.on('room:state', onRoomState);
+  sock.on('room:starting', onStarting);
   sock.on('game:restart', onRestart);
   sock.on('room:host', onHost);
   sock.on('game:resume', onResumeEvent);
@@ -123,6 +133,7 @@ export function registerRoomListeners(ctx: RoomListenerContext): () => void {
     sock.off('game:peer-left', onPeerLeft);
     sock.off('game:peer-expelled', onPeerExpelled);
     sock.off('room:state', onRoomState);
+    sock.off('room:starting', onStarting);
     sock.off('game:restart', onRestart);
     sock.off('room:host', onHost);
     sock.off('game:resume', onResumeEvent);

@@ -38,6 +38,20 @@ describe('GameManager — salas privadas', () => {
     expect(room.started).toBe(false);
   });
 
+  it('marca el instante de inicio de partida y lo reinicia en la revancha', async () => {
+    const gm = makeManager();
+    const room = await gm.createRoom(player('host'));
+    expect(room.gameStartedAt).toBeUndefined();
+
+    await gm.markStarted(room);
+    const startedAt = room.gameStartedAt;
+    expect(typeof startedAt).toBe('number');
+
+    await new Promise((r) => setTimeout(r, 2));
+    await gm.markRestarted(room);
+    expect(room.gameStartedAt).toBeGreaterThan(startedAt!);
+  });
+
   it('admite hasta 4 jugadores y rechaza al quinto', async () => {
     const gm = makeManager();
     const room = await gm.createRoom(player('p1'));

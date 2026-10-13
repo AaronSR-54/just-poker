@@ -1,22 +1,29 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Button from '../../../components/Button';
 import ChipIcon from '../../../components/ChipIcon';
 import Modal from '../../../components/Modal';
+import AnimatedNumber from '../../../components/AnimatedNumber';
+import ChipBurst from '../../../components/ChipBurst';
 import { container, fadeUp } from '../../../animations/motion';
 import { useI18n } from '../../../i18n';
+import { formatDuration } from '../../../utils/duration';
+import { playSfx } from '../../../audio/sfx';
+import { playHaptic } from '../../../haptics/haptics';
 import type { PokerState } from '../../../game/poker';
 
 const GameOverOverlay: React.FC<{
   open: boolean;
   state: PokerState;
+  /** Tiempo total jugado de la partida, en ms. */
+  durationMs?: number;
   onRestart: () => void;
   onSelectDifficulty?: () => void;
   onHome: () => void;
   restartLabel?: string;
   restartDisabled?: boolean;
   waitingLabel?: string;
-}> = ({ open, state, onRestart, onSelectDifficulty, onHome, restartLabel, restartDisabled = false, waitingLabel }) => {
+}> = ({ open, state, durationMs = 0, onRestart, onSelectDifficulty, onHome, restartLabel, restartDisabled = false, waitingLabel }) => {
   const { t } = useI18n();
   const standings = [...state.players]
     .sort((a, b) => {
@@ -26,15 +33,39 @@ const GameOverOverlay: React.FC<{
     });
   const humanWon = state.gameWinner === 0;
 
+  // Sonido y vibración de cierre, una sola vez por partida terminada.
+  const playedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      playedRef.current = false;
+      return;
+    }
+    if (playedRef.current) return;
+    playedRef.current = true;
+    if (humanWon) {
+      playHaptic('win');
+      playSfx('chips_stack');
+    } else {
+      playHaptic('expire');
+      playSfx('time_expire');
+    }
+  }, [open, humanWon]);
+
   return (
     <Modal
       open={open}
       onClose={() => {}}
       panelClassName="max-w-[26.25rem]! items-center! px-10! py-9! text-center! gap-5!"
     >
-      <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">{t('game.overEyebrow', { n: state.handNumber })}</div>
-      <div className="font-display font-bold tracking-[-0.01em] text-fs-700">
-        {humanWon ? t('game.overWon') : t('game.overLost')}
+      {humanWon && <ChipBurst />}
+
+      <div className="flex flex-col items-center gap-2">
+        <div className={`font-display font-bold tracking-[-0.01em] text-fs-700 ${humanWon ? 'text-success' : 'text-bone'}`}>
+          {humanWon ? t('game.overWon') : t('game.overLost')}
+        </div>
+        <p className="font-body leading-[1.45] text-fs-300 opacity-70">
+          {humanWon ? t('game.overWonSupport') : t('game.overLostSupport')}
+        </p>
       </div>
 
       <motion.div
@@ -52,15 +83,30 @@ const GameOverOverlay: React.FC<{
             }`}
           >
             <div className="flex items-baseline gap-2">
-              <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{t('game.place', { n: i + 1 })}</span>
+              <span className="font-display font-bold text-fs-300 tracking-[0.14em] uppercase">{t('game.place', { n: i + 1 })}</span>
               <span className={`font-body leading-[1.45] text-fs-300${p.id === 0 ? ' font-bold' : ''}`}>{p.id === 0 ? t('common.you') : p.name}</span>
             </div>
             <span className="inline-flex items-center gap-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase">
-              <ChipIcon className={`size-5 ${p.id === 0 ? 'text-ink' : 'text-bone'}`} /> {p.chips}
+              <ChipIcon className={`size-5 ${p.id === 0 ? 'text-ink' : 'text-bone'}`} /> <AnimatedNumber value={p.chips} />
             </span>
           </motion.div>
         ))}
       </motion.div>
+
+      <div role="group" aria-label={t('game.summary.title')} className="flex w-full gap-2">
+        <div className="flex flex-1 flex-col items-center gap-0.5 rounded-[0.625rem] border border-bone/[0.08] px-3 py-1.5">
+          <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-40">{t('game.summary.duration')}</span>
+          <span className="font-display font-bold text-fs-300 opacity-70">
+            <AnimatedNumber value={durationMs} format={(n) => formatDuration(n)} />
+          </span>
+        </div>
+        <div className="flex flex-1 flex-col items-center gap-0.5 rounded-[0.625rem] border border-bone/[0.08] px-3 py-1.5">
+          <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-40">{t('game.summary.hands')}</span>
+          <span className="font-display font-bold text-fs-300 opacity-70">
+            <AnimatedNumber value={state.handNumber} />
+          </span>
+        </div>
+      </div>
 
       <motion.div
         variants={container(0.06, 0.5)}

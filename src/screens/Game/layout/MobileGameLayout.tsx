@@ -27,6 +27,7 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
   raise,
   onOpenSettings,
   gameOverModal,
+  gameOverDurationMs,
   onRestart,
   onSelectDifficulty,
   onHome,
@@ -100,6 +101,7 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
       <GameTail
         state={state}
         gameOverModal={gameOverModal}
+        gameOverDurationMs={gameOverDurationMs}
         onRestart={onRestart}
         onSelectDifficulty={onSelectDifficulty}
         onHome={onHome}

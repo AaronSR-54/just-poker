@@ -28,6 +28,7 @@ function setup() {
     playerName: 'A',
     savedAt: Date.now(),
   };
+  const gameStartedAt = { value: null as number | null };
   const ctx: RoomListenerContext = {
     sock: new FakeSocket() as unknown as Socket,
     sess,
@@ -43,9 +44,12 @@ function setup() {
     setState: () => {},
     onHostChange: () => {},
     onResume: () => {},
+    onGameStartedAt: (ts) => {
+      gameStartedAt.value = ts;
+    },
   };
   const cleanup = registerRoomListeners(ctx);
-  return { sock: ctx.sock as unknown as EventEmitter, gameRef, absentRef, cleanup };
+  return { sock: ctx.sock as unknown as EventEmitter, gameRef, absentRef, gameStartedAt, cleanup };
 }
 
 describe('onlineRoom — expulsión y ausencia', () => {
@@ -80,6 +84,19 @@ describe('onlineRoom — expulsión y ausencia', () => {
     expect(s.players[1].folded).toBe(true);
     expect(s.players[1].lastAction).toBe('Se retiró');
     expect(s.handOver).toBe(true);
+  });
+
+  it('captura el instante de inicio compartido y lo actualiza en la revancha', () => {
+    const { sock, gameStartedAt } = setup();
+
+    sock.emit('room:starting', { gameStartedAt: 111 });
+    expect(gameStartedAt.value).toBe(111);
+
+    sock.emit('room:state', { players: [], gameStartedAt: 222 });
+    expect(gameStartedAt.value).toBe(222);
+
+    sock.emit('game:restart', { gameStartedAt: 333 });
+    expect(gameStartedAt.value).toBe(333);
   });
 
   it('deja de marcar ausente al jugador que sigue presente en la sala', () => {

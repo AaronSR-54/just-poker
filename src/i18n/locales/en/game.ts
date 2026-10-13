@@ -37,9 +37,15 @@ const game = {
   rematch: 'Rematch',
   selectDifficulty: 'Select difficulty',
   backHome: 'Back to home',
-  overEyebrow: 'Game over · {n} hands',
   overWon: 'You won',
   overLost: 'You lost',
+  overWonSupport: 'You ran the table from start to finish.',
+  overLostSupport: 'So close. The next table is yours.',
+  summary: {
+    title: 'Game summary',
+    duration: 'Duration',
+    hands: 'Hands',
+  },
   place: '{n}',
   and: ' and ',
 };
