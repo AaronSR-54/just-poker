@@ -1,5 +1,22 @@
 # Release notes
 
+## 1.6.0 (versionCode 13)
+
+<en-US>
+A round that knows how it ended.
+
+• Game over now shows how long you played, the hands played and a celebration.
+• Online games warn you before leaving an in-progress match to join another room.
+• Chip symbol on the raise button, plus UI fixes (home cards on tablet, rival countdown, alignments).
+</en-US>
+<es-ES>
+Una partida que sabe cómo terminó.
+
+• El fin de partida ahora muestra cuánto has jugado, las manos y una celebración.
+• En online, aviso antes de abandonar una partida en curso para entrar en otra sala.
+• Símbolo de ficha en el botón de subida y arreglos de interfaz (portada en tablet, cuenta atrás de rivales, alineaciones).
+</es-ES>
+
 ## 1.5.0 (versionCode 12)
 
 <en-US>
