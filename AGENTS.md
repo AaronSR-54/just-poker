@@ -37,7 +37,7 @@ Tailwind CSS v4 (configuración CSS-first, sin `tailwind.config.js`).
 - Plugin de Vite: `@tailwindcss/vite` (ver `vite.config.ts`).
 - Único entry point: `src/styles/index.css` (`@import "tailwindcss"`).
 - Fuentes: `src/styles/fonts.css`.
-- `index.css` solo contiene: `@theme` (tokens) y `@layer base` (resets de `html`/`body`). **Sin utilidades ni clases propias.**
+- `index.css` solo contiene: `@theme` (tokens) y `@layer base` (resets de `html`/`body` y el leading por defecto de `.font-display`). **Sin utilidades ni clases propias.**
 - **No existe `app.css` ni `tokens.css`.**
 
 ## Design Tokens (`@theme`)
@@ -69,6 +69,8 @@ Para opacidad usa el modificador `/`: `bg-bone/10`, `border-bone/[0.18]`, `bg-in
 
 Fuentes: `font-display`, `font-body`, `font-ui`.
 
+> **Leading de la display:** `font-display` trae `line-height: 0.85` por defecto (token `--leading-display`, aplicado en `@layer base`). **No añadas `leading-*` a elementos `font-display`**; si un caso muy concreto lo necesita, usa una utilidad explícita (gana por capa).
+
 Escala de tamaños (utilidades `text-fs-*`): `fs-100` 10px, `fs-200` 12px, `fs-300` 14px, `fs-400` 16px, `fs-500` 20px, `fs-600` 24px, `fs-700` 32px, `fs-800` 48px, `fs-900` 96px.
 
 > **Legibilidad en desktop:** a partir de 768px los tokens pequeños crecen automáticamente (`fs-100` → 13px, `fs-200` → 14px) para no usar nunca 10px ni 12px en desktop. Usa siempre los tokens `text-fs-*`; **no escribas tamaños en px crudos** (ni `text-xs`). Si necesitas un tamaño menor, resérvalo a móvil con `max-md:text-fs-100`.
@@ -78,19 +80,19 @@ Escala de tamaños (utilidades `text-fs-*`): `fs-100` 10px, `fs-200` 12px, `fs-3
 | Rol | Utilidades |
 |-----|-----------|
 | Eyebrow | `font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65` |
-| Título (h1) | `font-display font-bold leading-[0.94] tracking-[-0.015em]` |
-| Subtítulo (h2) | `font-display font-bold leading-none tracking-[-0.01em]` |
-| Encabezado (h3) | `font-display font-bold leading-none` |
+| Título (h1) | `font-display font-bold tracking-[-0.015em]` |
+| Subtítulo (h2) | `font-display font-bold tracking-[-0.01em]` |
+| Encabezado (h3) | `font-display font-bold` |
 | Label | `font-display font-bold text-fs-100 tracking-[0.14em] uppercase` |
 | Cuerpo | `font-body leading-[1.45]` |
 | Caption | `font-body text-fs-100 tracking-[0.04em] opacity-70` |
-| Flecha | `font-display font-bold leading-none` |
+| Flecha | `font-display font-bold` |
 | Marca "Just Poker" | `font-display font-bold text-fs-400 uppercase tracking-[0.08em]` + `<em className="font-light italic tracking-normal">` |
 
 Combina el rol con su tamaño cuando no sea el por defecto:
 
 ```tsx
-<div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">Tres mesas.</div>
+<div className="font-display font-bold tracking-[-0.01em] text-fs-700">Tres mesas.</div>
 <div className="font-body text-[10px] tracking-[0.04em] opacity-70">texto fino</div>
 ```
 
