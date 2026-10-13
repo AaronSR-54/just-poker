@@ -63,6 +63,7 @@ export function useAiTurns({
 
   const runBar = useCallback((playerIndex: number, key: string) => {
     if (barKeyRef.current !== key) {
+      clearBar();
       barKeyRef.current = key;
       barDurationRef.current = turnDurationRef.current;
       barRemainingRef.current = barDurationRef.current;
