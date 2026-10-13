@@ -93,7 +93,7 @@ const TableDetail: React.FC<{ table: Table; onStart: () => void; compact?: boole
   return (
   <Panel compact={compact}>
     <div className="flex flex-col gap-1">
-      <div className="font-display font-bold leading-none text-fs-700">{t(`local.table.${table.id}.title`)}</div>
+      <div className="font-display font-bold text-fs-700">{t(`local.table.${table.id}.title`)}</div>
       <div className={`font-body leading-[1.45] mt-1 opacity-70 ${compact ? 'text-fs-200' : ''}`}>
         <strong className="font-bold">{t('local.difficultyLine', { difficulty: t(`difficulty.${table.id}`) })}</strong> {t(`local.table.${table.id}.blurb`)}
       </div>
@@ -192,7 +192,7 @@ const Local: React.FC = () => {
         <PageHeader
           onBack={() => navigate('/')}
           backLabel={t('common.backToMenu')}
-          className="flex w-full items-start justify-between gap-4"
+          className="flex w-full items-baseline justify-between gap-4"
           wordmarkClassName={isTiny ? 'text-fs-500' : 'text-fs-600'}
         />
         <motion.div

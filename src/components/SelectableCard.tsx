@@ -79,7 +79,7 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
           disabled && !selected ? 'opacity-40' : '',
         ].join(' ')}
       >
-        <div className={`min-w-0 font-body font-bold leading-none ${s.label}`}>{label}</div>
+        <div className={`min-w-0 font-body font-bold leading-[1.05] ${s.label}`}>{label}</div>
         {secondary && (
           <div
             className={[

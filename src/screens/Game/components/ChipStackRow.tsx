@@ -40,11 +40,11 @@ const ChipStackRow: React.FC<{
   return (
     <div className="relative flex w-full items-center justify-center gap-0.5 py-2">
       {icon}
-      <div className="relative flex flex-col items-center">
+      <div className="relative">
         {allIn ? (
           <span className={`flex h-5 items-center font-display font-bold text-fs-200 ${filled ? 'text-danger-bone' : 'text-danger'}`}>ALL-IN</span>
         ) : (
-          <span className={`flex items-center whitespace-nowrap font-display font-bold leading-none tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
+          <span className={`flex leading-2.5 items-center whitespace-nowrap font-display font-bold tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
         )}
         <div className="absolute left-3 md:left-4 top-full -translate-x-1/2">
           <DeltaLine amount={delta} filled={filled} className="whitespace-nowrap" />

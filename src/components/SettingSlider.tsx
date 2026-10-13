@@ -12,7 +12,7 @@ interface SettingSliderProps {
 
 const SettingSlider: React.FC<SettingSliderProps> = ({ label, value, onChange, valueLabel, disabled = false }) => (
   <label className={`flex flex-col gap-1.5 ${disabled ? 'opacity-40' : ''}`}>
-    <span className="flex items-center justify-between gap-3">
+    <span className="flex items-baseline justify-between gap-3">
       <span className="font-display font-bold text-fs-200 text-bone">{label}</span>
       <span className="font-display font-bold text-fs-100 tracking-[0.08em] uppercase opacity-60">
         {valueLabel ?? `${Math.round(value * 100)}%`}

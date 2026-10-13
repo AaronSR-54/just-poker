@@ -113,7 +113,7 @@ export const CtaCard: React.FC<CtaCardProps> = ({
               className={`flex flex-1 flex-col justify-between gap-3 ${radiusTop} ${hPad} ${gameVPad} ${rowMotion} ${continueRow}`}
             >
               <div className={titleCls}>{children}</div>
-              <div className="flex items-end justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1 font-body leading-[1.45] opacity-75">
                   <div className="font-bold">{status}</div>
                   <div>{context}</div>
@@ -146,7 +146,7 @@ export const CtaCard: React.FC<CtaCardProps> = ({
             className={`flex h-full flex-1 flex-col justify-between gap-3 ${radius} ${hPad} ${vPad} ${rowMotion} ${continueFilled ? filledRow : outlineRow}`}
           >
             <div className={titleCls}>{children}</div>
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1 font-body leading-[1.45] opacity-75">{hint}</div>
               {arrowEl}
             </div>

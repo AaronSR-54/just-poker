@@ -33,7 +33,7 @@ const GameOverOverlay: React.FC<{
       panelClassName="max-w-[26.25rem]! items-center! px-10! py-9! text-center! gap-5!"
     >
       <div className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-65">{t('game.overEyebrow', { n: state.handNumber })}</div>
-      <div className="font-display font-bold leading-none tracking-[-0.01em] text-fs-700">
+      <div className="font-display font-bold tracking-[-0.01em] text-fs-700">
         {humanWon ? t('game.overWon') : t('game.overLost')}
       </div>
 
@@ -51,7 +51,7 @@ const GameOverOverlay: React.FC<{
               p.id === 0 ? 'border-bone bg-bone text-ink' : ''
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-baseline gap-2">
               <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase">{t('game.place', { n: i + 1 })}</span>
               <span className={`font-body leading-[1.45] text-fs-300${p.id === 0 ? ' font-bold' : ''}`}>{p.id === 0 ? t('common.you') : p.name}</span>
             </div>

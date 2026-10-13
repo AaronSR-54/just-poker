@@ -75,7 +75,7 @@ const RaiseControls: React.FC<RaisePanelProps> = ({
 
       <Button data-tour="raise-confirm" variant="primary" size="sm" block className="text-fs-300!" onClick={onRaise} disabled={confirmDisabled}>
         <span className="inline-flex items-center gap-1.5">
-          <span className="font-body">{raiseAmount >= allInAmount ? t('game.quickAllIn') : t('game.raise')}</span>
+          <span className='leading-none'>{raiseAmount >= allInAmount ? t('game.quickAllIn') : t('game.raise')}</span>
           <span className="inline-flex items-center gap-0.5">
             <ChipIcon className="size-4.5" />
             <span className="font-display font-bold tabular-nums">{raiseAmount >= allInAmount ? playerChips : raiseAmount}</span>

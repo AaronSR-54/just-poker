@@ -22,7 +22,7 @@ const Title: React.FC<{ className?: string }> = ({ className }) => {
       em={t('handsGuide.titleEm')}
       rest={t('handsGuide.titleMain')}
       emLast
-      className={`leading-[0.96] ${className ?? ''}`}
+      className={className}
     />
   );
 };
@@ -59,7 +59,7 @@ const HandDetail: React.FC<{ hand: HandExample; size?: keyof typeof detailSizes;
   const s = detailSizes[size];
   return (
     <div className={`flex w-full flex-col items-center justify-center rounded-[14px] bg-ink-900 text-center ${fill ? 'flex-1' : ''} ${s.root}`}>
-      <div className={`font-display font-bold leading-none ${s.name}`}>
+      <div className={`font-display font-bold ${s.name}`}>
         {t(`handName.${hand.rank}`)}
       </div>
       <div className="flex gap-1.5">
@@ -117,7 +117,7 @@ const HandList: React.FC<{ selected: number; onSelect: (i: number) => void; fill
       <div className="flex w-4 shrink-0 flex-col items-center py-1 text-bone/45" aria-hidden="true">
         <span className="font-display font-bold text-fs-100 uppercase tracking-[0.14em] [writing-mode:vertical-rl]">{t('handsGuide.best')}</span>
         <span className="mt-1 w-px flex-1 bg-bone/25" />
-        <span className="my-0.5 font-display font-bold leading-none text-fs-300">↓</span>
+        <span className="my-0.5 font-display font-bold text-fs-300">↓</span>
         <span className="mb-1 w-px flex-1 bg-bone/25" />
         <span className="font-display font-bold text-fs-100 uppercase tracking-[0.14em] [writing-mode:vertical-rl]">{t('handsGuide.worst')}</span>
       </div>
@@ -167,7 +167,7 @@ const HandsGuide: React.FC = () => {
     <PageHeader
       onBack={back}
       backLabel={t('common.back')}
-      className="flex w-full items-start justify-between gap-4"
+      className="flex w-full items-baseline justify-between gap-4"
       wordmarkClassName="text-fs-600"
     />
   );
@@ -202,7 +202,7 @@ const HandsGuide: React.FC = () => {
       <PageHeader
         onBack={back}
         backLabel={t('common.back')}
-        className="relative z-10 mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-10 pt-7 lg:px-20"
+        className="relative z-10 mx-auto flex w-full max-w-[87.5rem] shrink-0 items-baseline justify-between gap-4 px-10 pt-7 lg:px-20"
         wordmarkClassName="text-fs-600"
       />
       <div className="relative z-10 mx-auto flex w-full max-w-[87.5rem] min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-10 pb-10 pt-4 lg:px-20">

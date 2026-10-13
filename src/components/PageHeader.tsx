@@ -22,14 +22,14 @@ interface PageHeaderProps {
 const PageHeader: React.FC<PageHeaderProps> = ({ onBack, backLabel, right, className, wordmarkClassName }) => (
   <header
     className={
-      className ?? 'mx-auto flex w-full max-w-[87.5rem] shrink-0 items-start justify-between gap-4 px-10 pt-7 lg:px-20'
+      className ?? 'mx-auto flex w-full max-w-[87.5rem] shrink-0 items-baseline justify-between gap-4 px-10 pt-7 lg:px-20'
     }
   >
     <BackButton onClick={onBack} label={backLabel} />
     <div className="flex items-end gap-3">
       <Wordmark
         layout="stack"
-        className={`flex flex-col items-end uppercase leading-[0.86] tracking-[-0.015em] ${wordmarkClassName ?? 'text-fs-800'}`}
+        className={`flex flex-col items-end uppercase tracking-[-0.015em] ${wordmarkClassName ?? 'text-fs-800'}`}
       />
       {right}
     </div>

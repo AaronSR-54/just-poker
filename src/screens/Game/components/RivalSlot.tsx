@@ -105,8 +105,8 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
       </span>
 
       <div className="flex w-full flex-col items-center">
-        <div className="flex w-full min-w-0 items-baseline justify-center gap-1.5">
-          <div className="min-w-0 truncate font-display font-bold leading-4.5 text-fs-200">{name}</div>
+        <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
+          <div className="min-w-0 truncate font-display font-bold text-fs-200">{name}</div>
           {blindRole && (
             <span
               className="shrink-0"
@@ -116,7 +116,7 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
             </span>
           )}
         </div>
-        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70 leading-3 sm:leading-2 md:leading-4">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
+        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70 leading-[1.1]">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
       </div>
 
       <ChipStackRow

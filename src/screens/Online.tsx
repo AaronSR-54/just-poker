@@ -497,7 +497,7 @@ const Online: React.FC = () => {
   const createPanel = (
     <Panel compact={compact}>
       <div className="flex flex-col gap-1">
-        <div className="font-display font-bold leading-none text-fs-700">{t('online.createPanelTitle')}</div>
+        <div className="font-display font-bold text-fs-700">{t('online.createPanelTitle')}</div>
         <div className="font-body leading-[1.45] mt-1 opacity-70">{t('online.createHint')}</div>
       </div>
       <NameField
@@ -516,7 +516,7 @@ const Online: React.FC = () => {
   const joinPanel = (
     <Panel compact={compact}>
       <div className="flex flex-col gap-1">
-        <div className="font-display font-bold leading-none text-fs-700">{t('online.joinPanelTitle')}</div>
+        <div className="font-display font-bold text-fs-700">{t('online.joinPanelTitle')}</div>
         <div className="font-body leading-[1.45] mt-1 opacity-70">{t('online.joinHint')}</div>
       </div>
       <div className="flex flex-col gap-3">
@@ -543,7 +543,7 @@ const Online: React.FC = () => {
               onKeyDown={(e) => handleCodeKey(i, e)}
               onPaste={handleCodePaste}
               className={[
-                'rounded-[14px] border-[1.5px] border-bone/20 bg-ink-700 text-center font-display font-bold leading-none text-bone outline-none transition-[border-color] duration-200 placeholder:opacity-[0.18] focus:border-2 focus:border-bone',
+                'rounded-[14px] border-[1.5px] border-bone/20 bg-ink-700 text-center font-display font-bold text-bone outline-none transition-[border-color] duration-200 placeholder:opacity-[0.18] focus:border-2 focus:border-bone',
                 compact ? 'h-14 w-12 text-fs-500' : 'h-16 w-14 text-fs-600 sm:h-20 sm:w-16 sm:text-fs-700',
               ].join(' ')}
             />
@@ -566,7 +566,7 @@ const Online: React.FC = () => {
   const roomPanel = room && (
     <Panel compact={compact} className={compact ? undefined : 'gap-5! sm:gap-5! sm:p-7!'}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="font-display font-bold leading-none text-fs-700">{t('online.roomTitle')}</div>
+        <div className="font-display font-bold text-fs-700">{t('online.roomTitle')}</div>
         <div className="flex flex-wrap items-center gap-2">
           {host && <Badge variant="info">{t('online.hostBadge')}</Badge>}
           <Badge variant="neutral">{t('online.playerCount', { count, max: MAX_SLOTS })}</Badge>
@@ -741,7 +741,7 @@ const Online: React.FC = () => {
           <PageHeader
             onBack={goMenu}
             backLabel={t('common.backToMenu')}
-            className="flex w-full items-start justify-between gap-4"
+            className="flex w-full items-baseline justify-between gap-4"
             wordmarkClassName={isNarrow ? 'text-fs-500' : 'text-fs-600'}
           />
           <motion.div
