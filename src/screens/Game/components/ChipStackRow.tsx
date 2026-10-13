@@ -46,7 +46,7 @@ const ChipStackRow: React.FC<{
         ) : (
           <span className={`flex leading-2.5 items-center whitespace-nowrap font-display font-bold tabular-nums text-fs-200 ${chips < 100 && !filled ? 'text-danger' : ''}`}>{chips}</span>
         )}
-        <div className="absolute left-3 md:left-4 top-full -translate-x-1/2">
+        <div className="absolute left-3 md:left-4 top-full md:mt-1 -translate-x-1/2">
           <DeltaLine amount={delta} filled={filled} className="whitespace-nowrap" />
         </div>
       </div>

@@ -32,7 +32,7 @@ const CommunityRow: React.FC<{
 
   return (
     <div data-tour="board" className="flex flex-col items-center gap-3">
-      <div data-tour="phase" className="flex h-7 items-center gap-2">
+      <div data-tour="phase" className="flex leading-none items-center gap-2">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={phase}
@@ -40,7 +40,7 @@ const CommunityRow: React.FC<{
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={motionT(0.24)}
-            className="inline-flex rounded-pill border border-bone/[0.18] bg-ink px-[0.875rem] py-1 font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-0.5"
+            className="inline-flex rounded-pill border py-2 border-bone/[0.18] bg-ink px-[0.875rem] font-display font-bold text-fs-100 tracking-[0.14em] uppercase max-md:px-2.5 max-md:py-1"
           >
             {t(PHASE_LABEL_KEYS[phase]) || phase}
           </motion.span>

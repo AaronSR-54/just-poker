@@ -83,7 +83,7 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
         {secondary && (
           <div
             className={[
-              'min-w-0 font-body tracking-[0.04em] opacity-70',
+              'min-w-0 font-display italic tracking-[0.04em] opacity-80',
               stacked ? 'text-left' : 'text-right',
               s.secondary,
             ].join(' ')}

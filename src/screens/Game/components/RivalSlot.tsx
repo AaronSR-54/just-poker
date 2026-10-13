@@ -106,17 +106,16 @@ const RivalSlot: React.FC<RivalSlotProps> = ({
 
       <div className="flex w-full flex-col items-center">
         <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
-          <div className="min-w-0 truncate font-display font-bold text-fs-200">{name}</div>
+          <div className="min-w-0 truncate font-display font-bold text-fs-200 leading-3.5 md:leading-5">{name}</div>
           {blindRole && (
-            <span
-              className="shrink-0"
+            <span className='flex items-center justify-center'
               data-tour={blindRole === 'sb' ? 'small-blind' : blindRole === 'bb' ? 'big-blind' : undefined}
             >
               <PositionChip role={blindRole} filled={filled} />
             </span>
           )}
         </div>
-        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70 leading-[1.1]">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
+        <div className="max-w-full truncate font-body text-fs-100 italic opacity-70 leading-none">{aliasKey ? `“${t(aliasKey)}”` : ''}</div>
       </div>
 
       <ChipStackRow
