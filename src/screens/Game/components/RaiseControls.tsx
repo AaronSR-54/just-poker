@@ -91,7 +91,7 @@ const RaisePanel: React.FC<RaisePanelProps> = (props) => (
     initial={{ opacity: 0, y: 8, scale: 0.97 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={motionT(0.2)}
-    className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 min-w-[12.5rem] max-w-72 origin-bottom-right rounded-[14px] border border-bone/[0.18] bg-ink p-4 shadow-lg"
+    className="absolute bottom-[calc(100%+0.5rem)] right-0 z-50 min-w-[20rem] max-w-96 origin-bottom-right rounded-[14px] border border-bone/[0.18] bg-ink p-4 shadow-lg"
   >
     <RaiseControls {...props} />
   </motion.div>
