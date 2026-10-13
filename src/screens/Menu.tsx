@@ -98,14 +98,14 @@ const Menu: React.FC = () => {
   return (
     <Screen>
       <SettingsButton onClick={() => setSettingsOpen(true)} />
-      <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 items-center justify-center px-10 pb-[4.375rem] pt-15 lg:px-20">
-        <div className="flex w-full items-stretch justify-center gap-12 lg:gap-32">
+      <div className="mx-auto flex w-full max-w-[87.5rem] flex-1 min-h-0 justify-center overflow-y-auto px-10 pb-[4.375rem] pt-15 lg:px-20">
+        <div className="m-auto flex w-full items-stretch justify-center gap-12 lg:gap-32">
           <Hero size="desktop" />
           <motion.div
             variants={container(0.1, 0.35)}
             initial="hidden"
             animate="visible"
-            className="flex flex-[45] flex-col justify-center gap-3 [contain:size]"
+            className="flex flex-[45] flex-col justify-center gap-3"
           >
             {cards}
           </motion.div>

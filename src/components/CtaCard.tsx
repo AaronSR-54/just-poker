@@ -56,7 +56,7 @@ export const CtaCard: React.FC<CtaCardProps> = ({
 
   const wrapper = [
     '@container w-full',
-    fill ? 'flex-1 min-h-0' : '',
+    fill ? 'flex-1' : '',
     half ? 'h-[calc((100%-0.75rem)/2)]' : '',
   ].join(' ');
 
