@@ -5,6 +5,7 @@ import Wordmark from './Wordmark';
 import SettingSlider from './SettingSlider';
 import SegmentedControl from './SegmentedControl';
 import { GAME_SPEEDS, useSettingsStore, type GameSpeed } from '../store/settingsStore';
+import { useCapabilityStore } from '../store/capabilityStore';
 import { playSfx } from '../audio/sfx';
 import { crtSupported } from '../utils/crtSupport';
 import { LOCALES, LOCALE_LABELS, useI18n } from '../i18n';
@@ -46,6 +47,9 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open = true, onClose, onTut
   const crtAmount = useSettingsStore((s) => s.crtAmount);
   const gameSpeed = useSettingsStore((s) => s.gameSpeed);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
+  const musicSupported = useCapabilityStore((s) => s.music);
+  const sfxSupported = useCapabilityStore((s) => s.sfx);
+  const hapticsSupported = useCapabilityStore((s) => s.haptics);
   const setMusicVolume = useSettingsStore((s) => s.setMusicVolume);
   const setSfxVolume = useSettingsStore((s) => s.setSfxVolume);
   const setCrtAmount = useSettingsStore((s) => s.setCrtAmount);
@@ -87,8 +91,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open = true, onClose, onTut
       </div>
 
       <Section title={t('settings.title')}>
-        <SettingSlider label={t('settings.music')} value={musicVolume} onChange={setMusicVolume} />
-        <SettingSlider label={t('settings.sfx')} value={sfxVolume} onChange={handleSfxVolume} />
+        {musicSupported && <SettingSlider label={t('settings.music')} value={musicVolume} onChange={setMusicVolume} />}
+        {sfxSupported && <SettingSlider label={t('settings.sfx')} value={sfxVolume} onChange={handleSfxVolume} />}
         {crtSupported && <SettingSlider label={t('settings.crt')} value={crtAmount} onChange={setCrtAmount} />}
         {showSpeed && (
           <div className="flex flex-col gap-2">
@@ -104,18 +108,20 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open = true, onClose, onTut
         )}
       </Section>
 
-      <Section title={t('settings.haptics')}>
-        <SegmentedControl
-          columns={2}
-          ariaLabel={t('settings.haptics')}
-          value={hapticsEnabled}
-          onChange={setHapticsEnabled}
-          options={[
-            { value: true, label: t('settings.hapticsOn') },
-            { value: false, label: t('settings.hapticsOff') },
-          ]}
-        />
-      </Section>
+      {hapticsSupported && (
+        <Section title={t('settings.haptics')}>
+          <SegmentedControl
+            columns={2}
+            ariaLabel={t('settings.haptics')}
+            value={hapticsEnabled}
+            onChange={setHapticsEnabled}
+            options={[
+              { value: true, label: t('settings.hapticsOn') },
+              { value: false, label: t('settings.hapticsOff') },
+            ]}
+          />
+        </Section>
+      )}
 
       <Section title={t('settings.language')}>
         <SegmentedControl

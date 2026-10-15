@@ -6,6 +6,8 @@ export interface MusicDeps {
   getVolume: () => number;
   setTimeout: (handler: () => void, ms: number) => number;
   clearTimeout: (id: number) => void;
+  /** Avisa de que el formato de la pista no se puede decodificar en esta plataforma. */
+  onDecodeUnsupported?: () => void;
 }
 
 /** Máquina de estados de la música de fondo, desacoplada de la Web Audio API. */
@@ -57,6 +59,7 @@ export function createMusicController(deps: MusicDeps, trackUrl: string): MusicC
   let sourceEnded = false;
   let duckTimer: number | null = null;
   let disposed = false;
+  let formatUnsupported = false;
 
   function targetGain(): number {
     return deps.getVolume() * BASE_GAIN;
@@ -88,13 +91,28 @@ export function createMusicController(deps: MusicDeps, trackUrl: string): MusicC
     }
   }
 
-  /** Carga y decodifica la pista; si falla, limpia la caché para poder reintentar. */
+  /** Marca el formato como no reproducible una sola vez y avisa a quien escuche. */
+  function markUnsupported(): void {
+    if (formatUnsupported) return;
+    formatUnsupported = true;
+    deps.onDecodeUnsupported?.();
+  }
+
+  /**
+   * Carga y decodifica la pista. Un fallo de red limpia la caché para poder
+   * reintentar; un fallo de decodificación marca el formato como no soportado.
+   */
   function loadBuffer(context: AudioContext): Promise<AudioBuffer> {
     if (buffer) return Promise.resolve(buffer);
     if (!loading) {
       loading = deps
         .fetchTrack(trackUrl)
-        .then((data) => deps.decodeTrack(context, data))
+        .then((data) =>
+          deps.decodeTrack(context, data).catch((error: unknown) => {
+            markUnsupported();
+            throw error;
+          })
+        )
         .then((decoded) => {
           buffer = decoded;
           return decoded;
@@ -138,6 +156,7 @@ export function createMusicController(deps: MusicDeps, trackUrl: string): MusicC
 
   async function ensurePlaying(): Promise<void> {
     if (disposed) return;
+    if (formatUnsupported) return;
     if (started && source && !sourceEnded) return;
     if (pending) return;
     if (!visible) return;

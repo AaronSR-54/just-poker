@@ -84,6 +84,7 @@ interface Harness {
   ctx: FakeContext;
   controller: MusicController;
   fetchMock: ReturnType<typeof vi.fn>;
+  onDecodeUnsupported: ReturnType<typeof vi.fn>;
   setVolume: (value: number) => void;
   flush: () => Promise<void>;
 }
@@ -91,23 +92,27 @@ interface Harness {
 function createHarness(options: {
   volume?: number;
   fetchTrack?: () => Promise<ArrayBuffer>;
+  decodeTrack?: () => Promise<AudioBuffer>;
 } = {}): Harness {
   const ctx = new FakeContext();
   let volume = options.volume ?? 0.6;
   const fetchMock = vi.fn(options.fetchTrack ?? (() => Promise.resolve(new ArrayBuffer(0))));
+  const onDecodeUnsupported = vi.fn();
   const deps: MusicDeps = {
     createContext: () => ctx as unknown as AudioContext,
     fetchTrack: () => fetchMock() as Promise<ArrayBuffer>,
-    decodeTrack: () => Promise.resolve({} as AudioBuffer),
+    decodeTrack: options.decodeTrack ?? (() => Promise.resolve({} as AudioBuffer)),
     getVolume: () => volume,
     setTimeout: () => 0,
     clearTimeout: () => {},
+    onDecodeUnsupported,
   };
   const controller = createMusicController(deps, '/music/theme.webm');
   return {
     ctx,
     controller,
     fetchMock,
+    onDecodeUnsupported,
     setVolume: (value) => {
       volume = value;
     },
@@ -175,6 +180,48 @@ describe('music controller', () => {
     await h.flush();
     expect(h.controller.isStarted()).toBe(true);
     expect(h.fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('marca el formato como no soportado cuando falla la decodificación y no reintenta', async () => {
+    const h = createHarness({
+      volume: 0.6,
+      decodeTrack: () => Promise.reject(new Error('unsupported')),
+    });
+
+    h.controller.handleGesture();
+    await h.flush();
+    expect(h.onDecodeUnsupported).toHaveBeenCalledTimes(1);
+    expect(h.controller.isStarted()).toBe(false);
+    expect(h.fetchMock).toHaveBeenCalledTimes(1);
+
+    h.controller.handleGesture();
+    await h.flush();
+    expect(h.onDecodeUnsupported).toHaveBeenCalledTimes(1);
+    expect(h.fetchMock).toHaveBeenCalledTimes(1);
+    expect(h.controller.isStarted()).toBe(false);
+  });
+
+  it('no marca falta de soporte ante un fallo de red y sigue reintentando', async () => {
+    let attempts = 0;
+    const h = createHarness({
+      volume: 0.6,
+      fetchTrack: () => {
+        attempts += 1;
+        return attempts === 1 ? Promise.reject(new Error('network')) : Promise.resolve(new ArrayBuffer(0));
+      },
+    });
+
+    h.controller.handleGesture();
+    await h.flush();
+    expect(h.onDecodeUnsupported).not.toHaveBeenCalled();
+    expect(h.fetchMock).toHaveBeenCalledTimes(1);
+    expect(h.controller.isStarted()).toBe(false);
+
+    h.controller.handleGesture();
+    await h.flush();
+    expect(h.onDecodeUnsupported).not.toHaveBeenCalled();
+    expect(h.fetchMock).toHaveBeenCalledTimes(2);
+    expect(h.controller.isStarted()).toBe(true);
   });
 
   it('reintenta en gestos posteriores y desbloquea el contexto dentro del gesto', async () => {

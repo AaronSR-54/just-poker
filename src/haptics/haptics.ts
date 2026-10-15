@@ -1,5 +1,6 @@
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useSettingsStore } from '../store/settingsStore';
+import { useCapabilityStore } from '../store/capabilityStore';
 
 export type HapticName = 'tap' | 'turn' | 'tick' | 'expire' | 'win';
 
@@ -19,6 +20,7 @@ const fire = (name: HapticName): Promise<void> => {
 };
 
 export function playHaptic(name: HapticName): void {
+  if (!useCapabilityStore.getState().haptics) return;
   if (!useSettingsStore.getState().hapticsEnabled) return;
   void fire(name).catch(() => {});
 }

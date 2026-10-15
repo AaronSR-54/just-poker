@@ -21,11 +21,21 @@ vi.mock('@capacitor/haptics', () => ({
 const { Haptics, ImpactStyle, NotificationType } = await import('@capacitor/haptics');
 const { playHaptic } = await import('./haptics');
 const { useSettingsStore } = await import('../store/settingsStore');
+const { useCapabilityStore } = await import('../store/capabilityStore');
 
 describe('playHaptic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useSettingsStore.setState({ hapticsEnabled: true });
+    useCapabilityStore.setState({ haptics: true });
+  });
+
+  it('no invoca el plugin cuando el dispositivo no puede vibrar', () => {
+    useCapabilityStore.setState({ haptics: false });
+    playHaptic('tap');
+    playHaptic('win');
+    expect(Haptics.impact).not.toHaveBeenCalled();
+    expect(Haptics.notification).not.toHaveBeenCalled();
   });
 
   it('no invoca el plugin cuando la vibración está desactivada', () => {

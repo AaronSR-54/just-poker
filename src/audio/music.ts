@@ -1,6 +1,7 @@
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { useSettingsStore } from '../store/settingsStore';
+import { useCapabilityStore } from '../store/capabilityStore';
 import { createMusicController, type MusicController, type MusicDeps } from './musicController';
 
 /** Pista de fondo: un único tema global que suena en bucle. */
@@ -20,6 +21,7 @@ function browserDeps(): MusicDeps {
     getVolume: () => useSettingsStore.getState().musicVolume,
     setTimeout: (handler, ms) => window.setTimeout(handler, ms),
     clearTimeout: (id) => window.clearTimeout(id),
+    onDecodeUnsupported: () => useCapabilityStore.getState().setMusicSupported(false),
   };
 }
 
@@ -35,6 +37,7 @@ export function duckMusic(): void {
 
 /** Arranca la música de fondo. Idempotente; seguro de llamar en cada gesto. */
 export function startMusic(): Promise<void> {
+  if (!useCapabilityStore.getState().music) return Promise.resolve();
   ensureController().handleGesture();
   return Promise.resolve();
 }
@@ -45,6 +48,7 @@ export function startMusic(): Promise<void> {
  * el ciclo de vida de la pestaña o de la app.
  */
 export function initMusic(): () => void {
+  if (!useCapabilityStore.getState().music) return () => {};
   const active = ensureController();
 
   const start = (): void => {

@@ -1,4 +1,5 @@
 import { useSettingsStore } from '../store/settingsStore';
+import { useCapabilityStore } from '../store/capabilityStore';
 import { clamp01 } from '../utils/math';
 import { duckMusic } from './music';
 
@@ -51,6 +52,7 @@ function pickSource(name: SfxName): string {
 }
 
 export function preloadSounds(): void {
+  if (!useCapabilityStore.getState().sfx) return;
   const warmed = new Set<string>();
   (Object.keys(SOURCES) as SfxName[]).forEach((name) => {
     SOURCES[name].forEach((src) => {
@@ -73,6 +75,7 @@ export interface PlaySfxOptions {
 const NO_DUCK: ReadonlySet<SfxName> = new Set(['ui_click', 'timer_tick', 'turn_tick']);
 
 function fire(name: SfxName, gain: number): void {
+  if (!useCapabilityStore.getState().sfx) return;
   const { sfxVolume } = useSettingsStore.getState();
   if (sfxVolume <= 0) return;
   if (!NO_DUCK.has(name)) duckMusic();
@@ -82,6 +85,7 @@ function fire(name: SfxName, gain: number): void {
 }
 
 export function playSfx(name: SfxName, options: PlaySfxOptions = {}): void {
+  if (!useCapabilityStore.getState().sfx) return;
   if (useSettingsStore.getState().sfxVolume <= 0) return;
   const { delay = 0, gain = 1 } = options;
   if (delay > 0) {
