@@ -62,7 +62,15 @@ El sistema SHALL emitir una vibración de éxito cuando el jugador humano gana u
 - **THEN** el dispositivo no emite la vibración de éxito
 
 ### Requirement: Ajuste de vibración desactivable y persistente
-El sistema SHALL ofrecer en Ajustes un control para activar o desactivar la vibración, con valor por defecto activado, y SHALL conservar la preferencia elegida entre sesiones y recargas.
+El sistema SHALL ofrecer en Ajustes un control para activar o desactivar la vibración únicamente en dispositivos con capacidad de vibrar, con valor por defecto activado, y SHALL conservar la preferencia elegida entre sesiones y recargas.
+
+#### Scenario: Dispositivo con soporte de vibración
+- **WHEN** el jugador abre los Ajustes en un dispositivo que puede vibrar
+- **THEN** se muestra el control de vibración con el valor elegido
+
+#### Scenario: Dispositivo sin soporte de vibración
+- **WHEN** el jugador abre los Ajustes en un dispositivo que no puede vibrar, como un ordenador de escritorio
+- **THEN** no se muestra el control de vibración
 
 #### Scenario: Desactivar la vibración
 - **WHEN** el jugador desactiva la vibración en Ajustes
