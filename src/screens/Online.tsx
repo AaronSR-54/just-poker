@@ -32,6 +32,7 @@ import {
   type RoomState,
   type StartingPayload,
 } from '../net/onlineSession';
+import { resolveOnlineEntry } from '../net/onlineEntry';
 import { randomName } from '../utils/randomName';
 import { markPlayed } from '../utils/lastPlayed';
 import { onlineError } from '../utils/onlineError';
@@ -83,8 +84,11 @@ const Online: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [placeholderName] = useState(() => getPlayerName() ?? randomName());
+  const [savedName] = useState(() => getPlayerName() ?? '');
+  /** Último nombre usado: valor inicial editable del campo. */
+  const [name, setName] = useState(savedName);
+  /** Nombre generado de respaldo: se calcula una sola vez al montar. */
+  const [placeholderName] = useState(() => randomName());
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   /** Código de otra sala pendiente de confirmación (enlace o escrito). */
   const [pendingJoin, setPendingJoin] = useState<{ code: string; fromLink: boolean } | null>(null);
@@ -94,7 +98,7 @@ const Online: React.FC = () => {
   const [ready, setReady] = useState(false);
 
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const nameRef = useRef(placeholderName);
+  const nameRef = useRef(savedName || placeholderName);
   const codeRef = useRef('');
   const roomRef = useRef<RoomState | null>(null);
   const wasDisconnectedRef = useRef(false);
@@ -151,21 +155,20 @@ const Online: React.FC = () => {
           clearOnlineSession();
           setRoom(null);
           setError(onlineError(res?.error, 'online.roomGone'));
-          clearCodeParam();
+          // El código se conserva: no poder entrar no es abandonar la sala y
+          // el humano debe poder reintentar sin volver a abrir la invitación.
         }
       },
     );
   };
 
-  // Conexión, listeners de sala y resolución de la entrada (?code= o sesión activa).
+  // Conexión y listeners de sala. La entrada (`?code=` o sesión activa) la
+  // resuelve el efecto de más abajo, ya con la conexión lista.
   useEffect(() => {
     let cancelled = false;
     // Quita solo los listeners propios; `off(evento)` sin handler borraría
     // también los de otros módulos (p. ej. `session:id` en `socket.ts`).
     let detach: (() => void) | null = null;
-    const session = getActiveOnlineSession();
-    // Intención explícita de empezar una partida nueva: no reanudar la sesión.
-    const wantsNewGame = Boolean((location.state as { newGame?: boolean } | null)?.newGame);
 
     (async () => {
       try {
@@ -265,12 +268,6 @@ const Online: React.FC = () => {
         };
 
         setReady(true);
-
-        // Un `?code=` lo gestiona el efecto reactivo (con confirmación si hay
-        // partida en curso); aquí solo se reanuda la sesión si no hay código.
-        if (session && !wantsNewGame && !codeParam) {
-          attachSession(session);
-        }
       } catch {
         if (!cancelled) {
           setError(t('online.serverError'));
@@ -291,55 +288,36 @@ const Online: React.FC = () => {
   }, [room]);
 
   // Resuelve la entrada por enlace/código de forma reactiva (también cuando ya
-  // se está en `/online`): si hay partida en curso y el código es de otra sala,
-  // pide confirmación antes de abandonar la anterior.
+  // se está en `/online`). La decisión vive en `resolveOnlineEntry`: abrir una
+  // invitación nunca une por sí solo; con otra sala o partida en curso se pide
+  // confirmación antes de abandonarla.
   useEffect(() => {
     if (!ready) return;
-    if (!codeParam) {
-      handledCodeRef.current = null;
-      return;
-    }
     const normalized = normalizeRoomCode(codeParam);
-    if (!normalized || handledCodeRef.current === normalized) return;
-    handledCodeRef.current = normalized;
+    if (!normalized) handledCodeRef.current = null;
 
-    const inRoom = roomRef.current;
-    if (inRoom) {
-      if (isOtherRoomJoin(inRoom, normalized)) {
-        setCode(codeToChars(normalized));
-        setMode('join');
-        setPendingJoin({ code: normalized, fromLink: true });
-      }
+    // Intención explícita de empezar una partida nueva: no reanudar la sesión.
+    const wantsNewGame = Boolean((location.state as { newGame?: boolean } | null)?.newGame);
+    const entry = resolveOnlineEntry({
+      code: normalized,
+      wantsNewGame,
+      session: getActiveOnlineSession(),
+      room: roomRef.current,
+      handledCode: handledCodeRef.current,
+    });
+    if (entry.kind === 'ignore') return;
+
+    if (entry.kind === 'rejoin') {
+      handledCodeRef.current = normalized || null;
+      setCode(codeToChars(entry.session.code));
+      attachSession(entry.session);
       return;
     }
 
-    const session = getActiveOnlineSession();
-    if (session) {
-      if (isOtherRoomJoin(session, normalized)) {
-        setCode(codeToChars(normalized));
-        setMode('join');
-        setPendingJoin({ code: normalized, fromLink: true });
-      } else {
-        // Mismo código: reincorpora a la partida en curso.
-        attachSession(session);
-      }
-      return;
-    }
-
-    // Sin partida en curso: rellena el código y únete si ya hay nombre guardado.
-    setCode(codeToChars(normalized));
+    handledCodeRef.current = entry.code;
+    setCode(codeToChars(entry.code));
     setMode('join');
-    const knownName = getPlayerName();
-    if (knownName) {
-      nameRef.current = knownName;
-      getSocket()?.emit(
-        'room:join',
-        { code: normalized, name: knownName },
-        (res: { ok: boolean; error?: string } | undefined) => {
-          if (!res?.ok) setError(onlineError(res?.error, 'online.roomGone'));
-        },
-      );
-    }
+    if (entry.kind === 'confirm') setPendingJoin({ code: entry.code, fromLink: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, codeParam]);
 
