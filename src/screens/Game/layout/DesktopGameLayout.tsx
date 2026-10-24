@@ -39,6 +39,7 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
   onPotAwardLanded,
   onPotAwardDone,
   overlays,
+  elimination,
   tutorial,
 }) => {
   const { phase, activePlayer, handOver, streetPending, displayedPot, potEmpty, potAwarded } = view;
@@ -120,6 +121,7 @@ const DesktopGameLayout: React.FC<GameLayoutProps> = ({
         onPotAwardLanded={onPotAwardLanded}
         onPotAwardDone={onPotAwardDone}
         overlays={overlays}
+        elimination={elimination}
         tutorialCoach={isTutorial ? (
           <TutorialCoach
             key={tutorial.run}

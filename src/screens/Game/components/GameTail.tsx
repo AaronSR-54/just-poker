@@ -1,8 +1,10 @@
 import React from 'react';
 import GameOverOverlay from './GameOverOverlay';
+import EliminationOverlay from './EliminationOverlay';
 import PotAward from '../../../components/PotAward';
 import type { PokerState } from '../../../game/poker';
 import type { GameLayoutProps } from '../layout/types';
+import type { EliminationOverlayProps } from './EliminationOverlay';
 
 /** Capa final de la mesa (hoja de subida, fin de partida, reparto del bote, overlays y tutorial). */
 const GameTail: React.FC<{
@@ -19,6 +21,7 @@ const GameTail: React.FC<{
   onPotAwardLanded: GameLayoutProps['onPotAwardLanded'];
   onPotAwardDone: GameLayoutProps['onPotAwardDone'];
   overlays: React.ReactNode;
+  elimination?: EliminationOverlayProps;
   raiseSheet?: React.ReactNode;
   tutorialCoach?: React.ReactNode;
 }> = ({
@@ -35,6 +38,7 @@ const GameTail: React.FC<{
   onPotAwardLanded,
   onPotAwardDone,
   overlays,
+  elimination,
   raiseSheet,
   tutorialCoach,
 }) => (
@@ -52,6 +56,8 @@ const GameTail: React.FC<{
       restartDisabled={gameOverRestartDisabled}
       waitingLabel={gameOverWaitingLabel}
     />
+
+    {elimination && <EliminationOverlay {...elimination} />}
 
     {potAward && (
       <PotAward key={potAward.handNumber} data={potAward} onLanded={onPotAwardLanded} onDone={onPotAwardDone} />

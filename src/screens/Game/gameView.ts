@@ -28,6 +28,17 @@ export function maxRaiseFor({
   return cap >= minRaise ? Math.min(maxRaise, cap) : Math.min(maxRaise, minRaise);
 }
 
+/**
+ * El humano está fuera de la partida: marcado como eliminado o sin fichas al
+ * terminar la mano. En una mano en curso con 0 fichas pero sin eliminar (all-in)
+ * todavía puede ganar, así que no cuenta como eliminado.
+ */
+export function isHumanEliminated(state: PokerState): boolean {
+  const human = state.players[0];
+  if (!human) return false;
+  return human.eliminated || (state.handOver && human.chips <= 0);
+}
+
 /** Valores derivados del estado de partida que consumen los layouts. */
 export function buildGameView(
   state: PokerState,

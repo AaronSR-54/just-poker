@@ -4,6 +4,7 @@ import type { PotAwardData } from '../../../components/PotAward';
 import type { GameView } from '../gameView';
 import type { HumanSeatProps } from '../components/HumanSeat';
 import type { ActionButtonsProps } from '../components/ActionButtons';
+import type { EliminationOverlayProps } from '../components/EliminationOverlay';
 
 /** Props compartidas por los layouts móvil y desktop de la mesa. */
 export interface GameLayoutProps {
@@ -50,6 +51,8 @@ export interface GameLayoutProps {
   onPotAwardLanded: (id: number, value: number) => void;
   onPotAwardDone: () => void;
   overlays: React.ReactNode;
+  /** Aviso de eliminación (solo online). Si no se aporta, no se muestra. */
+  elimination?: EliminationOverlayProps;
   tutorial: {
     run: number;
     onFinish: () => void;

@@ -33,6 +33,8 @@ export interface ActionButtonsProps {
   onNewHand: () => void;
   /** En online, solo el anfitrión puede repartir la siguiente mano. */
   newHandEnabled?: boolean;
+  /** El humano está eliminado y solo mira: sustituye los controles por un aviso. */
+  spectating?: boolean;
 }
 
 /** Botones de acción del turno humano (móvil, tablet y desktop). */
@@ -62,8 +64,19 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onAction,
   onNewHand,
   newHandEnabled = true,
+  spectating = false,
 }) => {
   const { t } = useI18n();
+
+  if (spectating) {
+    return (
+      <div className={`flex flex-col items-center gap-2 ${fill ? 'w-full' : ''}`}>
+        <span className="font-display font-bold text-fs-100 tracking-[0.14em] uppercase opacity-70">
+          {t('game.spectating')}
+        </span>
+      </div>
+    );
+  }
 
   if (handOver) {
     return (

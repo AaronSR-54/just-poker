@@ -41,6 +41,9 @@ const game = {
   overLost: 'Has perdido',
   overWonSupport: 'Has dominado la mesa de principio a fin.',
   overLostSupport: 'Casi. La próxima mesa es tuya.',
+  eliminatedSupport: 'Te has quedado sin fichas, pero tus amigos siguen jugando.',
+  watchGame: 'Quedarse a ver la partida',
+  spectating: 'Has perdido · Viendo la partida',
   summary: {
     title: 'Resumen de la partida',
     duration: 'Duración',

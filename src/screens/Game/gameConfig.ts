@@ -16,5 +16,5 @@ export const DIFFICULTY_AVATAR_RING: Record<Difficulty, string> = {
 export const TURN_DURATION = 30;
 /** Pausa entre rondas de apuestas antes de repartir la siguiente calle. */
 export const STREET_DELAY = 900;
-/** Pausa tras el showdown antes de abrir el overlay de fin de partida. */
-export const GAME_OVER_DELAY = 2200;
+/** Pausa tras el showdown antes de abrir el modal de fin de partida o de eliminación. */
+export const SHOWDOWN_HOLD_MS = 3500;

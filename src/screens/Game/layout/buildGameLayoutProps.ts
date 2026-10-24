@@ -36,6 +36,8 @@ export interface ActionButtonInput {
   onAction: (action: 'fold' | 'check' | 'call' | 'raise') => void;
   onNewHand: () => void;
   newHandEnabled?: boolean;
+  /** El humano está eliminado y solo mira (online). */
+  spectating?: boolean;
 }
 
 export function buildActionButtonProps({
@@ -74,6 +76,7 @@ export function buildActionButtonProps({
     onAction: action.onAction,
     onNewHand: action.onNewHand,
     newHandEnabled: action.newHandEnabled,
+    spectating: action.spectating,
   };
 }
 
@@ -101,6 +104,7 @@ export type GameLayoutCommonProps = Pick<
   | 'onPotAwardLanded'
   | 'onPotAwardDone'
   | 'overlays'
+  | 'elimination'
   | 'tutorial'
   | 'onSelectDifficulty'
 >;

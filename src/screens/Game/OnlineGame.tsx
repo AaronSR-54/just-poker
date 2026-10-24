@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import Button from '../../components/Button';
-import { TURN_DURATION, GAME_OVER_DELAY } from './gameConfig';
-import { buildGameView } from './gameView';
+import { TURN_DURATION, SHOWDOWN_HOLD_MS } from './gameConfig';
+import { buildGameView, isHumanEliminated } from './gameView';
 import HumanCards from './components/HumanCards';
 import ScreenMessage from './components/ScreenMessage';
 import GameOverlays from './components/GameOverlays';
@@ -33,10 +33,19 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
   const [showRaise, setShowRaise] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [gameOverModal, setGameOverModal] = useState(false);
+  const [eliminationModal, setEliminationModal] = useState(false);
+  /** Hay un aviso de eliminación pendiente de mostrar. */
+  const [eliminationPending, setEliminationPending] = useState(false);
+  /** El eliminado ya eligió quedarse: el aviso no vuelve a abrirse. */
+  const [staySpectating, setStaySpectating] = useState(false);
   const gameOverTimerRef = useRef<number | null>(null);
+  const eliminationTimerRef = useRef<number | null>(null);
+  const autoDealTimerRef = useRef<number | null>(null);
+  const autoDealHandRef = useRef<number | null>(null);
 
   const turnDurationMs = TURN_DURATION * 1000;
   const isHost = online.session?.isHost ?? false;
+  const { startNewHand: dealNextHand } = online;
 
   useGameSounds(state);
 
@@ -62,14 +71,15 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     navigate('/', { replace: true });
   };
 
-  const startNewHand = () => {
+  const startNewHand = useCallback(() => {
     resetPotAward();
-    online.startNewHand();
-  };
+    dealNextHand();
+  }, [resetPotAward, dealNextHand]);
 
   const restartGame = () => {
     resetPotAward();
     setPotRemaining(null);
+    autoDealHandRef.current = null;
     online.restartGame();
   };
 
@@ -99,16 +109,46 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     onExpire: () => {},
   });
 
-  // Fin de partida: deja ver el showdown antes de abrir el overlay. Si aún
-  // queda partida, ocúltalo de inmediato.
-  const gameOverForHuman = Boolean(
-    state &&
-    (state.gameOver ||
-      (state.handOver && (state.players[0].chips <= 0 || state.players[0].eliminated)))
+  // Fin real de la partida (solo queda uno con fichas) frente a la eliminación
+  // del humano mientras los demás siguen jugando.
+  const gameOverForAll = Boolean(state?.gameOver);
+  const eliminatedForHuman = Boolean(
+    state && !state.gameOver && state.handOver && isHumanEliminated(state),
   );
+  const spectating = Boolean(state && !state.gameOver && isHumanEliminated(state));
+
+  // Eliminación: el aviso queda pendiente desde que el humano se queda sin
+  // fichas y sobrevive al reparto de la siguiente mano (el humano sigue fuera).
+  // Se reinicia si vuelve a jugar (revancha).
+  useEffect(() => {
+    if (!spectating) {
+      setEliminationPending(false);
+      setEliminationModal(false);
+      setStaySpectating(false);
+      return;
+    }
+    if (eliminatedForHuman) setEliminationPending(true);
+  }, [spectating, eliminatedForHuman]);
 
   useEffect(() => {
-    if (!gameOverForHuman || settingsOpen) {
+    if (!eliminationPending || staySpectating || settingsOpen) return;
+    if (eliminationTimerRef.current !== null) return;
+    eliminationTimerRef.current = window.setTimeout(() => {
+      eliminationTimerRef.current = null;
+      setEliminationModal(true);
+    }, SHOWDOWN_HOLD_MS);
+    return () => {
+      if (eliminationTimerRef.current !== null) {
+        window.clearTimeout(eliminationTimerRef.current);
+        eliminationTimerRef.current = null;
+      }
+    };
+  }, [eliminationPending, staySpectating, settingsOpen]);
+
+  // Fin de partida: espera a que se vea el showdown y el reparto del bote antes
+  // de abrir el modal. Se cancela si aún queda partida o si Ajustes está abierto.
+  useEffect(() => {
+    if (!gameOverForAll || settingsOpen) {
       setGameOverModal(false);
       if (gameOverTimerRef.current) {
         window.clearTimeout(gameOverTimerRef.current);
@@ -119,22 +159,43 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
     if (gameOverTimerRef.current) return;
     gameOverTimerRef.current = window.setTimeout(() => {
       gameOverTimerRef.current = null;
+      setEliminationModal(false);
       setGameOverModal(true);
-    }, GAME_OVER_DELAY);
+    }, SHOWDOWN_HOLD_MS);
     return () => {
       if (gameOverTimerRef.current) {
         window.clearTimeout(gameOverTimerRef.current);
         gameOverTimerRef.current = null;
       }
     };
-  }, [gameOverForHuman, settingsOpen]);
+  }, [gameOverForAll, settingsOpen]);
+
+  // Anfitrión eliminado: reparte la siguiente mano tras el showdown para que los
+  // amigos no esperen a que pulse «Nueva mano».
+  useEffect(() => {
+    if (!isHost || !spectating || !state?.handOver || gameOverForAll) return;
+    const hand = state.handNumber;
+    if (autoDealHandRef.current === hand) return;
+    if (autoDealTimerRef.current !== null) return;
+    autoDealTimerRef.current = window.setTimeout(() => {
+      autoDealTimerRef.current = null;
+      autoDealHandRef.current = hand;
+      startNewHand();
+    }, SHOWDOWN_HOLD_MS);
+    return () => {
+      if (autoDealTimerRef.current !== null) {
+        window.clearTimeout(autoDealTimerRef.current);
+        autoDealTimerRef.current = null;
+      }
+    };
+  }, [isHost, spectating, state?.handOver, state?.handNumber, gameOverForAll, startNewHand]);
 
   // Congela la duración compartida al terminar la partida, antes de abrir el modal.
   useEffect(() => {
-    if (!gameOverForHuman) return;
+    if (!gameOverForAll) return;
     const startedAt = online.gameStartedAt;
     setFinalDurationMs(startedAt != null ? Date.now() - startedAt : 0);
-  }, [gameOverForHuman, online.gameStartedAt]);
+  }, [gameOverForAll, online.gameStartedAt]);
 
   if (online.loading) {
     return <ScreenMessage title={t('online.connectingTable')} />;
@@ -224,6 +285,7 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       },
       onNewHand: startNewHand,
       newHandEnabled: isHost,
+      spectating,
     },
     common: {
       isShort,
@@ -247,6 +309,14 @@ const OnlineGame: React.FC<{ roomId: string }> = ({ roomId }) => {
       potAward,
       onPotAwardLanded: handlePotAwardLanded,
       onPotAwardDone: finishPotAward,
+      elimination: {
+        open: eliminationModal,
+        onStay: () => {
+          setStaySpectating(true);
+          setEliminationModal(false);
+        },
+        onLeave: leave,
+      },
       overlays: (
         <GameOverlays
           context="online"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../../components/Button';
-import { TURN_DURATION, GAME_OVER_DELAY } from './gameConfig';
+import { TURN_DURATION, SHOWDOWN_HOLD_MS } from './gameConfig';
 import { useLocalGameInit } from './hooks/useLocalGameInit';
 import { useCommitState } from './hooks/useCommitState';
 import { useTurnTimer } from './hooks/useTurnTimer';
@@ -186,7 +186,7 @@ const LocalGame: React.FC = () => {
     }
     if (gameOverModal) return;
     if (gameOverEndsAtRef.current === null) {
-      gameOverEndsAtRef.current = Date.now() + GAME_OVER_DELAY * speed;
+      gameOverEndsAtRef.current = Date.now() + SHOWDOWN_HOLD_MS * speed;
     }
     const delay = Math.max(0, gameOverEndsAtRef.current - Date.now());
     if (gameOverTimerRef.current) window.clearTimeout(gameOverTimerRef.current);

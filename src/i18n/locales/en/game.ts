@@ -41,6 +41,9 @@ const game = {
   overLost: 'You lost',
   overWonSupport: 'You ran the table from start to finish.',
   overLostSupport: 'So close. The next table is yours.',
+  eliminatedSupport: 'You are out of chips, but your friends are still playing.',
+  watchGame: 'Stay and watch',
+  spectating: 'You lost · Watching the game',
   summary: {
     title: 'Game summary',
     duration: 'Duration',

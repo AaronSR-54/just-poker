@@ -38,6 +38,7 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
   onPotAwardLanded,
   onPotAwardDone,
   overlays,
+  elimination,
   tutorial,
 }) => {
   const { phase, activePlayer, handOver, streetPending, displayedPot, potEmpty, potAwarded } = view;
@@ -112,6 +113,7 @@ const MobileGameLayout: React.FC<GameLayoutProps> = ({
         onPotAwardLanded={onPotAwardLanded}
         onPotAwardDone={onPotAwardDone}
         overlays={overlays}
+        elimination={elimination}
         raiseSheet={
           <RaiseSheet
             open={raise.show && activePlayer === 0 && !handOver}
