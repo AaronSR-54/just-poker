@@ -15,6 +15,7 @@ node ~/.config/opencode/skills/google-play-console/scripts/play.mjs upload \
 Al añadir una versión nueva, crea `store/release-notes/<version>.md` con sus
 bloques y enlázala aquí.
 
+- [1.6.4 (versionCode 17)](release-notes/1.6.4.md)
 - [1.6.3 (versionCode 16)](release-notes/1.6.3.md)
 - [1.6.2 (versionCode 15)](release-notes/1.6.2.md)
 - [1.6.1 (versionCode 14)](release-notes/1.6.1.md)
