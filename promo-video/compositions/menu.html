@@ -1,0 +1,204 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #22201f;
+      overflow: hidden;
+      color: var(--bone);
+      font-family: var(--font-body);
+    }
+    .menu-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(64% 42% at 50% 8%, rgba(205, 197, 183, 0.1) 0%, rgba(34, 32, 31, 0) 70%),
+        linear-gradient(180deg, #22201f 0%, #1d1b1a 100%);
+    }
+    .menu-head {
+      position: absolute;
+      left: 78px;
+      right: 78px;
+      top: 132px;
+      z-index: 6;
+    }
+    .menu-eyebrow {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 22px;
+    }
+    .menu-title-1,
+    .menu-title-2 {
+      font-family: var(--font-display);
+      font-size: 120px;
+      line-height: 0.84;
+      letter-spacing: -0.045em;
+      white-space: nowrap;
+      color: var(--bone-100);
+    }
+    .menu-title-1 {
+      font-weight: 700;
+    }
+    .menu-title-2 {
+      font-weight: 300;
+      font-style: italic;
+      color: var(--bone);
+      margin-top: 10px;
+    }
+    .menu-stage {
+      position: absolute;
+      inset: 0;
+      perspective: 1500px;
+      perspective-origin: 50% 20%;
+      z-index: 2;
+    }
+    .menu-phone {
+      position: absolute;
+      left: 100px;
+      top: 405px;
+      width: 880px;
+      height: 850px;
+      border-radius: 40px;
+      border: 2px solid rgba(205, 197, 183, 0.22);
+      overflow: hidden;
+      background: #22201f;
+      box-shadow:
+        0 40px 90px rgba(0, 0, 0, 0.55),
+        0 0 0 12px rgba(20, 19, 18, 0.9);
+      transform-origin: 50% 50%;
+      transform-style: preserve-3d;
+    }
+    .menu-phone img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 50% 100%;
+      transform-origin: 50% 50%;
+    }
+    .menu-card-fade {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 150px;
+      background: linear-gradient(180deg, #22201f 0%, rgba(34, 32, 31, 0.85) 38%, rgba(34, 32, 31, 0) 100%);
+      z-index: 2;
+      pointer-events: none;
+    }
+    .menu-glare {
+      position: absolute;
+      top: -20%;
+      left: -40%;
+      width: 30%;
+      height: 140%;
+      background: linear-gradient(100deg, rgba(232, 226, 215, 0) 0%, rgba(232, 226, 215, 0.1) 50%, rgba(232, 226, 215, 0) 100%);
+      transform: skewX(-10deg);
+      pointer-events: none;
+      z-index: 3;
+    }
+    .menu-screen-shade {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(20, 19, 18, 0.06) 0%, rgba(20, 19, 18, 0) 30%, rgba(20, 19, 18, 0.12) 100%);
+      z-index: 2;
+      pointer-events: none;
+    }
+    .menu-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(120% 70% at 50% 55%, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.5) 100%);
+      z-index: 4;
+    }
+    .menu-cursor {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 54px;
+      height: 54px;
+      margin-left: -27px;
+      margin-top: -27px;
+      border-radius: 50%;
+      background: rgba(232, 226, 215, 0.92);
+      box-shadow:
+        0 0 0 14px rgba(205, 197, 183, 0.18),
+        0 0 28px rgba(232, 226, 215, 0.35);
+      z-index: 8;
+      pointer-events: none;
+    }
+    .menu-ripple {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 180px;
+      height: 180px;
+      margin-left: -90px;
+      margin-top: -90px;
+      border-radius: 50%;
+      border: 2px solid rgba(232, 226, 215, 0.75);
+      z-index: 7;
+      pointer-events: none;
+    }
+  </style>
+
+  <div id="root" data-composition-id="menu" data-width="1080" data-height="1920">
+    <div class="menu-glow"></div>
+    <div class="grain"></div>
+
+    <div id="menu-head" class="menu-head clip" data-start="0" data-duration="3.433" data-track-index="1">
+      <div id="menu-inner">
+        <div id="menu-eyebrow" class="menu-eyebrow">Dos formas de jugar</div>
+        <div id="menu-title-1" class="menu-title-1">ELIGE</div>
+        <div id="menu-title-2" class="menu-title-2">tu mesa.</div>
+      </div>
+    </div>
+
+    <div class="menu-stage">
+      <div id="menu-phone" class="menu-phone">
+        <img id="menu-shot" src="assets/screens/01-menu.png" alt="Menú de Just Poker" />
+        <div class="menu-card-fade"></div>
+        <div class="menu-screen-shade"></div>
+        <div id="menu-glare" class="menu-glare"></div>
+      </div>
+    </div>
+    <div class="menu-vignette"></div>
+
+    <div id="menu-ripple" class="menu-ripple"></div>
+    <div id="menu-cursor" class="menu-cursor"></div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    // La tarjeta del menú entra desde abajo, aún en movimiento, y aterriza en 3D.
+    tl.fromTo("#menu-phone", { autoAlpha: 0.3, y: 190, rotateY: 9, rotateX: 4, scale: 0.95 }, {
+      autoAlpha: 1, y: 0, rotateY: 0, rotateX: 0, scale: 1,
+      duration: 0.68, ease: "expo.out",
+    }, 0.04);
+    tl.fromTo("#menu-phone", { y: 0, rotateY: 0 }, { y: -9, rotateY: -1.2, duration: 2.16, ease: "none", immediateRender: false }, 0.72);
+    tl.fromTo("#menu-shot", { scale: 1.03, y: 4 }, { scale: 1.01, y: 0, duration: 3.2, ease: "none" }, 0.1);
+    tl.fromTo("#menu-glare", { x: 0 }, { x: 1150, duration: 1.05, ease: "power2.inOut" }, 0.85);
+
+    tl.fromTo("#menu-eyebrow", { autoAlpha: 0, y: 10 }, { autoAlpha: 0.55, y: 0, duration: 0.4, ease: "power4.out" }, 0.08);
+    tl.fromTo("#menu-title-1", { clipPath: "inset(0 0 74% 0)", y: 10 }, { clipPath: "inset(0 0 0% 0)", y: 0, duration: 0.5, ease: "power4.out" }, 0.12);
+    tl.fromTo("#menu-title-2", { autoAlpha: 0, x: -22, filter: "blur(8px)" }, { autoAlpha: 1, x: 0, filter: "blur(0px)", duration: 0.46, ease: "expo.out" }, 0.26);
+
+    // Un dedo toca «Jugar con amigos» y el toque se lleva la cámara.
+    tl.fromTo("#menu-cursor", { autoAlpha: 0, scale: 0.5, x: 760, y: 940 }, { autoAlpha: 1, scale: 1, x: 842, y: 1095, duration: 0.4, ease: "power3.out" }, 2.28);
+    tl.to("#menu-cursor", { scale: 0.78, duration: 0.1, ease: "power2.in" }, 2.78);
+    tl.fromTo("#menu-ripple", { autoAlpha: 0, scale: 0.35, x: 842, y: 1095 }, { autoAlpha: 0.9, scale: 1.15, duration: 0.2, ease: "power2.out" }, 2.8);
+    tl.to("#menu-ripple", { autoAlpha: 0, scale: 1.6, duration: 0.3, ease: "power2.out" }, 3.0);
+    tl.to("#menu-cursor", { autoAlpha: 0, duration: 0.16 }, 2.94);
+    tl.to("#menu-inner", { autoAlpha: 0, y: -24, filter: "blur(8px)", duration: 0.22, ease: "power2.in" }, 2.66);
+
+    // Zoom through: la tarjeta de «amigos» se convierte en la pantalla online.
+    tl.to("#menu-phone", { scale: 4.0, y: -902, duration: 0.53, ease: "power2.in" }, 2.9);
+    tl.to(".menu-vignette", { autoAlpha: 0, duration: 0.3 }, 2.9);
+
+    window.__timelines["menu"] = tl;
+  </script>
+</template>

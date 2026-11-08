@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Just Poker — promo</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Satoshi Variable";
+        font-style: normal;
+        font-weight: 300 900;
+        ascent-override: 100%;
+        descent-override: 21%;
+        line-gap-override: 0%;
+        src: url("assets/fonts/Satoshi-Variable.ttf") format("truetype-variations");
+      }
+      @font-face {
+        font-family: "Satoshi Variable";
+        font-style: italic;
+        font-weight: 300 900;
+        ascent-override: 100%;
+        descent-override: 21%;
+        line-gap-override: 0%;
+        src: url("assets/fonts/Satoshi-VariableItalic.ttf") format("truetype-variations");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 100 900;
+        src: url("assets/fonts/Inter-VariableFont_opsz_wght.ttf") format("truetype-variations");
+      }
+
+      :root {
+        --ink: #22201f;
+        --ink-900: #141312;
+        --bone: #cdc5b7;
+        --bone-100: #e8e2d7;
+        --bone-700: #aaa191;
+        --danger: #e8734a;
+        --info: #5b8af0;
+        --success: #8fce8f;
+        --blind-sb: #384a84;
+        --blind-bb: #d6ae46;
+        --font-display: "Satoshi Variable", "Inter", sans-serif;
+        --font-body: "Inter", sans-serif;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--ink);
+      }
+
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--ink);
+        font-family: var(--font-body);
+        color: var(--bone);
+      }
+
+      .scene-host {
+        position: absolute;
+        inset: 0;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image: url("assets/img/grain.png");
+        background-size: 512px 512px;
+        opacity: 0.05;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      #fx {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 40;
+      }
+      #fx-leak {
+        position: absolute;
+        inset: -30%;
+        background: radial-gradient(34% 26% at 68% 18%, rgba(205, 197, 183, 0.1) 0%, rgba(205, 197, 183, 0) 70%);
+        mix-blend-mode: screen;
+      }
+      #fx-flash {
+        position: absolute;
+        inset: 0;
+        background: #cdc5b7;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="33"
+      data-fps="30"
+      data-width="1080"
+      data-height="1920"
+      data-motion-blur="on"
+    >
+      <!-- 0:00 · Hook (la portada) -->
+      <div
+        id="hook"
+        class="scene-host"
+        data-composition-id="hook"
+        data-composition-src="compositions/hook.html"
+        data-start="0"
+        data-duration="3.4"
+        data-track-index="0"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- 0:03,4 · La mesa: el juego, justo después de la promesa -->
+      <div
+        id="table"
+        class="scene-host"
+        data-composition-id="table"
+        data-composition-src="compositions/table.html"
+        data-start="3.4"
+        data-duration="8.566"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- 0:11,9 · Los rivales -->
+      <div
+        id="rivals"
+        class="scene-host"
+        data-composition-id="rivals"
+        data-composition-src="compositions/rivals.html"
+        data-start="11.966"
+        data-duration="5.134"
+        data-track-index="2"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- 0:17,1 · El menú: los dos modos -->
+      <div
+        id="menu"
+        class="scene-host"
+        data-composition-id="menu"
+        data-composition-src="compositions/menu.html"
+        data-start="17.1"
+        data-duration="3.433"
+        data-track-index="3"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- 0:20,5 · Amigos: el toque del menú abre esta pantalla -->
+      <div
+        id="online"
+        class="scene-host"
+        data-composition-id="online"
+        data-composition-src="compositions/online.html"
+        data-start="20.533"
+        data-duration="3.434"
+        data-track-index="4"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- 0:23,9 · Las manos -->
+      <div
+        id="hands"
+        class="scene-host"
+        data-composition-id="hands"
+        data-composition-src="compositions/hands.html"
+        data-start="23.967"
+        data-duration="3.433"
+        data-track-index="5"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- 0:27,4 · Cierre -->
+      <div
+        id="end"
+        class="scene-host"
+        data-composition-id="end"
+        data-composition-src="compositions/end.html"
+        data-start="27.4"
+        data-duration="5.6"
+        data-track-index="6"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <div id="fx" aria-hidden="true">
+        <div id="fx-leak"></div>
+        <div id="fx-flash"></div>
+      </div>
+
+      <!-- Música: tema original de la app, recortado desde el inicio de un compás. -->
+      <audio
+        id="music"
+        data-start="0"
+        data-duration="33"
+        data-media-start="0"
+        data-volume="1"
+        data-fade-in="0.5"
+        data-fade-out="1.4"
+        src="assets/audio/theme.wav"
+      ></audio>
+
+      <!-- Diseño sonoro: cada acción visible tiene su causa. -->
+      <audio id="sfx-hook-deal" data-start="0.2" data-duration="0.697" data-volume="0.65" src="assets/audio/card_deal.wav"></audio>
+      <audio id="sfx-hook-deal-2" data-start="0.33" data-duration="0.697" data-volume="0.55" src="assets/audio/card_deal.wav"></audio>
+      <audio id="sfx-hook-flip" data-start="1.24" data-duration="0.466" data-volume="0.4" src="assets/audio/card_flip.wav"></audio>
+
+      <audio id="sfx-table-in" data-start="3.4" data-duration="0.21" data-volume="0.5" src="assets/audio/chips_stack.wav"></audio>
+      <audio id="sfx-table-deal-1" data-start="3.52" data-duration="0.697" data-volume="0.6" src="assets/audio/card_deal.wav"></audio>
+      <audio id="sfx-table-deal-2" data-start="3.64" data-duration="0.697" data-volume="0.5" src="assets/audio/card_deal.wav"></audio>
+      <audio id="sfx-raise" data-start="4.76" data-duration="0.624" data-volume="0.75" src="assets/audio/chips_raise.wav"></audio>
+      <audio id="sfx-call" data-start="6.1" data-duration="0.107" data-volume="0.6" src="assets/audio/ui_click.wav"></audio>
+      <audio id="sfx-call-chips" data-start="6.18" data-duration="0.237" data-volume="0.6" src="assets/audio/chips_bet.wav"></audio>
+      <audio id="sfx-flop-1" data-start="6.74" data-duration="0.466" data-volume="0.6" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-flop-2" data-start="6.84" data-duration="0.466" data-volume="0.55" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-flop-3" data-start="6.94" data-duration="0.466" data-volume="0.5" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-turn" data-start="7.76" data-duration="0.466" data-volume="0.6" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-river" data-start="8.74" data-duration="0.466" data-volume="0.5" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-showdown" data-start="9.44" data-duration="0.21" data-volume="0.7" src="assets/audio/chips_stack.wav"></audio>
+      <audio id="sfx-table-out" data-start="11.66" data-duration="0.21" data-volume="0.6" src="assets/audio/chips_bet_3.wav"></audio>
+
+      <audio id="sfx-rivals-in" data-start="11.966" data-duration="0.466" data-volume="0.5" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-portrait-1" data-start="12.27" data-duration="0.129" data-volume="0.5" src="assets/audio/turn_tick.wav"></audio>
+      <audio id="sfx-portrait-2" data-start="12.36" data-duration="0.129" data-volume="0.45" src="assets/audio/turn_tick.wav"></audio>
+      <audio id="sfx-portrait-3" data-start="12.45" data-duration="0.129" data-volume="0.4" src="assets/audio/turn_tick.wav"></audio>
+
+      <audio id="sfx-menu-in" data-start="17.08" data-duration="0.107" data-volume="0.5" src="assets/audio/ui_click.wav"></audio>
+      <audio id="sfx-menu-tap" data-start="19.88" data-duration="0.107" data-volume="0.65" src="assets/audio/ui_click.wav"></audio>
+      <audio id="sfx-menu-zoom" data-start="20.08" data-duration="0.466" data-volume="0.4" src="assets/audio/card_flip.wav"></audio>
+
+      <audio id="sfx-online-in" data-start="20.533" data-duration="0.372" data-volume="0.45" src="assets/audio/check.wav"></audio>
+      <audio id="sfx-join-1" data-start="21.83" data-duration="0.372" data-volume="0.55" src="assets/audio/check.wav"></audio>
+      <audio id="sfx-join-2" data-start="22.35" data-duration="0.372" data-volume="0.45" src="assets/audio/check.wav"></audio>
+
+      <audio id="sfx-hands-in" data-start="23.98" data-duration="0.466" data-volume="0.5" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-hand-1" data-start="24.28" data-duration="0.466" data-volume="0.45" src="assets/audio/card_flip.wav"></audio>
+      <audio id="sfx-hand-2" data-start="26.4" data-duration="0.466" data-volume="0.5" src="assets/audio/card_flip.wav"></audio>
+
+      <audio id="sfx-end-in" data-start="27.4" data-duration="0.21" data-volume="0.65" src="assets/audio/chips_stack.wav"></audio>
+      <audio id="sfx-end-cta" data-start="28.22" data-duration="0.21" data-volume="0.55" src="assets/audio/chips_stack.wav"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const main = gsap.timeline({ paused: true });
+
+      // Luz cálida que recorre todo el vídeo: pega los cortes sin fundidos.
+      main.fromTo("#fx-leak", { x: -180, y: -100 }, { x: 240, y: 160, duration: 33, ease: "none" }, 0);
+
+      // Dos flashes de cámara que enmascaran los dos zoom-through.
+      main.fromTo("#fx-flash", { opacity: 0 }, { opacity: 0.55, duration: 0.05, ease: "power1.out" }, 3.28);
+      main.to("#fx-flash", { opacity: 0, duration: 0.18, ease: "power1.in" }, 3.33);
+      main.fromTo("#fx-flash", { opacity: 0 }, { opacity: 0.42, duration: 0.04, ease: "power1.out", immediateRender: false }, 20.47);
+      main.to("#fx-flash", { opacity: 0, duration: 0.14, ease: "power1.in" }, 20.51);
+
+      window.__timelines["main"] = main;
+    </script>
+  </body>
+</html>

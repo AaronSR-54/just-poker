@@ -1,0 +1,809 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #22201f;
+      overflow: hidden;
+      color: var(--bone);
+      font-family: var(--font-body);
+    }
+    .tbl-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(58% 38% at 50% 42%, rgba(205, 197, 183, 0.055) 0%, rgba(34, 32, 31, 0) 72%),
+        linear-gradient(180deg, #22201f 0%, #1e1c1b 100%);
+    }
+    #tbl-camera {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 58%;
+    }
+    #tbl-drift {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 60%;
+    }
+    .tbl-tag {
+      position: absolute;
+      left: 54px;
+      top: 44px;
+      z-index: 6;
+    }
+    .tbl-tag-1 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.4;
+    }
+    .tbl-tag-2 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 36px;
+      letter-spacing: 0.01em;
+      margin-top: 8px;
+      color: var(--bone-100);
+    }
+    .tbl-gear {
+      position: absolute;
+      right: 54px;
+      top: 38px;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(205, 197, 183, 0.2);
+      background: #2c2a29;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bone);
+      z-index: 6;
+    }
+    .tbl-gear svg {
+      width: 48px;
+      height: 48px;
+      opacity: 0.8;
+    }
+    .tbl-rivals {
+      position: absolute;
+      left: 54px;
+      top: 168px;
+      display: flex;
+      gap: 18px;
+      z-index: 4;
+    }
+    .tbl-rival {
+      position: relative;
+      width: 312px;
+      height: 430px;
+      border-radius: 24px;
+      border: 1.5px solid rgba(205, 197, 183, 0.18);
+      background: #22201f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 34px;
+      text-align: center;
+    }
+    .tbl-rival.is-active {
+      border-color: rgba(205, 197, 183, 0.95);
+    }
+    .tbl-rival.is-winner {
+      background: var(--bone);
+      border-color: var(--bone);
+      color: #22201f;
+    }
+    .tbl-rival.is-out {
+      opacity: 0.32;
+    }
+    .tbl-avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--bone);
+      box-shadow: 0 0 0 1.5px rgba(205, 197, 183, 0.22);
+    }
+    .tbl-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .tbl-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .tbl-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 36px;
+      letter-spacing: -0.01em;
+      color: var(--bone-100);
+    }
+    .is-winner .tbl-name {
+      color: #22201f;
+    }
+    .tbl-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+    .tbl-badge.sb {
+      background: var(--blind-sb);
+      color: var(--bone);
+    }
+    .tbl-badge.bb {
+      background: var(--blind-bb);
+      color: #22201f;
+    }
+    .tbl-alias {
+      font-family: var(--font-body);
+      font-style: italic;
+      font-size: 28px;
+      line-height: 1;
+      opacity: 0.62;
+      margin-top: 8px;
+      white-space: nowrap;
+    }
+    .tbl-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 44px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 32px;
+      font-variant-numeric: tabular-nums;
+      color: var(--bone);
+    }
+    .is-winner .tbl-chips {
+      color: #22201f;
+    }
+    .tbl-chip-icon {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      color: var(--bone);
+    }
+    .tbl-chip-icon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .is-winner .tbl-chip-icon {
+      color: #22201f;
+    }
+    .tbl-delta {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 378px;
+      text-align: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--danger);
+      font-variant-numeric: tabular-nums;
+    }
+    .is-winner .tbl-delta {
+      color: var(--success-bone, #15803d);
+    }
+    .tbl-timer {
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      bottom: -10px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(205, 197, 183, 0.12);
+      overflow: hidden;
+    }
+    .tbl-timer i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      border-radius: 999px;
+      background: var(--bone);
+    }
+    .tbl-caption {
+      position: absolute;
+      left: 80px;
+      right: 80px;
+      top: 632px;
+      text-align: center;
+      z-index: 5;
+    }
+    .tbl-caption-eyebrow {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      opacity: 0.48;
+      margin-bottom: 16px;
+    }
+    .tbl-caption-main {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 46px;
+      letter-spacing: 0.015em;
+      text-transform: uppercase;
+      color: var(--bone-100);
+      white-space: nowrap;
+    }
+    .tbl-payoff {
+      position: absolute;
+      left: 80px;
+      right: 80px;
+      top: 622px;
+      text-align: center;
+      z-index: 7;
+    }
+    .tbl-payoff-eyebrow {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--bone);
+      opacity: 0.55;
+      margin-bottom: 14px;
+    }
+    .tbl-payoff-main {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 74px;
+      letter-spacing: -0.02em;
+      line-height: 0.9;
+      color: var(--bone-100);
+      text-transform: uppercase;
+    }
+    .tbl-payoff-sub {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.16em;
+      color: var(--bone);
+      opacity: 0.6;
+      margin-top: 16px;
+    }
+    .tbl-phase {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 806px;
+      height: 70px;
+      z-index: 6;
+    }
+    .tbl-phase-pill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      width: max-content;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 28px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(205, 197, 183, 0.2);
+      background: #22201f;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--bone);
+      opacity: 0;
+    }
+    .tbl-phase-pill#tbl-phase-pre {
+      opacity: 1;
+    }
+    .tbl-board {
+      position: absolute;
+      left: 28px;
+      top: 878px;
+      display: flex;
+      gap: 16px;
+      z-index: 3;
+    }
+    .tbl-slot {
+      position: relative;
+      width: 192px;
+      height: 270px;
+      border-radius: 18px;
+      border: 1.5px dashed rgba(205, 197, 183, 0.16);
+      background: rgba(34, 32, 31, 0.35);
+    }
+    .tbl-card {
+      position: absolute;
+      inset: 0;
+      width: 192px;
+      height: 270px;
+      border-radius: 18px;
+      background: var(--bone);
+      display: none;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+      transform-origin: 50% 50%;
+    }
+    .tbl-card img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 18px;
+    }
+    .tbl-pot {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 1192px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 38px;
+      font-variant-numeric: tabular-nums;
+      color: var(--bone);
+      z-index: 5;
+    }
+    .tbl-pot-label {
+      font-size: 28px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-right: 2px;
+    }
+    .tbl-pot .tbl-chip-icon {
+      width: 40px;
+      height: 40px;
+    }
+    .tbl-hand-label {
+      position: absolute;
+      left: 64px;
+      top: 1236px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--bone);
+      opacity: 0.55;
+      z-index: 5;
+    }
+    .tbl-hero-cards {
+      position: absolute;
+      left: 64px;
+      top: 1290px;
+      display: flex;
+      gap: 16px;
+      z-index: 4;
+    }
+    .tbl-hero-cards .tbl-card {
+      position: relative;
+      display: block;
+      width: 192px;
+      height: 270px;
+    }
+    .tbl-seat {
+      position: absolute;
+      right: 54px;
+      top: 1272px;
+      width: 320px;
+      height: 190px;
+      border-radius: 20px;
+      border: 1.5px solid rgba(205, 197, 183, 0.18);
+      background: #22201f;
+      padding: 26px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+      z-index: 5;
+    }
+    .tbl-seat.is-winner {
+      background: var(--bone);
+      border-color: var(--bone);
+      color: #22201f;
+    }
+    .tbl-seat-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 36px;
+      color: var(--bone-100);
+    }
+    .tbl-seat.is-winner .tbl-seat-top {
+      color: #22201f;
+    }
+    .tbl-seat .tbl-badge.dealer {
+      background: var(--bone);
+      color: #22201f;
+    }
+    .tbl-seat.is-winner .tbl-badge.dealer {
+      background: #22201f;
+      color: var(--bone);
+    }
+    .tbl-seat-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 36px;
+      color: var(--bone);
+      font-variant-numeric: tabular-nums;
+    }
+    .tbl-seat.is-winner .tbl-seat-chips {
+      color: #22201f;
+    }
+    .tbl-seat-chips .tbl-chip-icon {
+      width: 40px;
+      height: 40px;
+    }
+    .tbl-actions {
+      position: absolute;
+      left: 54px;
+      right: 54px;
+      top: 1602px;
+      display: flex;
+      gap: 24px;
+      z-index: 6;
+    }
+    .tbl-btn {
+      height: 118px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1.5px solid rgba(205, 197, 183, 0.26);
+      color: var(--bone);
+      background: #22201f;
+    }
+    .tbl-btn.raise {
+      flex: 1.03;
+      background: var(--bone);
+      border-color: var(--bone);
+      color: #22201f;
+    }
+    .tbl-btn.call {
+      flex: 1.22;
+    }
+    .tbl-btn.fold {
+      flex: 1.03;
+    }
+    .tbl-btn.is-pressed {
+      background: var(--bone);
+      border-color: var(--bone);
+      color: #22201f;
+    }
+    .tbl-timer-bottom {
+      position: absolute;
+      left: 86px;
+      right: 86px;
+      top: 1768px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(205, 197, 183, 0.12);
+      overflow: hidden;
+      z-index: 5;
+    }
+    .tbl-timer-bottom i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: var(--bone);
+      border-radius: 999px;
+    }
+    .tbl-home {
+      position: absolute;
+      left: 50%;
+      bottom: 26px;
+      width: 300px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(205, 197, 183, 0.3);
+      transform: translateX(-50%);
+    }
+    .tbl-cursor {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 2px solid rgba(205, 197, 183, 0.9);
+      background: rgba(205, 197, 183, 0.92);
+      border: 3px solid #22201f;
+      box-shadow: 0 0 0 12px rgba(205, 197, 183, 0.18);
+      z-index: 8;
+      pointer-events: none;
+    }
+    .chip-fly {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      color: var(--bone);
+      z-index: 7;
+      opacity: 0;
+    }
+    .tbl-live-dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--danger);
+      margin-right: 10px;
+      vertical-align: 2px;
+      opacity: 0.9;
+    }
+  </style>
+
+  <div id="root" data-composition-id="table" data-width="1080" data-height="1920">
+    <div class="tbl-bg"></div>
+    <div class="grain"></div>
+
+    <div id="tbl-clip" class="clip" data-start="0" data-duration="8.566" data-track-index="1">
+      <div id="tbl-camera">
+      <div id="tbl-drift">
+
+        <div id="tbl-log" class="tbl-tag">
+          <div class="tbl-tag-1"><span class="tbl-live-dot"></span>Mano #7 · Mesa local</div>
+          <div id="tbl-action" class="tbl-tag-2">Kai se retira</div>
+        </div>
+        <div class="tbl-gear" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+          </svg>
+        </div>
+
+        <div id="tbl-rivals" class="tbl-rivals">
+          <div id="tbl-leo" class="tbl-rival">
+            <div class="tbl-avatar"><img src="assets/rivals/leo.webp" alt="Leo" /></div>
+            <div class="tbl-name-row">
+              <span class="tbl-name">Leo</span>
+              <span class="tbl-badge sb">SB</span>
+            </div>
+            <div class="tbl-alias">«El Protocolo»</div>
+            <div class="tbl-chips"><span class="tbl-chip-icon" data-chip></span><span id="tbl-leo-chips">990</span></div>
+            <div id="tbl-leo-delta" class="tbl-delta">−10</div>
+          </div>
+
+          <div id="tbl-nora" class="tbl-rival">
+            <div class="tbl-avatar"><img src="assets/rivals/nora.webp" alt="Nora" /></div>
+            <div class="tbl-name-row">
+              <span class="tbl-name">Nora</span>
+              <span class="tbl-badge bb">BB</span>
+            </div>
+            <div class="tbl-alias">«Ojo Clínico»</div>
+            <div class="tbl-chips"><span class="tbl-chip-icon" data-chip></span><span id="tbl-nora-chips">980</span></div>
+            <div id="tbl-nora-delta" class="tbl-delta">−20</div>
+            <div id="tbl-nora-timer" class="tbl-timer"><i></i></div>
+          </div>
+
+          <div id="tbl-kai" class="tbl-rival">
+            <div class="tbl-avatar"><img src="assets/rivals/kai.webp" alt="Kai" /></div>
+            <div class="tbl-name-row"><span class="tbl-name">Kai</span></div>
+            <div class="tbl-alias">«Doble Fondo»</div>
+            <div class="tbl-chips"><span class="tbl-chip-icon" data-chip></span><span id="tbl-kai-chips">1000</span></div>
+          </div>
+        </div>
+
+        <div id="tbl-caption" class="tbl-caption">
+          <div class="tbl-caption-eyebrow">Así se juega</div>
+          <div class="tbl-caption-main">Sube, iguala o retírate.</div>
+        </div>
+
+        <div id="tbl-payoff" class="tbl-payoff">
+          <div class="tbl-payoff-eyebrow">La mejor mano posible</div>
+          <div class="tbl-payoff-main">Escalera real</div>
+          <div class="tbl-payoff-sub">A♠ K♠ Q♠ J♠ 10♠</div>
+        </div>
+
+        <div class="tbl-phase">
+          <div id="tbl-phase-pre" class="tbl-phase-pill">Pre-flop</div>
+          <div id="tbl-phase-flop" class="tbl-phase-pill">Flop</div>
+          <div id="tbl-phase-turn" class="tbl-phase-pill">Turn</div>
+          <div id="tbl-phase-river" class="tbl-phase-pill">River</div>
+        </div>
+
+        <div class="tbl-board">
+          <div class="tbl-slot">
+            <div id="tbl-c0" class="tbl-card"><img src="assets/cards/spades/J.svg" alt="J de picas" /></div>
+          </div>
+          <div class="tbl-slot">
+            <div id="tbl-c1" class="tbl-card"><img src="assets/cards/spades/10.svg" alt="10 de picas" /></div>
+          </div>
+          <div class="tbl-slot">
+            <div id="tbl-c2" class="tbl-card"><img src="assets/cards/diamonds/4.svg" alt="4 de diamantes" /></div>
+          </div>
+          <div class="tbl-slot">
+            <div id="tbl-c3" class="tbl-card"><img src="assets/cards/spades/A.svg" alt="As de picas" /></div>
+          </div>
+          <div class="tbl-slot">
+            <div id="tbl-c4" class="tbl-card"><img src="assets/cards/spades/5.svg" alt="5 de picas" /></div>
+          </div>
+        </div>
+
+        <div class="tbl-pot">
+          <span class="tbl-pot-label">Bote</span>
+          <span class="tbl-chip-icon" data-chip></span>
+          <span id="tbl-pot-value">30</span>
+        </div>
+
+        <div id="tbl-hand-label" class="tbl-hand-label">Carta alta</div>
+
+        <div id="tbl-hero-cards" class="tbl-hero-cards">
+          <div id="tbl-h0" class="tbl-card"><img src="assets/cards/spades/K.svg" alt="Rey de picas" /></div>
+          <div id="tbl-h1" class="tbl-card"><img src="assets/cards/spades/Q.svg" alt="Reina de picas" /></div>
+        </div>
+
+        <div id="tbl-seat" class="tbl-seat">
+          <div class="tbl-seat-top"><span>Tú</span><span class="tbl-badge dealer">D</span></div>
+          <div class="tbl-seat-chips"><span class="tbl-chip-icon" data-chip></span><span id="tbl-hero-chips">1000</span></div>
+        </div>
+
+        <div class="tbl-actions">
+          <div id="tbl-btn-raise" class="tbl-btn raise">Subir</div>
+          <div id="tbl-btn-call" class="tbl-btn call">Igualar</div>
+          <div id="tbl-btn-fold" class="tbl-btn fold">Retirarse</div>
+        </div>
+
+        <div id="tbl-timer-bottom" class="tbl-timer-bottom"><i></i></div>
+        <div class="tbl-home"></div>
+
+        <div id="tbl-cursor" class="tbl-cursor"></div>
+
+        <span id="chip-a" class="chip-fly"><svg viewBox="0 0 256 256" fill="currentColor"><path d="M202.16 200.83a103.8 103.8 0 0 0 0-145.66 7.4 7.4 0 0 0-1.33-1.33 103.8 103.8 0 0 0-145.66 0 7.4 7.4 0 0 0-1.33 1.33 103.8 103.8 0 0 0 0 145.66 7.4 7.4 0 0 0 1.33 1.33 103.8 103.8 0 0 0 145.66 0 7.4 7.4 0 0 0 1.33-1.33ZM40.37 136h24.15a63.67 63.67 0 0 0 12.95 31.21l-17.07 17.07A87.6 87.6 0 0 1 40.37 136Zm20.03-64.28 17.07 17.07A63.67 63.67 0 0 0 64.52 120H40.37a87.6 87.6 0 0 1 20.03-48.28ZM215.63 120h-24.15a63.67 63.67 0 0 0-12.95-31.21l17.07-17.07A87.6 87.6 0 0 1 215.63 120Zm-48.42-42.53A63.67 63.67 0 0 0 136 64.52V40.37a87.6 87.6 0 0 1 48.28 20.04ZM120 64.52a63.67 63.67 0 0 0-31.21 12.95L71.72 60.4A87.6 87.6 0 0 1 120 40.37Zm-31.21 113.01A63.67 63.67 0 0 0 120 191.48v24.15a87.6 87.6 0 0 1-48.28-20.04ZM136 191.48a63.67 63.67 0 0 0 31.21-12.95l17.07 17.07A87.6 87.6 0 0 1 136 215.63Zm42.53-24.27A63.67 63.67 0 0 0 191.48 136h24.15a87.6 87.6 0 0 1-20.04 48.28Z"/></svg></span>
+        <span id="chip-b" class="chip-fly"><svg viewBox="0 0 256 256" fill="currentColor"><path d="M202.16 200.83a103.8 103.8 0 0 0 0-145.66 7.4 7.4 0 0 0-1.33-1.33 103.8 103.8 0 0 0-145.66 0 7.4 7.4 0 0 0-1.33 1.33 103.8 103.8 0 0 0 0 145.66 7.4 7.4 0 0 0 1.33 1.33 103.8 103.8 0 0 0 145.66 0 7.4 7.4 0 0 0 1.33-1.33ZM40.37 136h24.15a63.67 63.67 0 0 0 12.95 31.21l-17.07 17.07A87.6 87.6 0 0 1 40.37 136Zm20.03-64.28 17.07 17.07A63.67 63.67 0 0 0 64.52 120H40.37a87.6 87.6 0 0 1 20.03-48.28ZM215.63 120h-24.15a63.67 63.67 0 0 0-12.95-31.21l17.07-17.07A87.6 87.6 0 0 1 215.63 120Zm-48.42-42.53A63.67 63.67 0 0 0 136 64.52V40.37a87.6 87.6 0 0 1 48.28 20.04ZM120 64.52a63.67 63.67 0 0 0-31.21 12.95L71.72 60.4A87.6 87.6 0 0 1 120 40.37Zm-31.21 113.01A63.67 63.67 0 0 0 120 191.48v24.15a87.6 87.6 0 0 1-48.28-20.04ZM136 191.48a63.67 63.67 0 0 0 31.21-12.95l17.07 17.07A87.6 87.6 0 0 1 136 215.63Zm42.53-24.27A63.67 63.67 0 0 0 191.48 136h24.15a87.6 87.6 0 0 1-20.04 48.28Z"/></svg></span>
+        <span id="chip-c" class="chip-fly"><svg viewBox="0 0 256 256" fill="currentColor"><path d="M202.16 200.83a103.8 103.8 0 0 0 0-145.66 7.4 7.4 0 0 0-1.33-1.33 103.8 103.8 0 0 0-145.66 0 7.4 7.4 0 0 0-1.33 1.33 103.8 103.8 0 0 0 0 145.66 7.4 7.4 0 0 0 1.33 1.33 103.8 103.8 0 0 0 145.66 0 7.4 7.4 0 0 0 1.33-1.33ZM40.37 136h24.15a63.67 63.67 0 0 0 12.95 31.21l-17.07 17.07A87.6 87.6 0 0 1 40.37 136Zm20.03-64.28 17.07 17.07A63.67 63.67 0 0 0 64.52 120H40.37a87.6 87.6 0 0 1 20.03-48.28ZM215.63 120h-24.15a63.67 63.67 0 0 0-12.95-31.21l17.07-17.07A87.6 87.6 0 0 1 215.63 120Zm-48.42-42.53A63.67 63.67 0 0 0 136 64.52V40.37a87.6 87.6 0 0 1 48.28 20.04ZM120 64.52a63.67 63.67 0 0 0-31.21 12.95L71.72 60.4A87.6 87.6 0 0 1 120 40.37Zm-31.21 113.01A63.67 63.67 0 0 0 120 191.48v24.15a87.6 87.6 0 0 1-48.28-20.04ZM136 191.48a63.67 63.67 0 0 0 31.21-12.95l17.07 17.07A87.6 87.6 0 0 1 136 215.63Zm42.53-24.27A63.67 63.67 0 0 0 191.48 136h24.15a87.6 87.6 0 0 1-20.04 48.28Z"/></svg></span>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    // Ficha de póker (misma silueta que la app).
+    const CHIP_PATH = "M202.16 200.83a103.8 103.8 0 0 0 0-145.66 7.4 7.4 0 0 0-1.33-1.33 103.8 103.8 0 0 0-145.66 0 7.4 7.4 0 0 0-1.33 1.33 103.8 103.8 0 0 0 0 145.66 7.4 7.4 0 0 0 1.33 1.33 103.8 103.8 0 0 0 145.66 0 7.4 7.4 0 0 0 1.33-1.33ZM40.37 136h24.15a63.67 63.67 0 0 0 12.95 31.21l-17.07 17.07A87.6 87.6 0 0 1 40.37 136Zm20.03-64.28 17.07 17.07A63.67 63.67 0 0 0 64.52 120H40.37a87.6 87.6 0 0 1 20.03-48.28ZM215.63 120h-24.15a63.67 63.67 0 0 0-12.95-31.21l17.07-17.07A87.6 87.6 0 0 1 215.63 120Zm-48.42-42.53A63.67 63.67 0 0 0 136 64.52V40.37a87.6 87.6 0 0 1 48.28 20.04ZM120 64.52a63.67 63.67 0 0 0-31.21 12.95L71.72 60.4A87.6 87.6 0 0 1 120 40.37Zm-31.21 113.01A63.67 63.67 0 0 0 120 191.48v24.15a87.6 87.6 0 0 1-48.28-20.04ZM136 191.48a63.67 63.67 0 0 0 31.21-12.95l17.07 17.07A87.6 87.6 0 0 1 136 215.63Zm42.53-24.27A63.67 63.67 0 0 0 191.48 136h24.15a87.6 87.6 0 0 1-20.04 48.28Z";
+    document.querySelectorAll("[data-chip]").forEach((el) => {
+      el.innerHTML = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="${CHIP_PATH}"/></svg>`;
+    });
+
+    // Entrada: el zoom del hook aterriza en la mesa ya montada y la cámara retrocede.
+    tl.fromTo("#tbl-camera", { scale: 1.14, y: 64 }, { scale: 1, y: 0, duration: 0.8, ease: "expo.out" }, 0);
+    tl.fromTo("#tbl-drift", { scale: 1, y: 0 }, { scale: 1.02, y: -4, duration: 2.4, ease: "none" }, 0.6);
+
+    // Las cartas del jugador se reparten al entrar.
+    tl.fromTo("#tbl-hero-cards .tbl-card", { autoAlpha: 0, y: -70, rotate: 12, scale: 0.9 }, { autoAlpha: 1, y: 0, rotate: 0, scale: 1, duration: 0.46, ease: "power3.out", stagger: 0.1 }, 0.12);
+    tl.fromTo("#tbl-caption", { autoAlpha: 0, y: 16, filter: "blur(6px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.44, ease: "power3.out" }, 0.2);
+
+    // Turno de Nora: barra y subida.
+    tl.to("#tbl-nora-timer i", { width: "0%", duration: 1.25, ease: "none" }, 0.9);
+    tl.fromTo("#tbl-nora", { boxShadow: "0 0 0 0 rgba(205,197,183,0)" }, { boxShadow: "0 0 0 4px rgba(205,197,183,0.12)", duration: 0.5, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.05);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 8, filter: "blur(6px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.28, ease: "power3.out" }, 1.35);
+    tl.set("#tbl-action", { innerText: "Nora sube 120" }, 1.34);
+    tl.fromTo("#tbl-nora-delta", { innerText: -20 }, { innerText: -120, duration: 0.5, snap: { innerText: 10 }, ease: "power2.out" }, 1.36);
+    tl.fromTo("#tbl-nora-chips", { innerText: 980 }, { innerText: 880, duration: 0.5, snap: { innerText: 1 }, ease: "power2.out" }, 1.36);
+    tl.fromTo("#tbl-pot-value", { innerText: 30 }, { innerText: 130, duration: 0.5, snap: { innerText: 1 }, ease: "power2.out" }, 1.36);
+    tl.fromTo("#chip-a", { autoAlpha: 0, y: 610, x: 500, scale: 0.4 }, { autoAlpha: 1, y: 1180, x: 500, scale: 0.85, duration: 0.62, ease: "power2.in" }, 1.36);
+    tl.to("#chip-a", { autoAlpha: 0, duration: 0.12 }, 1.99);
+    tl.fromTo("#chip-b", { autoAlpha: 0, y: 610, x: 545, scale: 0.4 }, { autoAlpha: 1, y: 1180, x: 545, scale: 0.75, duration: 0.6, ease: "power2.in" }, 1.44);
+    tl.to("#chip-b", { autoAlpha: 0, duration: 0.12 }, 2.05);
+
+    // El jugador iguala: cursor y pulsación.
+    tl.fromTo("#tbl-cursor",  { autoAlpha: 0, scale: 0.6, x: 600, y: 1580 }, { autoAlpha: 1, scale: 1, x: 650, y: 1690, duration: 0.4, ease: "power3.out" }, 2.05);
+    tl.to("#tbl-cursor", { scale: 0.82, duration: 0.1, ease: "power2.in" }, 2.55);
+    tl.set("#tbl-btn-call", { backgroundColor: "#cdc5b7", color: "#22201f", borderColor: "#cdc5b7" }, 2.58);
+    tl.to("#tbl-btn-call", { scale: 0.975, duration: 0.08, ease: "power2.in" }, 2.58);
+    tl.to("#tbl-btn-call", { scale: 1, duration: 0.18, ease: "back.out(2)" }, 2.66);
+    tl.to("#tbl-btn-call", { backgroundColor: "#22201f", color: "#cdc5b7", borderColor: "rgba(205,197,183,0.26)", duration: 0.28, ease: "power2.out" }, 2.78);
+    tl.to("#tbl-cursor", { autoAlpha: 0, duration: 0.2 }, 2.78);
+    tl.set("#tbl-action", { innerText: "Tú igualas" }, 2.72);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 6, filter: "blur(5px)" },  { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.24, ease: "power3.out", immediateRender: false }, 2.72);
+    tl.fromTo("#tbl-hero-cards", { y: 0 }, { y: -8, duration: 0.16, yoyo: true, repeat: 1, ease: "power2.inOut" }, 2.7);
+    tl.fromTo("#tbl-pot-value", { innerText: 130 },  { innerText: 250, duration: 0.45, snap: { innerText: 1 }, ease: "power2.out", immediateRender: false }, 2.82);
+    tl.fromTo("#tbl-hero-chips", { innerText: 1000 }, { innerText: 880, duration: 0.45, snap: { innerText: 1 }, ease: "power2.out" }, 2.82);
+    tl.to("#tbl-btn-call", { autoAlpha: 0.45, duration: 0.2 }, 3.0);
+
+    // Leo se retira.
+    tl.to("#tbl-leo", { opacity: 0.32, duration: 0.32, ease: "power2.out" }, 3.0);
+    tl.set("#tbl-action", { innerText: "Leo se retira" }, 3.08);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 6, filter: "blur(5px)" },  { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.24, ease: "power3.out", immediateRender: false }, 3.08);
+
+    // La cámara se acerca en cada calle.
+    tl.to("#tbl-drift", { scale: 1.04, y: -16, duration: 0.45, ease: "power2.inOut" }, 3.3);
+
+    // Flop.
+    tl.to("#tbl-caption", { autoAlpha: 0, y: -10, duration: 0.24, ease: "power2.in" }, 1.9);
+    tl.set("#tbl-phase-pre", { autoAlpha: 0 }, 3.25);
+    tl.to("#tbl-nora", { borderColor: "rgba(205,197,183,0.18)", duration: 0.3 }, 3.28);
+    tl.to("#tbl-nora-timer", { autoAlpha: 0, duration: 0.2 }, 3.28);
+    tl.set("#tbl-action", { innerText: "Tú pasas" }, 3.34);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 6, filter: "blur(5px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.24, ease: "power3.out", immediateRender: false }, 3.34);
+    tl.set("#tbl-phase-flop", { autoAlpha: 1 }, 3.25);
+    tl.set("#tbl-c0", { display: "block" }, 3.34);
+    tl.set("#tbl-c1", { display: "block" }, 3.34);
+    tl.set("#tbl-c2", { display: "block" }, 3.34);
+    tl.fromTo("#tbl-c0", { autoAlpha: 0, rotateY: 88, scale: 0.86, y: -40 }, { autoAlpha: 1, rotateY: 0, scale: 1, y: 0, duration: 0.36, ease: "power3.out" }, 3.34);
+    tl.fromTo("#tbl-c1", { autoAlpha: 0, rotateY: 88, scale: 0.86, y: -40 }, { autoAlpha: 1, rotateY: 0, scale: 1, y: 0, duration: 0.36, ease: "power3.out" }, 3.44);
+    tl.fromTo("#tbl-c2", { autoAlpha: 0, rotateY: 88, scale: 0.86, y: -40 }, { autoAlpha: 1, rotateY: 0, scale: 1, y: 0, duration: 0.36, ease: "power3.out" }, 3.54);
+
+    // Turn: el as de picas completa la escalera real.
+    tl.to("#tbl-drift", { scale: 1.055, y: -26, duration: 0.45, ease: "power2.inOut" }, 4.3);
+    tl.set("#tbl-phase-flop", { autoAlpha: 0 }, 4.3);
+    tl.set("#tbl-phase-turn", { autoAlpha: 1 }, 4.3);
+    tl.set("#tbl-c3", { display: "block" }, 4.36);
+    tl.fromTo("#tbl-c3", { autoAlpha: 0, rotateY: 88, scale: 0.86, y: -40 }, { autoAlpha: 1, rotateY: 0, scale: 1, y: 0, duration: 0.36, ease: "power3.out" }, 4.36);
+    tl.set("#tbl-hand-label", { innerText: "Escalera real" }, 4.55);
+    tl.fromTo("#tbl-hand-label", { autoAlpha: 0 },  { autoAlpha: 0.9, duration: 0.2, immediateRender: false }, 4.55);
+    tl.fromTo("#tbl-c3", { filter: "brightness(1.7)" }, { filter: "brightness(1)", duration: 0.45, ease: "power2.out" }, 4.55);
+    tl.fromTo("#tbl-c3", { boxShadow: "0 0 0 0 rgba(232,226,215,0)" }, { boxShadow: "0 0 42px 8px rgba(232,226,215,0.5)", duration: 0.5, ease: "power2.out" }, 4.42);
+    tl.to("#tbl-c3", { boxShadow: "0 12px 28px rgba(0,0,0,0.32)", duration: 1.1, ease: "power2.out" }, 5.1);
+
+    // Payoff.
+    tl.set("#tbl-payoff", { autoAlpha: 0 }, 0);
+    tl.fromTo("#tbl-payoff", { autoAlpha: 0, y: 22, scale: 0.95 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.42, ease: "expo.out" }, 4.74);
+    tl.to("#tbl-payoff", { autoAlpha: 0, y: -12, duration: 0.22, ease: "power2.in" }, 6.3);
+
+    // River.
+    tl.to("#tbl-drift", { scale: 1.07, y: -34, duration: 0.45, ease: "power2.inOut" }, 5.3);
+    tl.set("#tbl-phase-turn", { autoAlpha: 0 }, 5.28);
+    tl.set("#tbl-action", { innerText: "Nora pasa" }, 4.3);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 6, filter: "blur(5px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.24, ease: "power3.out", immediateRender: false }, 4.3);
+    tl.set("#tbl-action", { innerText: "Tú pasas" }, 5.32);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 6, filter: "blur(5px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.24, ease: "power3.out", immediateRender: false }, 5.32);
+    tl.set("#tbl-phase-river", { autoAlpha: 1 }, 5.28);
+    tl.set("#tbl-c4", { display: "block" }, 5.34);
+    tl.fromTo("#tbl-c4", { autoAlpha: 0, rotateY: 88, scale: 0.86, y: -40 }, { autoAlpha: 1, rotateY: 0, scale: 1, y: 0, duration: 0.34, ease: "power3.out" }, 5.34);
+    tl.to("#tbl-btn-fold", { autoAlpha: 0, duration: 0.2 }, 5.3);
+    tl.set("#tbl-hand-label", { innerText: "Escalera real · ganas" }, 5.7);
+
+    // Showdown: la cámara se acerca al asiento y el bote va hacia ti.
+    tl.to("#tbl-drift", { scale: 1.09, x: 26, y: -52, duration: 0.55, ease: "power2.inOut" }, 5.9);
+    tl.to(".tbl-actions", { autoAlpha: 0.35, duration: 0.3 }, 5.78);
+    tl.to("#tbl-nora", { opacity: 0.32, duration: 0.35, ease: "power2.out" }, 5.8);
+    tl.to("#tbl-seat", { backgroundColor: "#cdc5b7", borderColor: "#cdc5b7", color: "#22201f", duration: 0.3, ease: "power2.out" }, 5.86);
+    tl.to("#tbl-seat .tbl-seat-top", { color: "#22201f", duration: 0.2 }, 5.86);
+    tl.to("#tbl-seat .tbl-seat-chips", { color: "#22201f", duration: 0.2 }, 5.86);
+    tl.to("#tbl-seat .tbl-chip-icon", { color: "#22201f", duration: 0.2 }, 5.86);
+    tl.to("#tbl-seat .tbl-badge.dealer", { backgroundColor: "#22201f", color: "#cdc5b7", duration: 0.2 }, 5.86);
+    tl.fromTo("#chip-c", { autoAlpha: 0, y: 1190, x: 520, scale: 0.85 }, { autoAlpha: 1, y: 1190, x: 520, scale: 1, duration: 0.18 }, 5.9);
+    tl.to("#chip-c", { y: 1360, x: 790, duration: 0.52, ease: "power2.inOut" }, 6.09);
+    tl.to("#chip-c", { autoAlpha: 0, duration: 0.12 }, 6.56);
+    tl.fromTo("#tbl-pot-value", { innerText: 250 },  { innerText: 0, duration: 0.55, snap: { innerText: 1 }, ease: "power2.inOut", immediateRender: false }, 6.02);
+    tl.to(".tbl-pot", { autoAlpha: 0.35, duration: 0.3 }, 6.52);
+    tl.fromTo("#tbl-hero-chips", { innerText: 880 },  { innerText: 1130, duration: 0.6, snap: { innerText: 1 }, ease: "power2.out", immediateRender: false }, 6.05);
+    tl.set("#tbl-action", { innerText: "Ganas 250" }, 6.2);
+    tl.fromTo("#tbl-action", { autoAlpha: 0, y: 6, filter: "blur(5px)" },  { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.26, ease: "power3.out", immediateRender: false }, 6.2);
+
+    // Salida: la cámara se va hacia el asiento ganador y la mesa se deshace.
+    tl.to("#tbl-drift", { scale: 1.18, x: 150, y: 190, duration: 0.6, ease: "power2.in" }, 7.9);
+    tl.to("#tbl-camera", { filter: "blur(9px)", autoAlpha: 0, duration: 0.42, ease: "power3.in" }, 8.12);
+
+    window.__timelines["table"] = tl;
+  </script>
+</template>
+

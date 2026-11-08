@@ -1,0 +1,291 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #22201f;
+      overflow: hidden;
+      color: #22201f;
+      font-family: var(--font-body);
+    }
+    .rv-bone {
+      position: absolute;
+      inset: 0;
+      background: var(--bone);
+      transform-origin: 50% 100%;
+    }
+    .rv-pattern {
+      position: absolute;
+      left: -160px;
+      bottom: -520px;
+      width: 1400px;
+      height: 1400px;
+      background: url("assets/img/pattern-ink.svg") center / contain no-repeat;
+      opacity: 0.055;
+      transform: rotate(8deg);
+    }
+    .rv-grain {
+      position: absolute;
+      inset: 0;
+      background-image: url("assets/img/grain.png");
+      background-size: 512px 512px;
+      opacity: 0.07;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+    .rv-head {
+      position: absolute;
+      left: 78px;
+      right: 78px;
+      top: 158px;
+      z-index: 3;
+    }
+    .rv-eyebrow {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 24px;
+    }
+    .rv-title-1,
+    .rv-title-2 {
+      font-family: var(--font-display);
+      font-size: 118px;
+      line-height: 0.84;
+      letter-spacing: -0.045em;
+      white-space: nowrap;
+    }
+    .rv-title-1 {
+      font-weight: 700;
+    }
+    .rv-title-2 {
+      font-weight: 300;
+      font-style: italic;
+      margin-top: 10px;
+      opacity: 0.82;
+    }
+    .rv-deck {
+      position: absolute;
+      inset: 0;
+      perspective: 1300px;
+      perspective-origin: 50% 34%;
+    }
+    .rv-cards {
+      position: absolute;
+      left: 66px;
+      right: 66px;
+      top: 574px;
+      display: flex;
+      justify-content: space-between;
+      gap: 22px;
+      z-index: 4;
+      transform-style: preserve-3d;
+    }
+    .rv-card {
+      position: relative;
+      flex: 1;
+      height: 540px;
+      border-radius: 30px;
+      background: #22201f;
+      color: var(--bone);
+      padding: 38px 24px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1.5px solid rgba(20, 19, 18, 0.35);
+      box-shadow: 0 24px 50px rgba(20, 19, 18, 0.18);
+      transform-style: preserve-3d;
+    }
+    .rv-avatar {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--bone);
+      box-shadow: 0 0 0 2px rgba(205, 197, 183, 0.35);
+    }
+    .rv-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .rv-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 45px;
+      letter-spacing: -0.01em;
+      margin-top: 22px;
+      color: var(--bone-100);
+    }
+    .rv-alias {
+      font-family: var(--font-body);
+      font-style: italic;
+      font-size: 28px;
+      opacity: 0.66;
+      margin-top: 4px;
+      color: var(--bone);
+      white-space: nowrap;
+    }
+    .rv-rule {
+      width: 46px;
+      height: 2px;
+      background: rgba(205, 197, 183, 0.32);
+      margin: 22px 0 18px;
+    }
+    .rv-trait {
+      font-family: var(--font-body);
+      font-size: 28px;
+      line-height: 1.32;
+      text-align: center;
+      opacity: 0.62;
+      color: var(--bone);
+      max-width: 250px;
+    }
+    .rv-level {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 1214px;
+      display: flex;
+      justify-content: center;
+      z-index: 4;
+    }
+    .rv-level-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 34px;
+      border-radius: 999px;
+      background: #22201f;
+      color: var(--bone);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      box-shadow: 0 18px 34px rgba(20, 19, 18, 0.2);
+    }
+    .rv-level-pill i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--bone);
+      display: block;
+    }
+    .rv-foot {
+      position: absolute;
+      left: 80px;
+      right: 80px;
+      top: 1320px;
+      text-align: center;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 300;
+      font-size: 46px;
+      letter-spacing: -0.01em;
+      color: #22201f;
+      opacity: 0.66;
+      z-index: 4;
+    }
+    .rv-hairline {
+      position: absolute;
+      left: 50%;
+      top: 1434px;
+      width: 0;
+      height: 2px;
+      background: rgba(34, 32, 31, 0.28);
+      transform: translateX(-50%);
+    }
+  </style>
+
+  <div id="root" data-composition-id="rivals" data-width="1080" data-height="1920">
+    <div id="rv-bone" class="rv-bone"></div>
+    <div class="rv-pattern"></div>
+    <div class="rv-grain"></div>
+
+    <div id="rv-head" class="rv-head clip" data-start="0" data-duration="5.134" data-track-index="1">
+      <div id="rv-head-inner">
+        <div id="rv-eyebrow" class="rv-eyebrow">La Guarida</div>
+        <div id="rv-title-1" class="rv-title-1">TRES RIVALES.</div>
+        <div id="rv-title-2" class="rv-title-2">Tres formas de jugar.</div>
+      </div>
+    </div>
+
+    <div class="rv-deck">
+      <div id="rv-cards" class="rv-cards">
+        <div class="rv-card">
+          <div class="rv-avatar"><img src="assets/rivals/leo.webp" alt="Leo" /></div>
+          <div class="rv-name">Leo</div>
+          <div class="rv-alias">«El Protocolo»</div>
+          <div class="rv-rule"></div>
+          <div class="rv-trait">Agresivo y preciso, juega por el libro.</div>
+        </div>
+        <div class="rv-card">
+          <div class="rv-avatar"><img src="assets/rivals/nora.webp" alt="Nora" /></div>
+          <div class="rv-name">Nora</div>
+          <div class="rv-alias">«Ojo Clínico»</div>
+          <div class="rv-rule"></div>
+          <div class="rv-trait">Paciente, lee tus patrones de apuesta.</div>
+        </div>
+        <div class="rv-card">
+          <div class="rv-avatar"><img src="assets/rivals/kai.webp" alt="Kai" /></div>
+          <div class="rv-name">Kai</div>
+          <div class="rv-alias">«Doble Fondo»</div>
+          <div class="rv-rule"></div>
+          <div class="rv-trait">Farolea sin pestañear, difícil de leer.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rv-level" class="rv-level">
+      <div class="rv-level-pill"><i></i>Dificultad media</div>
+    </div>
+    <div id="rv-foot" class="rv-foot">Y tú, en el centro.</div>
+    <div id="rv-rule-line" class="rv-hairline"></div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    // El corte llega directo al hueso: impacto, no fundido.
+    gsap.set("#rv-bone", { scaleY: 1 });
+    tl.fromTo("#rv-eyebrow", { autoAlpha: 0, y: 12 }, { autoAlpha: 0.55, y: 0, duration: 0.4, ease: "power4.out" }, 0.02);
+
+    // El titular se descubre con una máscara, no con un fundido.
+    tl.fromTo("#rv-title-1", { clipPath: "inset(0 0 100% 0)", y: 12 }, { clipPath: "inset(0 0 0% 0)", y: 0, duration: 0.52, ease: "power4.out" }, 0.04);
+    tl.fromTo("#rv-title-2", { autoAlpha: 0, x: -26, filter: "blur(8px)" }, { autoAlpha: 1, x: 0, filter: "blur(0px)", duration: 0.46, ease: "expo.out" }, 0.18);
+
+    // Las cartas llegan como un mazo en 3D y se abren en sus huecos.
+    tl.fromTo("#rv-cards .rv-card", { autoAlpha: 0, x: 190, z: -140, rotateY: -38, scale: 0.92 }, {
+      autoAlpha: 1, x: 0, z: 0, rotateY: 0, scale: 1,
+      duration: 0.62, ease: "power4.out", stagger: 0.09,
+    }, 0.1);
+    tl.fromTo("#rv-cards .rv-avatar", { scale: 0.82 }, { scale: 1, duration: 0.5, ease: "back.out(1.3)", stagger: 0.09 }, 0.32);
+    tl.fromTo("#rv-cards .rv-name", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: "power3.out", stagger: 0.09 }, 0.38);
+    tl.fromTo("#rv-cards .rv-trait", { autoAlpha: 0, y: 10 }, { autoAlpha: 0.62, y: 0, duration: 0.34, ease: "power3.out", stagger: 0.09 }, 0.5);
+
+    // Cada rival recibe su foco, en cadena.
+    tl.to("#rv-cards .rv-card:nth-child(1)", { boxShadow: "0 24px 50px rgba(20,19,18,0.3), 0 0 0 3px rgba(34,32,31,0.5)", duration: 0.18, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0.85);
+    tl.to("#rv-cards .rv-card:nth-child(2)", { boxShadow: "0 24px 50px rgba(20,19,18,0.3), 0 0 0 3px rgba(34,32,31,0.5)", duration: 0.18, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.18);
+    tl.to("#rv-cards .rv-card:nth-child(3)", { boxShadow: "0 24px 50px rgba(20,19,18,0.3), 0 0 0 3px rgba(34,32,31,0.5)", duration: 0.18, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.51);
+
+    tl.fromTo("#rv-level", { autoAlpha: 0, y: 20, scale: 0.94 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.42, ease: "back.out(1.25)" }, 1.52);
+    tl.fromTo("#rv-foot", { autoAlpha: 0, y: 14 }, { autoAlpha: 0.66, y: 0, duration: 0.44, ease: "power3.out" }, 1.74);
+    tl.fromTo("#rv-rule-line", { width: 0 }, { width: 380, duration: 0.55, ease: "power3.inOut" }, 1.85);
+
+    // La cámara respira en 3D mientras se leen los perfiles.
+    tl.fromTo("#rv-cards", { rotateY: 2.6 }, { rotateY: -1.4, duration: 4.4, ease: "sine.inOut" }, 0.7);
+
+    // Salida: el mazo se lanza hacia la cámara y el hueso se retira.
+    tl.to("#rv-head-inner", { autoAlpha: 0, y: -22, filter: "blur(8px)", duration: 0.2, ease: "power2.in" }, 4.62);
+    tl.to("#rv-cards .rv-card", { autoAlpha: 0, y: -70, z: 220, scale: 1.08, rotateY: 18, duration: 0.28, ease: "power3.in", stagger: { each: 0.035, from: "end" } }, 4.64);
+    tl.to("#rv-level", { autoAlpha: 0, y: -12, duration: 0.16 }, 4.78);
+    tl.to("#rv-foot", { autoAlpha: 0, duration: 0.16 }, 4.78);
+    tl.to("#rv-rule-line", { autoAlpha: 0, duration: 0.12 }, 4.78);
+    tl.to("#rv-bone", { scaleY: 0, duration: 0.24, ease: "power3.in" }, 4.9);
+
+    window.__timelines["rivals"] = tl;
+  </script>
+</template>

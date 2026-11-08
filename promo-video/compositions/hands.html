@@ -1,0 +1,260 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #22201f;
+      overflow: hidden;
+      color: #22201f;
+      font-family: var(--font-body);
+    }
+    .hd-bone {
+      position: absolute;
+      inset: 0;
+      background: var(--bone);
+    }
+    .hd-pattern {
+      position: absolute;
+      right: -420px;
+      top: -380px;
+      width: 1200px;
+      height: 1200px;
+      background: url("assets/img/pattern-ink.svg") center / contain no-repeat;
+      opacity: 0.05;
+      transform: rotate(-12deg);
+    }
+    .hd-grain {
+      position: absolute;
+      inset: 0;
+      background-image: url("assets/img/grain.png");
+      background-size: 512px 512px;
+      opacity: 0.07;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+    .hd-head {
+      position: absolute;
+      left: 76px;
+      right: 76px;
+      top: 140px;
+      z-index: 4;
+    }
+    .hd-eyebrow {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 22px;
+    }
+    .hd-title-1,
+    .hd-title-2 {
+      font-family: var(--font-display);
+      font-size: 112px;
+      line-height: 0.84;
+      letter-spacing: -0.045em;
+      white-space: nowrap;
+    }
+    .hd-title-1 {
+      font-weight: 700;
+    }
+    .hd-title-2 {
+      font-weight: 300;
+      font-style: italic;
+      margin-top: 10px;
+      opacity: 0.82;
+    }
+    .hd-stage {
+      position: absolute;
+      left: 90px;
+      top: 470px;
+      width: 900px;
+      height: 540px;
+      border-radius: 42px;
+      background: #22201f;
+      box-shadow: 0 40px 80px rgba(20, 19, 18, 0.24);
+      z-index: 3;
+    }
+    .hd-stage::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 42px;
+      background: radial-gradient(60% 50% at 50% 40%, rgba(232, 226, 215, 0.07) 0%, rgba(232, 226, 215, 0) 70%);
+      pointer-events: none;
+    }
+    .hd-fan {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 130px;
+      height: 320px;
+      transform-style: preserve-3d;
+    }
+    .hd-card {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 196px;
+      height: 274px;
+      margin-left: -98px;
+      border-radius: 18px;
+      background: var(--bone);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      transform-origin: 50% 110%;
+    }
+    .hd-card img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 18px;
+    }
+    .hd-card:nth-child(1) { z-index: 1; }
+    .hd-card:nth-child(2) { z-index: 2; }
+    .hd-card:nth-child(3) { z-index: 3; }
+    .hd-card:nth-child(4) { z-index: 4; }
+    .hd-card:nth-child(5) { z-index: 5; }
+    .hd-name {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 1070px;
+      text-align: center;
+      z-index: 4;
+    }
+    .hd-name-main {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 82px;
+      line-height: 0.9;
+      letter-spacing: -0.025em;
+      text-transform: uppercase;
+    }
+    .hd-name-sub {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.2em;
+      opacity: 0.5;
+      margin-top: 16px;
+    }
+    .hd-foot {
+      position: absolute;
+      left: 76px;
+      right: 76px;
+      top: 1204px;
+      text-align: center;
+      z-index: 4;
+    }
+    .hd-foot-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 30px;
+      border-radius: 999px;
+      background: #22201f;
+      color: var(--bone);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .hd-foot-pill i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--bone);
+      display: block;
+    }
+    .hd-foot-copy {
+      margin-top: 20px;
+      font-size: 28px;
+      line-height: 1.4;
+      opacity: 0.58;
+    }
+    .hd-hairline {
+      position: absolute;
+      left: 50%;
+      top: 1040px;
+      width: 0;
+      height: 2px;
+      background: rgba(34, 32, 31, 0.26);
+      transform: translateX(-50%);
+      z-index: 4;
+    }
+  </style>
+
+  <div id="root" data-composition-id="hands" data-width="1080" data-height="1920">
+    <div id="hd-bone" class="hd-bone"></div>
+    <div class="hd-pattern"></div>
+    <div class="hd-grain"></div>
+
+    <div id="hd-head" class="hd-head clip" data-start="0" data-duration="3.433" data-track-index="1">
+      <div id="hd-head-inner">
+        <div id="hd-eyebrow" class="hd-eyebrow">Dentro de la app</div>
+        <div id="hd-title-1" class="hd-title-1">APRENDE</div>
+        <div id="hd-title-2" class="hd-title-2">las manos.</div>
+      </div>
+    </div>
+
+    <div id="hd-stage" class="hd-stage">
+      <div id="hd-fan" class="hd-fan">
+        <div class="hd-card"><img src="assets/cards/spades/A.svg" alt="As de picas" /></div>
+        <div class="hd-card"><img src="assets/cards/spades/K.svg" alt="Rey de picas" /></div>
+        <div class="hd-card"><img src="assets/cards/spades/Q.svg" alt="Reina de picas" /></div>
+        <div class="hd-card"><img src="assets/cards/spades/J.svg" alt="Jota de picas" /></div>
+        <div class="hd-card"><img src="assets/cards/spades/10.svg" alt="Diez de picas" /></div>
+      </div>
+    </div>
+
+    <div id="hd-name" class="hd-name">
+      <div id="hd-name-main" class="hd-name-main">Escalera real</div>
+      <div id="hd-name-sub" class="hd-name-sub">A♠ K♠ Q♠ J♠ 10♠</div>
+    </div>
+    <div id="hd-rule" class="hd-hairline"></div>
+
+    <div id="hd-foot" class="hd-foot">
+      <div id="hd-foot-pill" class="hd-foot-pill"><i></i>10 combinaciones</div>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    // El abanico ya está entrando: se abre desde el mazo, sin fundido.
+    tl.fromTo("#hd-head-inner", { y: 14, autoAlpha: 0.35 }, { y: 0, autoAlpha: 1, duration: 0.42, ease: "power3.out" }, 0);
+    tl.fromTo("#hd-eyebrow", { autoAlpha: 0 }, { autoAlpha: 0.55, duration: 0.34, ease: "power3.out" }, 0.05);
+
+    const fan = [
+      { rotate: -24, x: -300, y: 54 },
+      { rotate: -12, x: -150, y: 16 },
+      { rotate: 0, x: 0, y: 0 },
+      { rotate: 12, x: 150, y: 16 },
+      { rotate: 24, x: 300, y: 54 },
+    ];
+    document.querySelectorAll("#hd-fan .hd-card").forEach((card, i) => {
+      tl.fromTo(card, { autoAlpha: 1, rotate: fan[i].rotate * 0.55, x: fan[i].x * 0.55, y: 30, scale: 0.94 }, {
+        autoAlpha: 1, rotate: fan[i].rotate, x: fan[i].x, y: fan[i].y, scale: 1,
+        duration: 0.5, ease: "power4.out",
+      }, 0.04 + i * 0.05);
+    });
+
+    tl.fromTo("#hd-name-main", { clipPath: "inset(0 0 100% 0)", y: 12 }, { clipPath: "inset(0 0 0% 0)", y: 0, duration: 0.44, ease: "power4.out" }, 0.48);
+    tl.fromTo("#hd-name-sub", { autoAlpha: 0, y: 8 }, { autoAlpha: 0.5, y: 0, duration: 0.34, ease: "power3.out" }, 0.6);
+    tl.fromTo("#hd-rule", { width: 0 }, { width: 360, duration: 0.5, ease: "power3.inOut" }, 0.62);
+    tl.fromTo("#hd-foot-pill", { autoAlpha: 0, y: 16, scale: 0.94 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.4, ease: "back.out(1.25)" }, 0.82);
+
+    // El as de picas brilla y el abanico se cierra.
+    tl.fromTo("#hd-fan .hd-card:nth-child(1)", { boxShadow: "0 18px 40px rgba(0,0,0,0.45)" }, { boxShadow: "0 18px 52px rgba(0,0,0,0.45), 0 0 34px 4px rgba(232,226,215,0.55)", duration: 0.5, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.62);
+    tl.to("#hd-fan .hd-card", { rotate: 0, x: 0, y: 0, duration: 0.42, ease: "power3.inOut", stagger: 0.03 }, 2.42);
+    tl.to("#hd-name, #hd-rule, #hd-foot, #hd-head-inner", { autoAlpha: 0, y: -14, duration: 0.24, ease: "power2.in" }, 2.58);
+    tl.to("#hd-fan .hd-card:nth-child(5), #hd-fan .hd-card:nth-child(4), #hd-fan .hd-card:nth-child(3), #hd-fan .hd-card:nth-child(2)", { autoAlpha: 0, duration: 0.2 }, 2.72);
+
+    // La carta se traga la cámara y entra el cierre.
+    gsap.set("#hd-fan .hd-card:nth-child(1)", { transformOrigin: "50% 50%" });
+    tl.to("#hd-fan .hd-card:nth-child(1)", { scale: 7.2, y: 223, duration: 0.95, ease: "power2.in" }, 2.5);
+
+    window.__timelines["hands"] = tl;
+  </script>
+</template>

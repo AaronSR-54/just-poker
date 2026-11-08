@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 2000" preserveAspectRatio="none">
+  <defs>
+    <filter id="soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="130" />
+    </filter>
+    <mask id="diamond">
+      <rect width="1000" height="2000" fill="#000" />
+      <path d="M500 320 L790 1000 L500 1680 L210 1000 Z" fill="#fff" filter="url(#soft)" />
+    </mask>
+  </defs>
+  <rect width="1000" height="2000" fill="#fff" mask="url(#diamond)" />
+</svg>
